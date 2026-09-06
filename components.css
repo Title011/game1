@@ -1,0 +1,109 @@
+@charset "UTF-8";
+/* ============================================================
+   COMPONENTS — อุปกรณ์บนพื้นที่ทำงาน (ws-item), จุดขั้ว (port), แถบปุ่มคำสั่ง
+   ============================================================ */
+
+/* WS ITEMS — อุปกรณ์ที่วางบนพื้นที่ทำงาน
+   สำคัญ: กล่องต้อง "พอดี" กับไอคอน 52px เป๊ะ (ไม่รวมชื่อ)
+   ชื่ออุปกรณ์จึงวางแบบ absolute ใต้กล่อง ไม่นับเป็นความสูง
+   ไม่งั้นเวลาหมุนอุปกรณ์ จุดขั้วที่กลายเป็น port-bottom จะตกไปทับชื่อ
+   (ดูเหมือนจุดเหลืองมุดเข้าไปในกล่อง) */
+.ws-item{
+  position:absolute;background:var(--bg-card);border:1.5px solid var(--border2);
+  touch-action:none;
+  border-radius:10px;padding:8px 10px;display:flex;flex-direction:column;
+  align-items:center;cursor:move;z-index:3;min-width:72px;
+  transition:border-color .2s,box-shadow .2s;
+}
+.ws-item:hover{border-color:var(--accent);box-shadow:0 0 16px rgba(0,212,255,.25);}
+.ws-item.powered{border-color:var(--accent3);box-shadow:0 0 20px rgba(0,255,136,.35);}
+.ws-item.selected{
+  border-color:var(--accent2);
+  box-shadow:0 0 0 2px rgba(255,215,0,.3), 0 0 18px rgba(255,215,0,.45);
+}
+/* ป้ายบอกใบ้ "R หมุน" ใต้อุปกรณ์ที่เลือกอยู่ (ต่ำกว่าชื่อ + จุด port-bottom) */
+.ws-item.selected::after{
+  content:'R หมุน';
+  position:absolute; bottom:-40px; left:50%; transform:translateX(-50%);
+  font-size:.58rem; color:var(--accent2); background:var(--bg-dark);
+  border:1px solid var(--accent2); border-radius:6px;
+  padding:1px 7px; white-space:nowrap; pointer-events:none;
+}
+.ws-item-svg{width:52px;height:52px;display:flex;align-items:center;justify-content:center;transition:transform .25s ease;}
+.ws-item-svg svg{width:52px;height:52px;}
+.ws-item-name{
+  position:absolute;top:calc(100% + 12px);left:50%;transform:translateX(-50%);
+  font-size:.62rem;color:var(--text-dim);text-align:center;line-height:1.2;
+  white-space:nowrap;pointer-events:none;
+}
+.ws-item-delete{
+  position:absolute;top:-8px;right:-8px;width:18px;height:18px;background:var(--danger);
+  border-radius:50%;display:flex;align-items:center;justify-content:center;
+  font-size:.65rem;color:#fff;cursor:pointer;z-index:5;opacity:0;transition:opacity .15s;font-weight:700;
+}
+.ws-item:hover .ws-item-delete{opacity:1;}
+
+/* PORTS — จุดต่อสายไฟ
+   วางอิงขอบกล่อง (ที่ตอนนี้พอดีไอคอน) ทั้ง 4 ทิศสมมาตรกัน
+   → หมุนอุปกรณ์แล้ว port ทุกทิศยังเกาะขอบไอคอนเสมอ ไม่มุดเข้ากล่อง */
+.port{width:12px;height:12px;background:var(--accent2);border-radius:50%;border:2px solid #000;cursor:crosshair;position:absolute;z-index:4;transition:transform .15s,background .15s;touch-action:none;}
+.port.port-left  {left:-8px;   top:50%;transform:translateY(-50%);}
+.port.port-right {right:-8px;  top:50%;transform:translateY(-50%);}
+.port.port-top   {top:-8px;    left:50%;transform:translateX(-50%);}
+.port.port-bottom{bottom:-8px; left:50%;transform:translateX(-50%);}
+.port:hover{background:var(--accent);}
+.port.port-left:hover ,.port.port-right:hover {transform:translateY(-50%) scale(1.5);}
+.port.port-top:hover  ,.port.port-bottom:hover{transform:translateX(-50%) scale(1.5);}
+.port.connected{background:var(--accent3);box-shadow:0 0 6px rgba(0,255,136,.6);}
+
+/* จุดที่เลือกไว้ตอนต่อสายบนมือถือ (แตะทีละจุด)
+   สำคัญ: ต้องคง translate เดิมไว้ด้วย (เหมือน :hover ด้านบน)
+   ไม่งั้นจุดศูนย์กลาง port จะกระโดด ~6px ตอนขยาย/หด ทำให้สายที่ต่อ
+   ไม่ตรงกับ port (getPortCenter อ่านค่าระหว่างที่ transform กำลัง transition) */
+.port.tap-selected{
+  background:var(--accent2)!important;
+  box-shadow:0 0 0 3px rgba(255,215,0,.4), 0 0 14px rgba(255,215,0,.8)!important;
+  animation:tap-pulse .8s ease-in-out infinite;
+}
+.port.port-left.tap-selected ,.port.port-right.tap-selected {transform:translateY(-50%) scale(1.6)!important;}
+.port.port-top.tap-selected  ,.port.port-bottom.tap-selected{transform:translateX(-50%) scale(1.6)!important;}
+@keyframes tap-pulse{0%,100%{box-shadow:0 0 0 3px rgba(255,215,0,.4),0 0 14px rgba(255,215,0,.8)}50%{box-shadow:0 0 0 5px rgba(255,215,0,.6),0 0 20px rgba(255,215,0,1)}}
+
+/* ขั้วบวก/ลบ — สีแดง(+) น้ำเงิน(−) พร้อมป้ายกำกับ +/− ที่อ่านออกชัด
+   อุปกรณ์มีขั้ว (ถ่าน/LED/ไดโอด/มอเตอร์/บัซเซอร์/ตัวเก็บประจุ) จะได้คลาสนี้อัตโนมัติ
+   จุดขั้วทำใหญ่ขึ้นเล็กน้อย + เครื่องหมายหนา มีเงาดำ ให้เห็นชัดแม้จุดเล็ก */
+.port.port-pos,.port.port-neg{width:15px;height:15px;}
+.port.port-pos{background:#ff4444;border-color:#fff;}
+.port.port-neg{background:#3b82f6;border-color:#fff;}
+.port.port-pos::after,
+.port.port-neg::after{
+  position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);
+  font-weight:900;line-height:1;pointer-events:none;color:#fff;
+  text-shadow:0 0 2px rgba(0,0,0,.9),0 0 2px rgba(0,0,0,.9);
+}
+.port.port-pos::after{content:'+';font-size:12px;}
+.port.port-neg::after{content:'−';font-size:14px;}
+.port.port-pos.connected{background:#ff6666;box-shadow:0 0 8px rgba(255,68,68,.7);}
+.port.port-neg.connected{background:#66aaff;box-shadow:0 0 8px rgba(68,136,255,.7);}
+/* จุดที่มีหลายสี (สายต่างขั้วมาต่อจุดเดียว) — แบ่งครึ่งสี */
+.port.port-multicolor{border-color:#fff;box-shadow:0 0 8px rgba(255,255,255,.5);}
+.port.port-multicolor::after{display:none;}
+
+/* ACTION BAR — แถบปุ่มคำสั่งใต้พื้นที่ทำงาน */
+#action-bar{display:flex;gap:8px;justify-content:flex-end;flex-wrap:wrap;}
+.btn-action{padding:8px 20px;border-radius:8px;border:none;font-size:.85rem;font-weight:700;cursor:pointer;transition:transform .15s;}
+.btn-action:hover{transform:translateY(-1px);}
+.btn-clear{background:var(--bg-card);color:var(--text-dim);border:1px solid var(--border);}
+.btn-wire{background:linear-gradient(135deg,#d97706,#b45309);color:#fff;}
+.btn-wire.active{background:linear-gradient(135deg,var(--accent2),#d97706);box-shadow:0 0 14px rgba(255,215,0,.5);}
+.btn-check{background:linear-gradient(135deg,var(--accent3),#059669);color:#000;font-weight:800;}
+
+/* UI ICONS (แทน emoji) — ขนาดกำหนดที่ attribute ของ SVG ตรงๆ ไม่ override */
+.ui-icon{pointer-events:none;}
+#game-header h2 .hdr-icon svg{color:var(--accent2);filter:drop-shadow(0 0 4px rgba(255,215,0,.5));}
+.hud-hearts{display:inline-flex;align-items:center;}
+.hearts-row{display:inline-flex;gap:5px;align-items:center;line-height:0;}
+.heart-svg{display:block;flex:0 0 auto;}
+.btn-action svg,.btn-tutorial svg{opacity:.95;pointer-events:none;}
+#inventory h3 svg{color:var(--accent2);}
+#level-goal svg{color:var(--accent);}
