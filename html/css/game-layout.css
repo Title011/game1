@@ -1,0 +1,133 @@
+@charset "UTF-8";
+/* ============================================================
+   GAME LAYOUT — พื้นหลังเกม, header/HUD, แถบด่าน, คลังอุปกรณ์, พื้นที่ทำงาน
+   ============================================================ */
+
+/* GAME */
+#screen-game{
+  background-color:var(--bg-dark);
+  background-image:url('Insert_bg_image');
+  background-size:cover;background-position:center;background-attachment:fixed;
+}
+
+/* HEADER */
+#game-header{
+  background:rgba(10,22,40,.95);backdrop-filter:blur(12px);
+  border-bottom:1px solid var(--border2);padding:9px 20px;
+  display:flex;align-items:center;gap:14px;flex-wrap:wrap;
+  z-index:10;position:sticky;top:0;
+}
+#game-header h2{font-size:.95rem;color:var(--accent);font-weight:700;flex:1;}
+.hud-item{
+  display:flex;flex-direction:column;align-items:center;gap:1px;
+  background:var(--bg-card);border:1px solid var(--border);
+  border-radius:8px;padding:5px 12px;min-width:64px;
+}
+.hud-label{font-size:.6rem;color:var(--text-dim);text-transform:uppercase;letter-spacing:1px;}
+.hud-value{font-size:1rem;font-weight:800;color:var(--accent2);}
+#timer-display{color:var(--accent3);}
+#timer-display.warning{color:var(--danger);animation:pulse-txt .8s infinite;}
+@keyframes pulse-txt{0%,100%{opacity:1}50%{opacity:.3}}
+.btn-tutorial{
+  background:linear-gradient(135deg,#7c3aed,#4f1db8);color:#fff;border:none;
+  padding:8px 16px;border-radius:8px;font-size:.82rem;font-weight:700;
+  cursor:pointer;transition:transform .15s;white-space:nowrap;
+}
+.btn-tutorial:hover{transform:translateY(-1px);}
+
+/* LEVEL BAR — จุดบอกด่าน */
+#level-bar{
+  background:rgba(10,22,40,.9);padding:8px 20px;
+  display:flex;gap:6px;align-items:center;
+  border-bottom:1px solid var(--border);overflow-x:auto;z-index:9;
+}
+#level-bar-label{font-size:.65rem;color:var(--text-dim);white-space:nowrap;margin-right:4px;}
+.level-dot{
+  width:30px;height:30px;border-radius:50%;border:2px solid var(--border);
+  background:var(--bg-card);color:var(--text-dim);font-size:.72rem;font-weight:800;
+  display:flex;align-items:center;justify-content:center;cursor:pointer;
+  transition:all .2s;flex-shrink:0;
+}
+.level-dot.done{background:transparent;border-color:var(--accent3);color:var(--accent3);cursor:pointer;}
+.level-dot.done:hover{background:rgba(0,255,136,.15);transform:scale(1.1);}
+.level-dot.active{background:var(--accent2);border-color:var(--accent2);color:#000;transform:scale(1.25);box-shadow:0 0 14px rgba(255,215,0,.5);}
+.level-dot.active-done{background:var(--accent3);border-color:var(--accent3);box-shadow:0 0 14px rgba(0,255,136,.55);}
+.level-dot.locked{opacity:.35;cursor:not-allowed;}
+.level-dot.unlocked{opacity:.85;cursor:pointer;border-color:var(--accent2);color:var(--accent2);}
+.level-dot.unlocked:hover{opacity:1;background:rgba(96,165,250,.15);transform:scale(1.1);}
+
+/* MAIN */
+#game-main{flex:1;display:flex;gap:10px;padding:10px;overflow:hidden;min-height:0;}
+
+/* INVENTORY — คลังอุปกรณ์ (ลากอุปกรณ์กลับมาวางเพื่อคืนของ) */
+#inventory{
+  width:195px;min-width:178px;
+  background:rgba(17,34,64,.95);border:1px solid var(--border2);
+  border-radius:var(--radius);padding:8px;
+  display:flex;flex-direction:column;gap:4px;overflow-y:auto;
+  transition:box-shadow .2s, border-color .2s, background .2s;
+}
+#inventory.return-hover{
+  border-color:rgba(0,212,255,.6);
+  background:rgba(0,212,255,.06);
+  box-shadow:0 0 0 2px rgba(0,212,255,.15), 0 0 24px rgba(0,212,255,.12);
+}
+#inventory h3{font-size:.72rem;color:var(--text-dim);text-transform:uppercase;letter-spacing:1.5px;padding:4px 4px 8px;border-bottom:1px solid var(--border);}
+.inv-category{font-size:.67rem;color:var(--accent);margin-top:8px;font-weight:700;padding:0 2px;}
+.inv-item{
+  background:var(--bg-card2);border:1px solid var(--border);
+  border-radius:8px;padding:6px 8px;display:flex;align-items:center;gap:7px;
+  cursor:grab;transition:all .18s;
+}
+.inv-item:hover:not(.empty){border-color:var(--accent);transform:translateX(2px);background:rgba(0,212,255,.06);}
+.inv-item.empty{opacity:.35;cursor:not-allowed;pointer-events:none;}
+.inv-item-icon{width:34px;height:34px;flex-shrink:0;display:flex;align-items:center;justify-content:center;}
+.inv-item-icon svg{width:34px;height:34px;}
+.inv-item-name{font-size:.69rem;flex:1;line-height:1.25;color:var(--text);}
+.inv-count{background:var(--accent2);color:#000;font-size:.65rem;font-weight:800;border-radius:12px;padding:2px 7px;min-width:22px;text-align:center;flex-shrink:0;}
+.inv-count.zero{background:var(--danger);color:#fff;}
+
+/* WORKSPACE — พื้นที่ต่อวงจร */
+#workspace-wrap{flex:1;display:flex;flex-direction:column;gap:8px;overflow:hidden;min-width:0;}
+#level-goal{
+  background:rgba(17,34,64,.92);border:1px solid var(--border2);
+  border-radius:var(--radius);padding:10px 16px;font-size:.85rem;color:var(--accent2);
+  display:flex;align-items:center;gap:10px;flex-wrap:wrap;
+}
+#level-goal span{color:var(--text-dim);font-size:.8rem;flex:1;}
+#workspace{
+  flex:1;background:rgba(10,22,40,.82);border:2px dashed var(--border2);
+  border-radius:var(--radius);position:relative;overflow:hidden;min-height:350px;
+}
+#workspace.drag-over{border-color:var(--accent);background:rgba(0,212,255,.04);}
+#workspace-hint{
+  position:absolute;inset:0;display:flex;align-items:center;justify-content:center;
+  color:var(--text-dim);font-size:.85rem;opacity:.45;pointer-events:none;
+  flex-direction:column;gap:8px;
+}
+
+/* SVG wire layer */
+#wire-svg{
+  position:absolute;top:0;left:0;width:100%;height:100%;
+  pointer-events:none;z-index:6;overflow:visible;
+}
+/* svg ต้อง pointer-events:none เสมอ ให้คลิกทะลุไปโดน port ที่อยู่ล่าง
+   เฉพาะ path สายไฟที่รับคลิกเอง (ลบสาย/probe) */
+#wire-svg.drawing{cursor:crosshair;}
+
+/* ปิดการรับคลิกของสายเฉพาะตอนกำลังลากจริง (ให้ลากทะลุไปโดน port ได้)
+   นอกจากนั้นสายยังรับคลิกขวาเพื่อลบได้ตลอด แม้อยู่ในโหมดต่อสาย */
+#wire-svg.dragging .wire-path{pointer-events:none;}
+
+/* เฉพาะอุปกรณ์สัมผัส: ปิดการรับสัมผัสของสายตลอดโหมดต่อสาย (.drawing)
+
+   ทำไมต้องทำเฉพาะมือถือ: #wire-svg อยู่ z-index 6 ส่วน .ws-item อยู่ 3
+   (และสร้าง stacking context ทำให้ .port ข้างในไม่มีทางขึ้นสูงกว่าได้)
+   → เส้นสายทับอยู่บนจุดขั้วเสมอ และปลายสาย "จบตรงจุดขั้วพอดี"
+   นิ้วที่ใหญ่กว่าเมาส์จึงแตะโดนเส้นสายแทนจุดขั้ว = "กดต่อสายไม่ค่อยติด"
+
+   เดสก์ท็อปชี้แม่นกว่า จึงไม่ต้องปิด และยังคลิกขวาลบสายได้ตามปกติ
+   ส่วนมือถือให้ออกจากโหมดต่อสายก่อนแล้วค่อยแตะที่เส้นเพื่อลบ */
+@media (max-width:640px), (pointer:coarse){
+  #wire-svg.drawing .wire-path{pointer-events:none;}
+}

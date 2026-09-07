@@ -1,0 +1,106 @@
+@charset "UTF-8";
+/* ============================================================
+   CIRCUIT — สายไฟ, จุดกระแสไหล, popup เลือกขั้ว, เครื่องวัด,
+             และแอนิเมชันของอุปกรณ์ตอนมีไฟ (.powered)
+   ============================================================ */
+
+/* WIRE PATHS — เส้นสายไฟ */
+.wire-path{fill:none;stroke:var(--wire-color);stroke-width:3;stroke-linecap:round;cursor:pointer;pointer-events:stroke;filter:drop-shadow(0 0 3px rgba(255,215,0,.4));transition:stroke-width .2s;}
+.wire-path:hover{stroke-width:4.5!important;filter:drop-shadow(0 0 5px currentColor);}
+.wire-path.wire-pos{stroke-width:3.5;filter:drop-shadow(0 0 6px rgba(255,68,68,.9)) drop-shadow(0 0 2px rgba(255,68,68,1));}
+.wire-path.wire-neg{stroke-width:3.5;filter:drop-shadow(0 0 6px rgba(0,170,255,.9)) drop-shadow(0 0 2px rgba(0,170,255,1));}
+/* สายที่ต่อผิดขั้ว — แดงประ */
+.wire-wrong{stroke:var(--danger)!important;stroke-dasharray:6 4!important;filter:drop-shadow(0 0 4px rgba(255,68,68,.6))!important;}
+/* เส้นประตอนกำลังลากสาย */
+#wire-preview{fill:none;stroke:var(--accent);stroke-width:2;stroke-dasharray:6 3;stroke-linecap:round;pointer-events:none;display:none;}
+
+/* จุดกระแสไฟไหลตามสาย (แสดงเมื่อวงจรทำงาน) */
+.flow-dot{pointer-events:none;}
+@keyframes flow-move{from{offset-distance:0%}to{offset-distance:100%}}
+@keyframes flow-move-rev{from{offset-distance:100%}to{offset-distance:0%}}
+
+/* ============================================================
+   POPUP เลือกขั้ว (เมื่อจุดหนึ่งมีสาย 2 สีต่ออยู่)
+   ============================================================ */
+#polarity-picker{
+  position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);
+  z-index:200;background:rgba(15,25,45,.98);
+  border:2px solid var(--accent2);border-radius:16px;
+  padding:20px 24px;box-shadow:0 8px 40px rgba(0,0,0,.6);
+  min-width:280px;text-align:center;
+}
+.pp-title{color:#fff;font-size:1rem;font-weight:700;margin-bottom:16px;}
+.pp-buttons{display:flex;flex-direction:column;gap:10px;margin-bottom:12px;}
+.pp-btn{
+  display:flex;align-items:center;justify-content:center;gap:10px;
+  padding:14px;border-radius:10px;border:2px solid transparent;
+  font-size:1rem;font-weight:700;cursor:pointer;color:#fff;
+  transition:transform .12s,box-shadow .12s;
+}
+.pp-pos{background:rgba(255,68,68,.15);border-color:#ff4444;}
+.pp-pos:hover{background:rgba(255,68,68,.3);transform:scale(1.03);box-shadow:0 0 16px rgba(255,68,68,.5);}
+.pp-neg{background:rgba(0,170,255,.15);border-color:#00aaff;}
+.pp-neg:hover{background:rgba(0,170,255,.3);transform:scale(1.03);box-shadow:0 0 16px rgba(0,170,255,.5);}
+.pp-dot{width:16px;height:16px;border-radius:50%;border:2px solid #fff;flex-shrink:0;}
+.pp-cancel{
+  background:var(--bg-card);border:1px solid var(--border);color:var(--text-dim);
+  padding:8px 20px;border-radius:8px;cursor:pointer;font-size:.85rem;
+}
+.pp-cancel:hover{color:#fff;}
+
+/* ============================================================
+   MULTIMETER PROBE — จอแสดงผลเครื่องวัด
+   ============================================================ */
+#probe-display{
+  position:absolute;bottom:70px;right:16px;z-index:30;
+  background:#0a1a0a;border:2px solid #059669;border-radius:12px;
+  padding:12px 14px;min-width:180px;
+  box-shadow:0 4px 24px rgba(5,150,105,.4);
+}
+.probe-screen{
+  background:#001a00;border:1px solid #033;border-radius:8px;
+  padding:8px 10px;margin-bottom:8px;font-family:'Courier New',monospace;
+}
+.probe-row{display:flex;justify-content:space-between;align-items:center;padding:3px 0;}
+.probe-lbl{font-size:.72rem;color:#0a6;}
+.probe-val{font-size:1rem;font-weight:700;color:#0f4;text-shadow:0 0 6px rgba(0,255,68,.6);}
+.probe-hint{font-size:.68rem;color:#6e88a8;text-align:center;}
+#btn-probe.active{background:linear-gradient(135deg,#00ff88,#059669)!important;box-shadow:0 0 14px rgba(0,255,136,.5);}
+/* สายไฟตอนโหมด probe - จิ้มได้ (path รับคลิกเอง svg ไม่บัง) */
+#wire-svg.probing{cursor:crosshair;}
+.wire-path.probe-target{stroke-width:5!important;filter:drop-shadow(0 0 8px #00ff88)!important;}
+
+/* ============================================================
+   DEVICE ANIMATIONS — ทำงานเมื่ออุปกรณ์มีไฟ (.ws-item.powered)
+   ============================================================ */
+/* มอเตอร์: โรเตอร์หมุน */
+@keyframes cg-spin{from{transform:rotate(0deg)}to{transform:rotate(360deg)}}
+.motor-rotor{transform-origin:26px 26px;}
+.ws-item.powered .motor-rotor{animation:cg-spin .6s linear infinite;}
+
+/* LED: เรืองแสง */
+@keyframes cg-led-glow{0%,100%{filter:drop-shadow(0 0 4px #00ff88)}50%{filter:drop-shadow(0 0 12px #00ff88)}}
+.ws-item.powered .led-bulb{animation:cg-led-glow 1s ease-in-out infinite;}
+
+/* หลอดไฟ: สว่างวูบวาบ */
+@keyframes cg-bulb-glow{0%,100%{filter:drop-shadow(0 0 5px #ffd700)}50%{filter:drop-shadow(0 0 16px #ffd700)}}
+.ws-item.powered .bulb-glass{animation:cg-bulb-glow 1.2s ease-in-out infinite;}
+
+/* บัซเซอร์: สั่น */
+@keyframes cg-buzz-shake{0%,100%{transform:translateX(0)}25%{transform:translateX(-2px)}75%{transform:translateX(2px)}}
+.ws-item.powered .buzzer-body{animation:cg-buzz-shake .12s linear infinite;}
+
+/* แบตเตอรี่: วงแสงรอบตัว */
+@keyframes cg-batt-glow { 0%,100%{stroke:rgba(255,215,0,0);stroke-width:2} 50%{stroke:rgba(255,215,0,0.6);stroke-width:3} }
+.ws-item.powered .batt-glow { animation: cg-batt-glow 1.5s ease-in-out infinite; }
+
+/* ตัวเก็บประจุ: แสงตอนชาร์จ */
+@keyframes cg-cap-glow { 0%,100%{stroke:rgba(0,212,255,0)} 50%{stroke:rgba(0,212,255,0.7);stroke-width:3} }
+.ws-item.powered .cap-glow { animation: cg-cap-glow 2s ease-in-out infinite; }
+
+/* สวิตช์: คันโยกปิดวงจร */
+@keyframes cg-switch-close {
+  0%,40%  { transform: rotate(0deg);   transform-origin: 13px 20px; }
+  60%,100%{ transform: rotate(35deg);  transform-origin: 13px 20px; }
+}
+.ws-item.powered .switch-lever { animation: cg-switch-close .4s ease forwards; }
