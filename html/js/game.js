@@ -192,8 +192,10 @@ function checkCircuit(){
    (อ้างข้าม <svg> ได้ เพราะ id ใช้ร่วมกันทั้งหน้า)
    ============================================================ */
 
-/* ค่าคงที่ของผัง — แก้ที่เดียวปรับได้ทั้งแผนภาพ */
-var HINT = { ICON:42, BOX:52, STEP:76, PAD:14, PER_ROW:5, ROW_H:92 };
+/* ค่าคงที่ของผัง — แก้ที่เดียวปรับได้ทั้งแผนภาพ
+   STEP ต้องห่างพอให้ช่องว่างระหว่างกล่อง (STEP-BOX) ใส่ลูกศรได้ไม่อึดอัด
+   PAD เผื่อที่ด้านบนไว้วางป้าย "สาย +" เหนือแถวอุปกรณ์ */
+var HINT = { ICON:42, BOX:52, STEP:82, PAD:20, PER_ROW:5, ROW_H:92 };
 
 /* แปลงเฉลยเป็นลำดับอุปกรณ์ เช่น ['battery_aa','switch','bulb']
    เส้นสุดท้ายที่วนกลับไปหาตัวแรก ไม่นับเป็นอุปกรณ์ใหม่ */
@@ -207,33 +209,75 @@ function solutionChain(pairs){
   return seq;
 }
 
-/* กล่องอุปกรณ์ 1 ชิ้น + ชื่อ + ป้ายขั้ว +/− (ถ้ามีขั้ว) */
+/* สีสายในผัง — ให้ตรงกับสีสายจริงในเกม */
+var HINT_POS = '#ff4444';   /* ฝั่งขั้วบวก */
+var HINT_NEG = '#3b82f6';   /* ฝั่งขั้วลบ */
+var HINT_MID = '#ffd700';   /* สายกลางวง */
+
+/* กล่องอุปกรณ์ 1 ชิ้น + ชื่อ + ป้ายขั้ว +/− (ถ้ามีขั้ว)
+   ป้ายขั้ววางให้อยู่ "ในกล่อง" ทั้งวง (ศูนย์กลางห่างขอบ 10 รัศมี 6.5)
+   ถ้าวางชิดขอบเกินไป วงจะล้นออกนอกกล่องแล้วดูเหมือนลอยอยู่ */
 function hintDeviceBox(deviceId, cx, cy){
   var dev = DEVICES[deviceId];
   var B = HINT.BOX, I = HINT.ICON;
   var s = '<rect x="'+(cx-B/2)+'" y="'+(cy-B/2)+'" width="'+B+'" height="'+B+'" rx="9" '
         + 'fill="#1a2f50" stroke="#2d4a70" stroke-width="1.3"/>'
         + '<use href="#'+dev.svgId+'" x="'+(cx-I/2)+'" y="'+(cy-I/2)+'" width="'+I+'" height="'+I+'"/>'
-        + '<text x="'+cx+'" y="'+(cy+B/2+13)+'" text-anchor="middle" fill="#8fa5c0" font-size="8.5">'
+        + '<text x="'+cx+'" y="'+(cy+B/2+12)+'" text-anchor="middle" fill="#8fa5c0" font-size="8">'
         + dev.name + '</text>';
 
-  /* ป้ายขั้วมุมบนของกล่อง — บอกว่าด้านไหนต้องเป็น + / − */
   if(dev.polarized){
-    var yb = cy - B/2 + 3;
-    var xPos = (dev.pos === 'left') ? cx - B/2 + 3 : cx + B/2 - 3;
-    var xNeg = (dev.neg === 'left') ? cx - B/2 + 3 : cx + B/2 - 3;
-    s += '<circle cx="'+xPos+'" cy="'+yb+'" r="7" fill="#ff4444" stroke="#fff" stroke-width="1.2"/>'
-       + '<text x="'+xPos+'" y="'+(yb+3.2)+'" text-anchor="middle" fill="#fff" font-size="9" font-weight="bold">+</text>'
-       + '<circle cx="'+xNeg+'" cy="'+yb+'" r="7" fill="#3b82f6" stroke="#fff" stroke-width="1.2"/>'
-       + '<text x="'+xNeg+'" y="'+(yb+3.5)+'" text-anchor="middle" fill="#fff" font-size="10" font-weight="bold">−</text>';
+    var yb   = cy - B/2 + 10;
+    var xPos = (dev.pos === 'left') ? cx - B/2 + 10 : cx + B/2 - 10;
+    var xNeg = (dev.neg === 'left') ? cx - B/2 + 10 : cx + B/2 - 10;
+    s += '<circle cx="'+xPos+'" cy="'+yb+'" r="6.5" fill="'+HINT_POS+'" stroke="#fff" stroke-width="1.1"/>'
+       + '<text x="'+xPos+'" y="'+(yb+3)+'" text-anchor="middle" fill="#fff" font-size="9" font-weight="bold">+</text>'
+       + '<circle cx="'+xNeg+'" cy="'+yb+'" r="6.5" fill="'+HINT_NEG+'" stroke="#fff" stroke-width="1.1"/>'
+       + '<text x="'+xNeg+'" y="'+(yb+3.3)+'" text-anchor="middle" fill="#fff" font-size="10" font-weight="bold">−</text>';
   }
   return s;
 }
 
-/* ลูกศรแนวนอนระหว่างกล่อง 2 ใบ */
-function hintArrow(x1, x2, y){
-  return '<line x1="'+x1+'" y1="'+y+'" x2="'+(x2-5)+'" y2="'+y+'" stroke="#ffd700" stroke-width="2.2" stroke-linecap="round"/>'
-       + '<polygon points="'+x2+','+y+' '+(x2-7)+','+(y-4)+' '+(x2-7)+','+(y+4)+'" fill="#ffd700"/>';
+/* ลูกศรแนวนอนระหว่างกล่อง 2 ใบ — ระบุสีสายได้
+   หัวลูกศรสั้น (6) และเส้นหยุดก่อนหัว 1 หน่วย ไม่ให้ทับกันจนดูเบียด */
+function hintArrow(x1, x2, y, color){
+  var c = color || HINT_MID, H = 6;
+  return '<line x1="'+x1+'" y1="'+y+'" x2="'+(x2-H+1)+'" y2="'+y+'" stroke="'+c+'" stroke-width="2.2" stroke-linecap="butt"/>'
+       + '<polygon points="'+x2+','+y+' '+(x2-H)+','+(y-4.2)+' '+(x2-H)+','+(y+4.2)+'" fill="'+c+'"/>';
+}
+
+/* เส้นหักมุมแบบ "มุมโค้ง" — รับจุดหักเป็นอาเรย์ [[x,y],...]
+   ใช้ Q (quadratic bezier) ที่มุมแทนการหักฉาก เส้นประจึงวิ่งโค้งต่อเนื่อง
+   ดูเป็นสายไฟจริงมากกว่ามุม 90 องศาแข็ง ๆ
+
+   รัศมีถูกหดอัตโนมัติไม่ให้เกินครึ่งของด้านที่สั้นที่สุดที่มาบรรจบมุมนั้น
+   ไม่งั้นโค้งของสองมุมที่อยู่ใกล้กันจะกินกันจนเส้นเพี้ยน */
+function hintRoundPath(pts, r){
+  var d = 'M' + pts[0][0] + ',' + pts[0][1];
+  for(var i=1;i<pts.length-1;i++){
+    var p0=pts[i-1], p1=pts[i], p2=pts[i+1];
+    var l1=Math.hypot(p1[0]-p0[0], p1[1]-p0[1]);
+    var l2=Math.hypot(p2[0]-p1[0], p2[1]-p1[1]);
+    if(!l1 || !l2) continue;
+    var rr=Math.min(r, l1/2, l2/2);
+    var ax=p1[0]+(p0[0]-p1[0])*rr/l1, ay=p1[1]+(p0[1]-p1[1])*rr/l1;
+    var bx=p1[0]+(p2[0]-p1[0])*rr/l2, by=p1[1]+(p2[1]-p1[1])*rr/l2;
+    d += ' L'+ax.toFixed(1)+','+ay.toFixed(1)
+       + ' Q'+p1[0]+','+p1[1]+' '+bx.toFixed(1)+','+by.toFixed(1);
+  }
+  var e=pts[pts.length-1];
+  return d + ' L'+e[0]+','+e[1];
+}
+
+/* หัวลูกศรเดี่ยว ชี้ไปทางขวา ที่ปลาย (x,y) */
+function hintHead(x, y, color){
+  return '<polygon points="'+x+','+y+' '+(x-6)+','+(y-4.2)+' '+(x-6)+','+(y+4.2)+'" fill="'+color+'"/>';
+}
+
+/* ป้ายกำกับสาย เช่น "สายขั้วบวก (+)" ลอยเหนือ/ใต้เส้น */
+function hintWireTag(x, y, text, color){
+  return '<text x="'+x+'" y="'+y+'" text-anchor="middle" fill="'+color+'" '
+       + 'font-size="8" font-weight="bold">'+text+'</text>';
 }
 
 /* ── แผนภาพวงจรอนุกรม ── ตัดขึ้นบรรทัดใหม่ทุก PER_ROW ชิ้น */
@@ -242,37 +286,61 @@ function buildSeriesDiagram(lv){
   var B=HINT.BOX, S=HINT.STEP, P=HINT.PAD, RH=HINT.ROW_H;
   var perRow = Math.min(seq.length, HINT.PER_ROW);
   var rows   = Math.ceil(seq.length / HINT.PER_ROW);
-  var W = P*2 + B + (perRow-1)*S;
+  /* OFF = ระยะขอบซ้าย-ขวาเผื่อไว้ให้ "รางสายวนกลับ" มีที่โค้งมุมได้สวย
+     ถ้าไม่เผื่อ ช่วงจากกล่องตัวท้ายถึงรางขวาจะสั้นเกินจนโค้งไม่ขึ้น */
+  var OFF = 18, RAIL = 9, R = 11;
+  var W = OFF*2 + P*2 + B + (perRow-1)*S;
   var H = P + rows*RH + 26;
   var botY = P + rows*RH + 8;
+  var railL = RAIL, railR = W - RAIL;
 
-  function px(i){ return P + B/2 + (i % HINT.PER_ROW) * S; }
+  function px(i){ return OFF + P + B/2 + (i % HINT.PER_ROW) * S; }
   function py(i){ return P + Math.floor(i / HINT.PER_ROW) * RH + B/2; }
 
-  var s = '<svg class="hint-svg" viewBox="0 0 '+W+' '+H+'" xmlns="http://www.w3.org/2000/svg">';
+  /* จำกัดความกว้างสูงสุด ~1.25 เท่าของ viewBox
+     ไม่งั้นผังที่มีอุปกรณ์น้อย (viewBox แคบ) จะถูก width:100% ยืดจนบวมเกินไป */
+  var s = '<svg class="hint-svg" style="max-width:'+Math.round(W*1.25)+'px" '
+        + 'viewBox="0 0 '+W+' '+H+'" xmlns="http://www.w3.org/2000/svg">';
 
-  /* เส้นเชื่อมระหว่างอุปกรณ์ */
+  /* เส้นเชื่อมระหว่างอุปกรณ์ — เส้นแรกที่ออกจากขั้ว + ใช้สีแดงให้เห็นชัด */
   for(var i=0;i<seq.length-1;i++){
     var sameRow = Math.floor(i/HINT.PER_ROW) === Math.floor((i+1)/HINT.PER_ROW);
     if(sameRow){
-      s += hintArrow(px(i)+B/2+3, px(i+1)-B/2-3, py(i));
+      s += hintArrow(px(i)+B/2+4, px(i+1)-B/2-4, py(i), i===0 ? HINT_POS : HINT_MID);
+      /* ป้ายวางเหนือแถวกล่อง ไม่ยัดลงช่องว่างแคบ ๆ ระหว่างกล่อง */
+      if(i===0) s += hintWireTag((px(0)+px(1))/2, py(0)-B/2-6, 'สาย +', HINT_POS);
     } else {
-      /* ตัดบรรทัด: อ้อมขวา → ลงมาในช่องว่างระหว่างแถว → กลับซ้าย → เข้าตัวแรกของแถวถัดไป */
+      /* ตัดบรรทัด: อ้อมขวา → ลงช่องว่างระหว่างแถว → กลับซ้าย → เข้าตัวแรกของแถวถัดไป */
       var gapY = py(i) + B/2 + 26;
-      s += '<path d="M'+(px(i)+B/2+3)+','+py(i)+' L'+(W-8)+','+py(i)
-         + ' L'+(W-8)+','+gapY+' L8,'+gapY+' L8,'+py(i+1)+' L'+(px(i+1)-B/2-8)+','+py(i+1)+'" '
-         + 'fill="none" stroke="#ffd700" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/>'
-         + '<polygon points="'+(px(i+1)-B/2-1)+','+py(i+1)+' '+(px(i+1)-B/2-8)+','+(py(i+1)-4)+' '+(px(i+1)-B/2-8)+','+(py(i+1)+4)+'" fill="#ffd700"/>';
+      var tipW = px(i+1) - B/2 - 2;
+      s += '<path d="' + hintRoundPath([
+             [px(i)+B/2+4, py(i)],
+             [railR, py(i)],
+             [railR, gapY],
+             [railL, gapY],
+             [railL, py(i+1)],
+             [tipW-6, py(i+1)]
+           ], R) + '" fill="none" stroke="'+HINT_MID+'" stroke-width="2.2" '
+         + 'stroke-linecap="round" stroke-linejoin="round"/>'
+         + hintHead(tipW, py(i+1), HINT_MID);
     }
   }
 
-  /* สายวนกลับครบวง (ตัวสุดท้าย → ตัวแรก) วาดเป็นสีฟ้า = ฝั่งขั้วลบ */
+  /* สายวนกลับครบวง (ตัวสุดท้าย → ตัวแรก) เส้นประฟ้า = ฝั่งขั้วลบ
+     มุมโค้งทั้ง 4 มุม และเส้นประวิ่งไปจบพอดีที่โคนหัวลูกศร */
   var last = seq.length-1;
-  s += '<path d="M'+(px(last)+B/2+3)+','+py(last)+' L'+(W-8)+','+py(last)
-     + ' L'+(W-8)+','+botY+' L8,'+botY+' L8,'+py(0)+' L'+(px(0)-B/2-8)+','+py(0)+'" '
-     + 'fill="none" stroke="#3b82f6" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" stroke-dasharray="7 4"/>'
-     + '<polygon points="'+(px(0)-B/2-1)+','+py(0)+' '+(px(0)-B/2-8)+','+(py(0)-4)+' '+(px(0)-B/2-8)+','+(py(0)+4)+'" fill="#3b82f6"/>'
-     + '<text x="'+(W/2)+'" y="'+(botY-5)+'" text-anchor="middle" fill="#3b82f6" font-size="8.5">สายกลับเข้าขั้วลบ ครบวงจร</text>';
+  var tip  = px(0) - B/2 - 2;
+  s += '<path d="' + hintRoundPath([
+         [px(last)+B/2+4, py(last)],
+         [railR, py(last)],
+         [railR, botY],
+         [railL, botY],
+         [railL, py(0)],
+         [tip-6, py(0)]
+       ], R) + '" fill="none" stroke="'+HINT_NEG+'" stroke-width="2.2" '
+     + 'stroke-linecap="round" stroke-linejoin="round" stroke-dasharray="7 5"/>'
+     + hintHead(tip, py(0), HINT_NEG)
+     + hintWireTag(W/2, botY-6, 'สาย −  (กลับเข้าขั้วลบ ครบวงจร)', HINT_NEG);
 
   for(var k=0;k<seq.length;k++) s += hintDeviceBox(seq[k], px(k), py(k));
   return s + '</svg>';
@@ -298,26 +366,37 @@ function buildParallelDiagram(lv){
   function cx(j){ return X0 + B/2 + j*S; }
   function cy(k){ return TOP + k*RH; }
 
-  var s = '<svg class="hint-svg" viewBox="0 0 '+W+' '+H+'" xmlns="http://www.w3.org/2000/svg">';
+  var s = '<svg class="hint-svg" style="max-width:'+Math.round(W*1.25)+'px" '
+        + 'viewBox="0 0 '+W+' '+H+'" xmlns="http://www.w3.org/2000/svg">';
 
-  /* บัสจ่ายไฟฝั่ง + (เหลือง) และฝั่ง − (ฟ้า) */
-  s += '<line x1="'+BUS_L+'" y1="'+cy(0)+'" x2="'+BUS_L+'" y2="'+cy(br-1)+'" stroke="#ffd700" stroke-width="2.2" stroke-linecap="round"/>'
-     + '<line x1="'+(BAT_CX+B/2)+'" y1="'+batCY+'" x2="'+BUS_L+'" y2="'+batCY+'" stroke="#ffd700" stroke-width="2.2"/>'
-     + '<line x1="'+BUS_R+'" y1="'+cy(0)+'" x2="'+BUS_R+'" y2="'+cy(br-1)+'" stroke="#3b82f6" stroke-width="2.2" stroke-linecap="round"/>';
+  /* บัสจ่ายไฟฝั่ง + (แดง) และฝั่ง − (ฟ้า) */
+  s += '<line x1="'+BUS_L+'" y1="'+cy(0)+'" x2="'+BUS_L+'" y2="'+cy(br-1)+'" stroke="'+HINT_POS+'" stroke-width="2.2" stroke-linecap="round"/>'
+     + '<line x1="'+(BAT_CX+B/2)+'" y1="'+batCY+'" x2="'+BUS_L+'" y2="'+batCY+'" stroke="'+HINT_POS+'" stroke-width="2.2"/>'
+     + '<line x1="'+BUS_R+'" y1="'+cy(0)+'" x2="'+BUS_R+'" y2="'+cy(br-1)+'" stroke="'+HINT_NEG+'" stroke-width="2.2" stroke-linecap="round"/>'
+     + hintWireTag(BUS_L, cy(0)-B/2-16, 'สาย +', HINT_POS)
+     + hintWireTag(BUS_R, cy(0)-B/2-16, 'สาย −', HINT_NEG);
 
   /* สายกลับจากบัส − อ้อมใต้ทุกสาขา แล้วขึ้นเข้าขั้วลบของแบตทางซ้าย
-     (เดินที่ x=10 ซึ่งอยู่นอกกล่องแบตที่เริ่มต้นที่ x=26 จึงไม่ลากทับ) */
-  s += '<path d="M'+BUS_R+','+cy(br-1)+' L'+BUS_R+','+botY+' L10,'+botY+' L10,'+batCY+' L'+(BAT_CX-B/2-8)+','+batCY+'" '
-     + 'fill="none" stroke="#3b82f6" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" stroke-dasharray="7 4"/>'
-     + '<polygon points="'+(BAT_CX-B/2-1)+','+batCY+' '+(BAT_CX-B/2-8)+','+(batCY-4)+' '+(BAT_CX-B/2-8)+','+(batCY+4)+'" fill="#3b82f6"/>';
+     (เดินที่ x=10 ซึ่งอยู่นอกกล่องแบตที่เริ่มต้นที่ x=26 จึงไม่ลากทับ)
+     มุมโค้งเหมือนผังอนุกรม และเส้นประจบพอดีที่โคนหัวลูกศร */
+  var tipP = BAT_CX - B/2 - 2;
+  s += '<path d="' + hintRoundPath([
+         [BUS_R, cy(br-1)],
+         [BUS_R, botY],
+         [10, botY],
+         [10, batCY],
+         [tipP-6, batCY]
+       ], 11) + '" fill="none" stroke="'+HINT_NEG+'" stroke-width="2.2" '
+     + 'stroke-linecap="round" stroke-linejoin="round" stroke-dasharray="7 5"/>'
+     + hintHead(tipP, batCY, HINT_NEG);
 
   /* แต่ละสาขา */
   for(var k=0;k<br;k++){
-    s += '<circle cx="'+BUS_L+'" cy="'+cy(k)+'" r="3.5" fill="#ffd700"/>'
-       + '<circle cx="'+BUS_R+'" cy="'+cy(k)+'" r="3.5" fill="#3b82f6"/>';
-    s += hintArrow(BUS_L, cx(0)-B/2-3, cy(k));
-    for(var j=0;j<chain.length-1;j++) s += hintArrow(cx(j)+B/2+3, cx(j+1)-B/2-3, cy(k));
-    s += '<line x1="'+(cx(chain.length-1)+B/2+3)+'" y1="'+cy(k)+'" x2="'+BUS_R+'" y2="'+cy(k)+'" stroke="#3b82f6" stroke-width="2.2" stroke-linecap="round"/>';
+    s += '<circle cx="'+BUS_L+'" cy="'+cy(k)+'" r="3.5" fill="'+HINT_POS+'"/>'
+       + '<circle cx="'+BUS_R+'" cy="'+cy(k)+'" r="3.5" fill="'+HINT_NEG+'"/>';
+    s += hintArrow(BUS_L, cx(0)-B/2-4, cy(k), HINT_POS);
+    for(var j=0;j<chain.length-1;j++) s += hintArrow(cx(j)+B/2+4, cx(j+1)-B/2-4, cy(k));
+    s += '<line x1="'+(cx(chain.length-1)+B/2+3)+'" y1="'+cy(k)+'" x2="'+BUS_R+'" y2="'+cy(k)+'" stroke="'+HINT_NEG+'" stroke-width="2.2" stroke-linecap="round"/>';
     for(var m=0;m<chain.length;m++) s += hintDeviceBox(chain[m], cx(m), cy(k));
     s += '<text x="'+(BUS_L+14)+'" y="'+(cy(k)-B/2-5)+'" fill="#6e88a8" font-size="8.5">สาขาที่ '+(k+1)+'</text>';
   }
