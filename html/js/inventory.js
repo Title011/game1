@@ -53,7 +53,7 @@ function makeInvTouchHandler(deviceId){
 function renderInventory(){
   var inv=document.getElementById('inventory');
   inv.innerHTML='<h3>'+ICON('box',18)+' คลังอุปกรณ์</h3>';
-  var lv=LEVELS[G.level];
+  var lv=currentLevel();
   var cats=[
     {label:ICON('bolt',15)+' พลังงาน/ควบคุม', ids:['battery_aa','battery_9v','transformer','switch','fuse']},
     {label:ICON('chip',15)+' อิเล็กทรอนิกส์', ids:['resistor','ldr','diode','led','capacitor','transistor']},

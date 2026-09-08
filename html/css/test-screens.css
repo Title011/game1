@@ -89,3 +89,26 @@
   font-size:.82rem;cursor:pointer;transition:color .15s,border-color .15s;
 }
 .btn-reset-save:hover{color:var(--danger);border-color:var(--danger);}
+
+/* ============================================================
+   UNLOCK BOX — รางวัลโหมดพิเศษบนหน้าจบเกม (แสดงเมื่อเล่นครบทุกด่าน)
+   ============================================================ */
+.unlock-box{
+  display:flex;flex-direction:column;align-items:center;gap:6px;
+  background:rgba(255,215,0,.06);border:1.5px solid var(--accent2);
+  border-radius:14px;padding:18px 20px;
+}
+.unlock-title{font-size:1rem;font-weight:800;color:var(--accent2);}
+.unlock-sub{font-size:.78rem;color:var(--text-dim);text-align:center;}
+.unlock-actions{display:flex;gap:10px;flex-wrap:wrap;justify-content:center;margin-top:8px;width:100%;}
+.btn-unlock{
+  flex:1 1 200px;display:flex;flex-direction:column;align-items:center;gap:4px;
+  padding:14px 16px;border-radius:12px;border:1px solid var(--border2);
+  background:var(--bg-card);color:var(--text);
+  font-size:.92rem;font-weight:800;cursor:pointer;
+  transition:transform .15s,border-color .15s,box-shadow .15s;
+}
+.btn-unlock small{font-size:.7rem;font-weight:400;color:var(--text-dim);line-height:1.5;text-align:center;}
+.btn-unlock:hover{transform:translateY(-2px);}
+.btn-unlock.sandbox:hover{border-color:var(--accent3);box-shadow:0 6px 18px rgba(0,255,136,.22);}
+.btn-unlock.endless:hover{border-color:var(--accent2);box-shadow:0 6px 18px rgba(255,215,0,.22);}
