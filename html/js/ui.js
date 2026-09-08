@@ -44,6 +44,9 @@ function injectUIIcons(){
     var el = document.getElementById(id);
     if(el) el.innerHTML = ICON(map[id], sizes[id]||18);
   }
+  /* ปุ่มโหมดพิเศษเปลี่ยนทั้งไอคอนและข้อความตามสถานะ จึงมีฟังก์ชันของตัวเอง */
+  if(typeof updateSandboxButton === 'function') updateSandboxButton();
+  if(typeof updateEndlessButton === 'function') updateEndlessButton();
 }
 
 /* ============================================================
@@ -51,6 +54,55 @@ function injectUIIcons(){
    ============================================================ */
 function openModal(id){document.getElementById(id).classList.add('open');}
 function closeModal(id){document.getElementById(id).classList.remove('open');}
+
+/* ============================================================
+   CONFIRM — กล่องยืนยันกลาง ใช้แทน confirm() ของเบราว์เซอร์
+
+   confirm() เป็น dialog ของระบบ ปรับหน้าตาไม่ได้เลย และหลุดธีมเกม
+   ตัวนี้ใช้ modal เดียวกับที่เกมใช้อยู่ จึงคุมสไตล์ได้ทั้งหมด
+
+   ต่างกันตรงที่ confirm() หยุดโค้ดรอคำตอบได้ แต่ modal ทำไม่ได้
+   จึงต้องส่งงานที่จะทำต่อมาทาง onConfirm (callback) แทน
+
+   showConfirm({
+     title:'...', message:'...', detail:'...(รับ HTML)',
+     okText:'...', cancelText:'...', icon:'trash', danger:true,
+     onConfirm:function(){ ...ทำต่อเมื่อผู้ใช้กดยืนยัน... }
+   })
+   ============================================================ */
+var _confirmCallback = null;
+
+function showConfirm(opts){
+  opts = opts || {};
+
+  document.getElementById('confirm-title').textContent = opts.title || 'ยืนยัน';
+  document.getElementById('confirm-msg').textContent   = opts.message || '';
+
+  var det = document.getElementById('confirm-detail');
+  det.innerHTML = opts.detail || '';
+  det.style.display = opts.detail ? '' : 'none';
+
+  var icon = document.getElementById('confirm-icon');
+  icon.innerHTML = ICON(opts.icon || 'trash', 40);
+  icon.className = 'confirm-icon' + (opts.danger ? ' danger' : '');
+
+  var ok = document.getElementById('confirm-ok-btn');
+  ok.textContent = opts.okText || 'ยืนยัน';
+  ok.className   = 'btn-confirm-ok' + (opts.danger ? ' danger' : '');
+
+  document.getElementById('confirm-cancel-btn').textContent = opts.cancelText || 'ยกเลิก';
+
+  _confirmCallback = opts.onConfirm || null;
+  openModal('modal-confirm');
+}
+
+/* ปิดกล่อง — ok=true คือกดปุ่มยืนยัน, false คือยกเลิก/กดปิด/คลิกนอกกล่อง */
+function closeConfirm(ok){
+  closeModal('modal-confirm');
+  var cb = _confirmCallback;
+  _confirmCallback = null;          /* เคลียร์ก่อนเรียก กันเรียกซ้ำ */
+  if(ok && typeof cb === 'function') cb();
+}
 
 var toastT=null;
 function showToast(msg,type){

@@ -52,7 +52,7 @@ function checkExactWiring(items, wires, solution){
   }
 
   /* 3) โครงสร้างต้องถูก (อนุกรม/ขนาน) — ใช้ topology จาก level */
-  var lv = LEVELS[G.level];
+  var lv = currentLevel();
   if(lv.topology){
     var topo;
     if(lv.topology.type==='parallel'){

@@ -61,6 +61,8 @@
     <div class="hud-item"><span class="hud-label">คะแนน</span><span class="hud-value" id="hud-score">0</span></div>
     <div class="hud-item"><span class="hud-label">เวลา</span><span class="hud-value" id="timer-display">03:00</span></div>
     <div class="hud-item"><span class="hud-label">ชีวิต</span><span class="hud-value hud-hearts" id="hud-lives"></span></div>
+    <button class="btn-endless" id="btn-endless" onclick="toggleEndless()">ไม่รู้จบ</button>
+    <button class="btn-sandbox" id="btn-sandbox" onclick="toggleSandbox()">โหมดอิสระ</button>
     <button class="btn-tutorial" onclick="openTutorial()"><span id="btn-book-ic"></span> คู่มือ</button>
   </header>
   <div id="level-bar"><span id="level-bar-label">ด่าน:</span></div>
@@ -153,6 +155,20 @@
     <button class="btn-primary locked" id="posttest-confirm-btn" onclick="confirmPosttest()">
       &#x2705; ส่งแบบทดสอบเรียบร้อยแล้ว
     </button>
+
+    <!-- รางวัลปลดล็อกหลังเล่นครบทุกด่าน — JS เปิดให้เองใน updateModeButtons() -->
+    <div class="unlock-box" id="unlock-box" style="display:none;">
+      <div class="unlock-title">ปลดล็อกโหมดพิเศษแล้ว!</div>
+      <div class="unlock-sub">เล่นต่อได้ตามใจ ไม่กระทบคะแนนและความคืบหน้าของด่าน</div>
+      <div class="unlock-actions">
+        <button class="btn-unlock sandbox" onclick="enterSandbox()">
+          โหมดอิสระ<small>ทดลองต่อวงจรได้เต็มที่ อุปกรณ์ครบทุกชนิด</small>
+        </button>
+        <button class="btn-unlock endless" onclick="enterEndless()">
+          โหมดไม่รู้จบ<small>โจทย์สุ่มไม่มีที่สิ้นสุด แข่งทำคะแนนขึ้นตารางอันดับ</small>
+        </button>
+      </div>
+    </div>
   </div>
 </section>
 
@@ -178,6 +194,53 @@
         <span class="tut-page" id="tut-page-indicator">1 / 1</span>
         <button class="btn-tut primary" id="btn-tut-next" onclick="changeTutPage(1)">ถัดไป &#x25BA;</button>
       </div>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL ENDLESS OVER — หน้าจบรันโหมดไม่รู้จบ + ตารางอันดับ -->
+<div id="modal-endless-over" class="modal-overlay">
+  <div class="modal-box" style="max-width:480px">
+    <div class="modal-header">
+      <h3>จบรัน &#x2014; โหมดไม่รู้จบ</h3>
+      <button class="modal-close" onclick="closeModal('modal-endless-over')">&#x2715;</button>
+    </div>
+    <div class="modal-body">
+      <div class="eo-reason" id="eo-reason">&#x2014;</div>
+      <div class="eo-score" id="eo-score">0</div>
+      <div class="eo-sub" id="eo-sub">&#x2014;</div>
+
+      <div class="eo-save-row" id="eo-save-row">
+        <input class="eo-input" id="eo-name" type="text" maxlength="12"
+               placeholder="ใส่ชื่อของคุณ" autocomplete="off">
+        <button class="btn-confirm-ok" onclick="submitEndlessScore()">บันทึกคะแนน</button>
+      </div>
+
+      <div class="eo-board" id="eo-board"></div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn-confirm-cancel" onclick="quitEndlessToLevels()">กลับสู่ด่าน</button>
+      <button class="btn-confirm-ok" onclick="restartEndless()">เล่นอีกครั้ง</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL CONFIRM — กล่องยืนยันกลาง ใช้แทน confirm() ของเบราว์เซอร์
+     เรียกผ่าน showConfirm({...}) ใน js/ui.js -->
+<div id="modal-confirm" class="modal-overlay">
+  <div class="modal-box modal-confirm-box">
+    <div class="modal-header">
+      <h3 id="confirm-title">ยืนยัน</h3>
+      <button class="modal-close" onclick="closeConfirm(false)">&#x2715;</button>
+    </div>
+    <div class="modal-body">
+      <div class="confirm-icon" id="confirm-icon"></div>
+      <div class="confirm-msg" id="confirm-msg">&#x2014;</div>
+      <div class="confirm-detail" id="confirm-detail"></div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn-confirm-cancel" id="confirm-cancel-btn" onclick="closeConfirm(false)">ยกเลิก</button>
+      <button class="btn-confirm-ok" id="confirm-ok-btn" onclick="closeConfirm(true)">ยืนยัน</button>
     </div>
   </div>
 </div>
@@ -223,6 +286,8 @@
        workspace       อุปกรณ์บนพื้นที่ทำงาน + หมุน + เลือก
        wires           ระบบสายไฟ + ลงสีตามขั้ว
        probe           กระแสไหล + เครื่องวัด
+       sandbox         โหมดอิสระ (เล่นทดลองไม่จำกัด)
+       endless         โหมดไม่รู้จบ + ตัวสุ่มโจทย์ + ตารางอันดับ
        game            วงจรการเล่นหลัก + คีย์ลัด (โหลดท้ายสุด)
      ============================================================ -->
 <script src="js/device-symbols.js"></script>
@@ -237,6 +302,8 @@
 <script src="js/workspace.js"></script>
 <script src="js/wires.js"></script>
 <script src="js/probe.js"></script>
+<script src="js/sandbox.js"></script>
+<script src="js/endless.js"></script>
 <script src="js/game.js"></script>
 
 </body>

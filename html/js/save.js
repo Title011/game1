@@ -27,6 +27,9 @@ var SAVE_OK = (function(){
 /* ---------- เขียน ---------- */
 function saveGame(){
   if(!SAVE_OK) return;
+  /* โหมดอิสระ/ไม่รู้จบ เปลี่ยนคลังอุปกรณ์และคะแนนชั่วคราว
+     ห้ามเขียนทับความคืบหน้าจริงของผู้เล่น */
+  if(G.sandbox || G.endless) return;
   try{
     localStorage.setItem(SAVE_KEY, JSON.stringify({
       v:1,
@@ -36,6 +39,7 @@ function saveGame(){
       doneLevels:  G.doneLevels,
       unlockedMax: G.unlockedMax,
       finished:    !!G.finished,
+      modesUnlocked: !!G.modesUnlocked,
       pretest:     !!FormStatus.pretest,
       posttest:    !!FormStatus.posttest,
       savedAt:     Date.now()
@@ -93,6 +97,14 @@ function restoreFormStatus(){
   }
 }
 
+/* คืนสถานะปลดล็อกโหมดพิเศษตั้งแต่เปิดหน้า
+   ปลดล็อกครั้งเดียวติดตลอด แม้จะเริ่มเกมใหม่ก็ไม่หาย */
+function restoreUnlocks(){
+  var s = loadSave();
+  if(s && s.modesUnlocked) G.modesUnlocked = true;
+  updateModeButtons();
+}
+
 /* ============================================================
    กล่อง "เล่นต่อ" บนหน้าแบบทดสอบก่อนเรียน
    แสดงเฉพาะเมื่อมีข้อมูลบันทึกไว้
@@ -144,9 +156,25 @@ function continueGame(){
 
 /* กดปุ่ม "เริ่มใหม่ทั้งหมด" — ล้างข้อมูลบันทึก */
 function askResetSave(){
-  var ok = confirm('ลบความคืบหน้าทั้งหมดและเริ่มใหม่?\n\nคะแนน ด่านที่ผ่านแล้ว และสถานะแบบทดสอบจะหายทั้งหมด');
-  if(!ok) return;
-  clearSave();
-  renderResumeBox();
-  showToast('ลบข้อมูลที่บันทึกไว้แล้ว','');
+  var s = loadSave();
+  var detail = s
+    ? 'คะแนน <b>' + s.score + '</b> · ผ่านแล้ว <b>' +
+      Object.keys(s.doneLevels).length + ' ด่าน</b><br>' +
+      'รวมถึงสถานะการทำแบบทดสอบ จะหายทั้งหมด'
+    : 'ข้อมูลที่บันทึกไว้จะถูกลบทั้งหมด';
+
+  showConfirm({
+    title:'เริ่มใหม่ทั้งหมด',
+    message:'ลบความคืบหน้าทั้งหมดแล้วเริ่มใหม่?',
+    detail:detail,
+    icon:'trash',
+    okText:'ลบและเริ่มใหม่',
+    cancelText:'ไม่ลบ',
+    danger:true,
+    onConfirm:function(){
+      clearSave();
+      renderResumeBox();
+      showToast('ลบข้อมูลที่บันทึกไว้แล้ว','');
+    }
+  });
 }

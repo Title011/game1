@@ -26,6 +26,8 @@ function resumeGame(s){
   G.doneLevels  = s.doneLevels;
   G.unlockedMax = s.unlockedMax;
   G.finished    = false;
+  G.modesUnlocked = !!s.modesUnlocked;   /* ปลดล็อกแล้วต้องยังปลดล็อกอยู่ */
+  updateModeButtons();
   buildLevelBar();
   loadLevel(Math.min(s.level, LEVELS.length-1));
   showToast('เล่นต่อจากด่าน '+(G.level+1)+' · คะแนน '+G.score,'success');
@@ -62,13 +64,30 @@ function updateLevelBar(){
     }
     dot.className=cls;
   });
-  document.getElementById('hud-level').textContent=(G.level+1)+'/'+LEVELS.length;
-  document.getElementById('hud-score').textContent=G.score;
-  document.getElementById('hud-lives').innerHTML = renderHearts(G.lives, 3);
+  /* โหมดอิสระ/ไม่รู้จบไม่มีเลขด่านและไม่เสียชีวิต แสดงเป็นสัญลักษณ์แทน */
+  document.getElementById('hud-level').textContent =
+    G.sandbox ? 'อิสระ'
+    : G.endless ? ('รอบ '+G.endlessRound)
+    : (G.level+1)+'/'+LEVELS.length;
+  document.getElementById('hud-score').textContent = G.endless ? G.endlessScore : G.score;
+  document.getElementById('hud-lives').innerHTML =
+    (G.sandbox||G.endless) ? '<span class="hud-inf">∞</span>' : renderHearts(G.lives, 3);
 }
 
 function loadLevel(idx){
   if(idx>=LEVELS.length){endGame();return;}
+  /* ออกจากโหมดพิเศษอัตโนมัติ ครอบคลุมทั้งปุ่มกลับสู่ด่าน
+     และการกดจุดด่านบนแถบด้านบนขณะอยู่ในโหมดอิสระ/ไม่รู้จบ */
+  if(G.sandbox){
+    G.sandbox=false;
+    document.body.classList.remove('sandbox-mode');
+    updateSandboxButton();
+  }
+  if(G.endless){
+    G.endless=false; G.genLevel=null;
+    document.body.classList.remove('endless-mode');
+    updateEndlessButton();
+  }
   G.level=idx;
   if(idx>G.unlockedMax) G.unlockedMax=idx;  /* จำด่านไกลสุดที่ปลดล็อก */
   clearInterval(G.timerInt);
@@ -101,6 +120,8 @@ function updateTimerDisplay(){
   document.getElementById('timer-display').textContent=mm+':'+ss;
 }
 function onTimeUp(){
+  /* โหมดไม่รู้จบ: หมดเวลา = จบรัน ไปหน้าตารางอันดับ */
+  if(G.endless){ endEndlessRun('หมดเวลา'); return; }
   G.lives--;
   updateLevelBar();
   saveGame();   /* บันทึกจำนวนชีวิตที่เหลือ */
@@ -112,7 +133,10 @@ function onTimeUp(){
    CHECK + POWER ANIMATIONS
    ============================================================ */
 function checkCircuit(){
-  var lv=LEVELS[G.level];
+  /* โหมดอิสระ: ไม่มีเฉลยให้เทียบ ไม่มีคะแนน ไม่เสียชีวิต */
+  if(G.sandbox){ sandboxCheck(); return; }
+
+  var lv=currentLevel();
   var result=lv.check(G.wsItems,G.wires);
   /* เช็คเทียบเฉลย (ยืดหยุ่น: สลับซ้ายขวา/กลับทิศได้ แต่การเชื่อมต้องครบ ไม่เกิน ขั้วถูก) */
   if(result.ok && lv.solution){
@@ -120,6 +144,10 @@ function checkCircuit(){
     if(!exact.ok) result = exact;
   }
   var elapsed=Math.floor((Date.now()-G.levelStartTime)/1000);
+
+  /* โหมดไม่รู้จบมีระบบคะแนน/เวลาของตัวเอง ไม่ยุ่งกับคะแนนและชีวิตของโหมดด่าน */
+  if(G.endless){ endlessResult(result, elapsed); return; }
+
   if(result.ok){
     clearInterval(G.timerInt);
     /* เปิด animation ทุก ws-item */
@@ -157,25 +185,170 @@ function checkCircuit(){
   }
 }
 
-/* สร้างคำใบ้: ตัวอย่างการต่อสายของด่านนี้ */
+/* ============================================================
+   SOLUTION HINT — คำใบ้ตอนตรวจไม่ผ่าน วาดเป็น "แผนภาพ" ไม่ใช่รายการข้อความ
+
+   ใช้รูปอุปกรณ์จริงจาก js/device-symbols.js ผ่าน <use href="#dev-xxx">
+   (อ้างข้าม <svg> ได้ เพราะ id ใช้ร่วมกันทั้งหน้า)
+   ============================================================ */
+
+/* ค่าคงที่ของผัง — แก้ที่เดียวปรับได้ทั้งแผนภาพ */
+var HINT = { ICON:42, BOX:52, STEP:76, PAD:14, PER_ROW:5, ROW_H:92 };
+
+/* แปลงเฉลยเป็นลำดับอุปกรณ์ เช่น ['battery_aa','switch','bulb']
+   เส้นสุดท้ายที่วนกลับไปหาตัวแรก ไม่นับเป็นอุปกรณ์ใหม่ */
+function solutionChain(pairs){
+  var seq = [ pairs[0][0].split('.')[0] ];
+  for(var i=0;i<pairs.length;i++){
+    var d = pairs[i][1].split('.')[0];
+    if(i === pairs.length-1 && d === seq[0]) break;
+    seq.push(d);
+  }
+  return seq;
+}
+
+/* กล่องอุปกรณ์ 1 ชิ้น + ชื่อ + ป้ายขั้ว +/− (ถ้ามีขั้ว) */
+function hintDeviceBox(deviceId, cx, cy){
+  var dev = DEVICES[deviceId];
+  var B = HINT.BOX, I = HINT.ICON;
+  var s = '<rect x="'+(cx-B/2)+'" y="'+(cy-B/2)+'" width="'+B+'" height="'+B+'" rx="9" '
+        + 'fill="#1a2f50" stroke="#2d4a70" stroke-width="1.3"/>'
+        + '<use href="#'+dev.svgId+'" x="'+(cx-I/2)+'" y="'+(cy-I/2)+'" width="'+I+'" height="'+I+'"/>'
+        + '<text x="'+cx+'" y="'+(cy+B/2+13)+'" text-anchor="middle" fill="#8fa5c0" font-size="8.5">'
+        + dev.name + '</text>';
+
+  /* ป้ายขั้วมุมบนของกล่อง — บอกว่าด้านไหนต้องเป็น + / − */
+  if(dev.polarized){
+    var yb = cy - B/2 + 3;
+    var xPos = (dev.pos === 'left') ? cx - B/2 + 3 : cx + B/2 - 3;
+    var xNeg = (dev.neg === 'left') ? cx - B/2 + 3 : cx + B/2 - 3;
+    s += '<circle cx="'+xPos+'" cy="'+yb+'" r="7" fill="#ff4444" stroke="#fff" stroke-width="1.2"/>'
+       + '<text x="'+xPos+'" y="'+(yb+3.2)+'" text-anchor="middle" fill="#fff" font-size="9" font-weight="bold">+</text>'
+       + '<circle cx="'+xNeg+'" cy="'+yb+'" r="7" fill="#3b82f6" stroke="#fff" stroke-width="1.2"/>'
+       + '<text x="'+xNeg+'" y="'+(yb+3.5)+'" text-anchor="middle" fill="#fff" font-size="10" font-weight="bold">−</text>';
+  }
+  return s;
+}
+
+/* ลูกศรแนวนอนระหว่างกล่อง 2 ใบ */
+function hintArrow(x1, x2, y){
+  return '<line x1="'+x1+'" y1="'+y+'" x2="'+(x2-5)+'" y2="'+y+'" stroke="#ffd700" stroke-width="2.2" stroke-linecap="round"/>'
+       + '<polygon points="'+x2+','+y+' '+(x2-7)+','+(y-4)+' '+(x2-7)+','+(y+4)+'" fill="#ffd700"/>';
+}
+
+/* ── แผนภาพวงจรอนุกรม ── ตัดขึ้นบรรทัดใหม่ทุก PER_ROW ชิ้น */
+function buildSeriesDiagram(lv){
+  var seq  = solutionChain(lv.solution);
+  var B=HINT.BOX, S=HINT.STEP, P=HINT.PAD, RH=HINT.ROW_H;
+  var perRow = Math.min(seq.length, HINT.PER_ROW);
+  var rows   = Math.ceil(seq.length / HINT.PER_ROW);
+  var W = P*2 + B + (perRow-1)*S;
+  var H = P + rows*RH + 26;
+  var botY = P + rows*RH + 8;
+
+  function px(i){ return P + B/2 + (i % HINT.PER_ROW) * S; }
+  function py(i){ return P + Math.floor(i / HINT.PER_ROW) * RH + B/2; }
+
+  var s = '<svg class="hint-svg" viewBox="0 0 '+W+' '+H+'" xmlns="http://www.w3.org/2000/svg">';
+
+  /* เส้นเชื่อมระหว่างอุปกรณ์ */
+  for(var i=0;i<seq.length-1;i++){
+    var sameRow = Math.floor(i/HINT.PER_ROW) === Math.floor((i+1)/HINT.PER_ROW);
+    if(sameRow){
+      s += hintArrow(px(i)+B/2+3, px(i+1)-B/2-3, py(i));
+    } else {
+      /* ตัดบรรทัด: อ้อมขวา → ลงมาในช่องว่างระหว่างแถว → กลับซ้าย → เข้าตัวแรกของแถวถัดไป */
+      var gapY = py(i) + B/2 + 26;
+      s += '<path d="M'+(px(i)+B/2+3)+','+py(i)+' L'+(W-8)+','+py(i)
+         + ' L'+(W-8)+','+gapY+' L8,'+gapY+' L8,'+py(i+1)+' L'+(px(i+1)-B/2-8)+','+py(i+1)+'" '
+         + 'fill="none" stroke="#ffd700" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/>'
+         + '<polygon points="'+(px(i+1)-B/2-1)+','+py(i+1)+' '+(px(i+1)-B/2-8)+','+(py(i+1)-4)+' '+(px(i+1)-B/2-8)+','+(py(i+1)+4)+'" fill="#ffd700"/>';
+    }
+  }
+
+  /* สายวนกลับครบวง (ตัวสุดท้าย → ตัวแรก) วาดเป็นสีฟ้า = ฝั่งขั้วลบ */
+  var last = seq.length-1;
+  s += '<path d="M'+(px(last)+B/2+3)+','+py(last)+' L'+(W-8)+','+py(last)
+     + ' L'+(W-8)+','+botY+' L8,'+botY+' L8,'+py(0)+' L'+(px(0)-B/2-8)+','+py(0)+'" '
+     + 'fill="none" stroke="#3b82f6" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" stroke-dasharray="7 4"/>'
+     + '<polygon points="'+(px(0)-B/2-1)+','+py(0)+' '+(px(0)-B/2-8)+','+(py(0)-4)+' '+(px(0)-B/2-8)+','+(py(0)+4)+'" fill="#3b82f6"/>'
+     + '<text x="'+(W/2)+'" y="'+(botY-5)+'" text-anchor="middle" fill="#3b82f6" font-size="8.5">สายกลับเข้าขั้วลบ ครบวงจร</text>';
+
+  for(var k=0;k<seq.length;k++) s += hintDeviceBox(seq[k], px(k), py(k));
+  return s + '</svg>';
+}
+
+/* ── แผนภาพวงจรขนาน ── แบตซ้าย แตกเป็นสาขาเรียงลงมา */
+function buildParallelDiagram(lv){
+  var pairs = lv.solution, br = lv.topology.branches;
+  var per = pairs.length / br;
+  var src = pairs[0][0].split('.')[0];
+
+  /* อุปกรณ์ในสาขา (ทุกสาขาต่อชุดเดียวกัน) */
+  var chain = [];
+  for(var i=0;i<per-1;i++) chain.push(pairs[i][1].split('.')[0]);
+
+  var B=HINT.BOX, S=HINT.STEP;
+  var TOP=30, RH=84, BAT_CX=52, BUS_L=112, X0=150;
+  var W = X0 + B + (chain.length-1)*S + 56;
+  var H = TOP + (br-1)*RH + B/2 + 48;
+  var BUS_R = W - 26, botY = H - 22;
+  var batCY = TOP + (br-1)*RH/2;
+
+  function cx(j){ return X0 + B/2 + j*S; }
+  function cy(k){ return TOP + k*RH; }
+
+  var s = '<svg class="hint-svg" viewBox="0 0 '+W+' '+H+'" xmlns="http://www.w3.org/2000/svg">';
+
+  /* บัสจ่ายไฟฝั่ง + (เหลือง) และฝั่ง − (ฟ้า) */
+  s += '<line x1="'+BUS_L+'" y1="'+cy(0)+'" x2="'+BUS_L+'" y2="'+cy(br-1)+'" stroke="#ffd700" stroke-width="2.2" stroke-linecap="round"/>'
+     + '<line x1="'+(BAT_CX+B/2)+'" y1="'+batCY+'" x2="'+BUS_L+'" y2="'+batCY+'" stroke="#ffd700" stroke-width="2.2"/>'
+     + '<line x1="'+BUS_R+'" y1="'+cy(0)+'" x2="'+BUS_R+'" y2="'+cy(br-1)+'" stroke="#3b82f6" stroke-width="2.2" stroke-linecap="round"/>';
+
+  /* สายกลับจากบัส − อ้อมใต้ทุกสาขา แล้วขึ้นเข้าขั้วลบของแบตทางซ้าย
+     (เดินที่ x=10 ซึ่งอยู่นอกกล่องแบตที่เริ่มต้นที่ x=26 จึงไม่ลากทับ) */
+  s += '<path d="M'+BUS_R+','+cy(br-1)+' L'+BUS_R+','+botY+' L10,'+botY+' L10,'+batCY+' L'+(BAT_CX-B/2-8)+','+batCY+'" '
+     + 'fill="none" stroke="#3b82f6" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" stroke-dasharray="7 4"/>'
+     + '<polygon points="'+(BAT_CX-B/2-1)+','+batCY+' '+(BAT_CX-B/2-8)+','+(batCY-4)+' '+(BAT_CX-B/2-8)+','+(batCY+4)+'" fill="#3b82f6"/>';
+
+  /* แต่ละสาขา */
+  for(var k=0;k<br;k++){
+    s += '<circle cx="'+BUS_L+'" cy="'+cy(k)+'" r="3.5" fill="#ffd700"/>'
+       + '<circle cx="'+BUS_R+'" cy="'+cy(k)+'" r="3.5" fill="#3b82f6"/>';
+    s += hintArrow(BUS_L, cx(0)-B/2-3, cy(k));
+    for(var j=0;j<chain.length-1;j++) s += hintArrow(cx(j)+B/2+3, cx(j+1)-B/2-3, cy(k));
+    s += '<line x1="'+(cx(chain.length-1)+B/2+3)+'" y1="'+cy(k)+'" x2="'+BUS_R+'" y2="'+cy(k)+'" stroke="#3b82f6" stroke-width="2.2" stroke-linecap="round"/>';
+    for(var m=0;m<chain.length;m++) s += hintDeviceBox(chain[m], cx(m), cy(k));
+    s += '<text x="'+(BUS_L+14)+'" y="'+(cy(k)-B/2-5)+'" fill="#6e88a8" font-size="8.5">สาขาที่ '+(k+1)+'</text>';
+  }
+
+  s += hintDeviceBox(src, BAT_CX, batCY);
+  return s + '</svg>';
+}
+
+/* สร้างคำใบ้: ตัวอย่างการต่อสายของด่านนี้ (เป็นแผนภาพ) */
 function buildSolutionHint(){
-  var lv = LEVELS[G.level];
-  if(!lv.solution) return '💡 เปิด "คู่มือ" เพื่อดูคำแนะนำ';
-  var seen = {};
-  var lines = [];
-  lv.solution.forEach(function(pair){
-    var k = pair[0]+'|'+pair[1];
-    if(seen[k]) return;
-    seen[k] = true;
-    lines.push('• ' + portLabel(pair[0]) + '  →  ' + portLabel(pair[1]));
-  });
-  var note = (lv.topology && lv.topology.type==='parallel')
-    ? 'แยกเป็น ' + lv.topology.branches + ' สาขาจากขั้วแบต (แต่ละสาขาต่อชุดนี้)'
-    : 'ต่อเรียงกันเป็นวงเดียว (ทุกจุดมีสายเส้นเดียว)';
-  return '<div style="text-align:left;font-size:.78rem;line-height:1.7;">'
-       + '<b style="color:var(--accent2)">💡 ตัวอย่างการต่อ</b> <span style="opacity:.7">('+note+')</span><br>'
-       + lines.join('<br>')
-       + '<br><span style="opacity:.6">* สลับซ้าย-ขวา หรือกลับทิศวนก็ถูกเช่นกัน</span></div>';
+  var lv = currentLevel();
+  if(!lv.solution) return '<div class="hint-box"><div class="hint-note">เปิด "คู่มือ" เพื่อดูคำแนะนำ</div></div>';
+
+  var isParallel = lv.topology && lv.topology.type === 'parallel';
+  var diagram, note;
+  try{
+    diagram = isParallel ? buildParallelDiagram(lv) : buildSeriesDiagram(lv);
+    note = isParallel
+      ? 'แยก ' + lv.topology.branches + ' สาขาจากขั้วแบตเตอรี่ แต่ละสาขาต่อชุดเดียวกัน'
+      : 'ต่อเรียงกันเป็นวงเดียว ทุกจุดขั้วมีสายเส้นเดียว';
+  }catch(e){
+    /* เฉลยรูปแบบแปลก ๆ ที่วาดไม่ได้ — ยังต้องมีคำใบ้ให้ผู้เล่น */
+    return '<div class="hint-box"><div class="hint-note">ลองเปิด "คู่มือ" ดูลำดับการต่อของด่านนี้</div></div>';
+  }
+
+  return '<div class="hint-box">'
+       + '<div class="hint-title">' + ICON('bulbIdea',15) + ' ตัวอย่างการต่อ</div>'
+       + diagram
+       + '<div class="hint-note">' + note + '</div>'
+       + '<div class="hint-sub">สลับซ้าย-ขวา หรือกลับทิศวน ก็นับว่าถูกเช่นกัน</div>'
+       + '</div>';
 }
 
 function showResult(ok,msg,earned,elapsed,replay){
@@ -205,6 +378,8 @@ function nextLevel(){
   G.wsItems.forEach(function(i){i.el.classList.remove('powered');});
   stopCurrentFlow();
   if(G.probeMode) toggleProbeMode();
+  /* โหมดไม่รู้จบ: ปุ่มนี้คือ "รอบถัดไป" สุ่มโจทย์ใหม่ ไม่ใช่เลื่อนด่าน */
+  if(G.endless){ loadEndlessRound(); return; }
   var next=G.level+1;
   if(next>=LEVELS.length) endGame();
   else loadLevel(next);
@@ -213,15 +388,32 @@ function nextLevel(){
 function endGame(){
   clearInterval(G.timerInt);
   G.finished=true;
+  var firstTime = !G.modesUnlocked;
+  G.modesUnlocked=true;          /* รางวัล: ปลดล็อกโหมดอิสระ + โหมดไม่รู้จบ */
+  updateModeButtons();
   saveGame();   /* บันทึกว่าเล่นจบครบทุกด่านแล้ว */
   showScreen('screen-posttest');
+  if(firstTime) showToast('ปลดล็อกโหมดพิเศษแล้ว! โหมดอิสระ และ โหมดไม่รู้จบ','success');
+}
+
+/* โหมดพิเศษ (อิสระ/ไม่รู้จบ) โผล่หลังเล่นครบทุกด่านแล้วเท่านั้น
+   ซ่อน/แสดงด้วยคลาสเดียวบน body — ดู css/game-layout.css */
+function updateModeButtons(){
+  document.body.classList.toggle('modes-unlocked', !!G.modesUnlocked);
+  var box = document.getElementById('unlock-box');
+  if(box) box.style.display = G.modesUnlocked ? '' : 'none';
 }
 
 /* ============================================================
    TUTORIAL
    ============================================================ */
 function openTutorial(){
-  G.tutPages=LEVELS[G.level].tutorial;
+  /* โหมดอิสระไม่มีคู่มือประจำด่าน */
+  if(G.sandbox){
+    showToast('โหมดอิสระไม่มีคู่มือประจำด่าน — กด "กลับสู่ด่าน" เพื่อดูคู่มือ','');
+    return;
+  }
+  G.tutPages=currentLevel().tutorial;
   G.tutIdx=0;
   renderTutPage();
   openModal('modal-tutorial');
@@ -247,6 +439,7 @@ function changeTutPage(dir){
 document.addEventListener('DOMContentLoaded', function(){
   injectUIIcons();
   restoreFormStatus(); /* เคยทำข้อสอบก่อนเรียนแล้ว → ปลดล็อกให้เลย ไม่ต้องทำซ้ำ */
+  restoreUnlocks();    /* เคยเล่นจบครบทุกด่านไหม → โชว์ปุ่มโหมดพิเศษ */
   renderResumeBox();   /* มีข้อมูลบันทึกไว้ไหม → โชว์กล่อง "เล่นต่อ" */
   var ws = document.getElementById('workspace');
   if(ws){
@@ -259,8 +452,14 @@ document.addEventListener('DOMContentLoaded', function(){
     ws.addEventListener('contextmenu', function(e){ e.preventDefault(); });
   }
 
+  /* คลิกพื้นที่มืดนอกกล่อง = ปิด modal
+     กล่องยืนยันต้องผ่าน closeConfirm(false) เพื่อเคลียร์ callback ที่ค้างไว้ */
   document.querySelectorAll('.modal-overlay').forEach(function(ov){
-    ov.addEventListener('click',function(e){if(e.target===ov)closeModal(ov.id);});
+    ov.addEventListener('click',function(e){
+      if(e.target!==ov) return;
+      if(ov.id==='modal-confirm'){ closeConfirm(false); return; }
+      closeModal(ov.id);
+    });
   });
 });
 
