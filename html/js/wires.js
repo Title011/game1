@@ -45,12 +45,68 @@ function getPortCenter(portEl){
 }
 
 /* cubic bezier path — handles horizontal naturally */
+/* ============================================================
+   WIRE ROUTING — หลบกล่องอุปกรณ์
+
+   ปัญหา: สายที่ต้อง "วนกลับ" (เช่น จุดขวาของตัวขวาสุด → จุดซ้ายของตัวซ้ายสุด)
+   จะมี control point ดึงออกคนละทาง เส้นโค้งจึงกวาดย้อนกลับผ่านกึ่งกลาง
+   ทะลุกล่องอุปกรณ์ที่ขวางอยู่พอดี
+
+   วิธีแก้: สุ่มตรวจจุดบนเส้น ถ้าทับกล่องไหน ให้ยกเส้นอ้อมขึ้นบนหรือลงล่าง
+   ============================================================ */
+
+/* กล่องอุปกรณ์ทั้งหมด (พิกัดเทียบพื้นที่ทำงาน)
+   getBoundingClientRect() บังคับให้เบราว์เซอร์คำนวณ layout ใหม่ ซึ่งช้า
+   ระหว่างลากอุปกรณ์จะเรียกทุกเฟรม จึงแคชไว้แล้วล้างทีเดียวต่อรอบวาด */
+var _wsRectCache = null;
+function clearWsRectCache(){ _wsRectCache = null; }
+function wsItemRects(){
+  if(_wsRectCache) return _wsRectCache;
+  var wsEl = document.getElementById('workspace');
+  if(!wsEl){ return (_wsRectCache = []); }
+  var ws = wsEl.getBoundingClientRect();
+  var bx = wsEl.clientLeft, by = wsEl.clientTop;
+  var out = [];
+  G.wsItems.forEach(function(it){
+    if(!it.el) return;
+    var r = it.el.getBoundingClientRect();
+    out.push({
+      x1:r.left  - ws.left - bx, y1:r.top    - ws.top - by,
+      x2:r.right - ws.left - bx, y2:r.bottom - ws.top - by
+    });
+  });
+  return (_wsRectCache = out);
+}
+
+/* จุดบนเส้นโค้ง cubic ที่ตำแหน่ง t */
+function cubicAt(t,a,b,c,d){
+  var m = 1-t;
+  return m*m*m*a + 3*m*m*t*b + 3*m*t*t*c + t*t*t*d;
+}
+
+/* เส้นนี้ทับกล่องอุปกรณ์ตัวไหนไหม
+   ตรวจเฉพาะช่วงกลางเส้น (t 0.12-0.88) เพราะช่วงต้น/ปลายอยู่ติดจุดขั้ว
+   ซึ่งเกาะขอบกล่องอยู่แล้วโดยธรรมชาติ ไม่นับว่าทับ */
+function wireHitsItems(x1,y1,c1x,c1y,c2x,c2y,x2,y2,rects){
+  var PAD = 5;
+  for(var i=3;i<=22;i++){
+    var t = i/25;
+    var x = cubicAt(t,x1,c1x,c2x,x2), y = cubicAt(t,y1,c1y,c2y,y2);
+    for(var j=0;j<rects.length;j++){
+      var r = rects[j];
+      if(x > r.x1-PAD && x < r.x2+PAD && y > r.y1-PAD && y < r.y2+PAD) return true;
+    }
+  }
+  return false;
+}
+
 /*
   วาดสายโค้ง โดย "ดึงเส้นออกจาก port ตามทิศที่ port หันหน้า" ก่อน
   ทำให้สายพุ่งออกจากขอบ icon ไม่ตัดผ่านตัว icon
   fromDir/toDir: 'left'/'right'/'top'/'bottom' (ทิศที่ port ยื่นออก)
+  avoid: false = ไม่ต้องหลบกล่อง (ใช้กับเส้น preview ตอนลาก จะได้ไม่กระตุก)
 */
-function bezierPath(x1,y1,x2,y2,fromDir,toDir){
+function bezierPath(x1,y1,x2,y2,fromDir,toDir,avoid){
   fromDir = fromDir || 'right';
   toDir   = toDir   || 'left';
 
@@ -70,12 +126,41 @@ function bezierPath(x1,y1,x2,y2,fromDir,toDir){
   var c1 = ctrl(x1, y1, fromDir);
   var c2 = ctrl(x2, y2, toDir);
 
-  return 'M'+x1+','+y1+' C'+c1.x+','+c1.y+' '+c2.x+','+c2.y+' '+x2+','+y2;
+  /* เลื่อน control point ขึ้น/ลง เพื่ออ้อมกล่อง (o = ระยะยก) */
+  function build(o){
+    return 'M'+x1+','+y1+' C'+c1.x+','+(c1.y+o)+' '+c2.x+','+(c2.y+o)+' '+x2+','+y2;
+  }
+
+  if(avoid === false) return build(0);
+
+  var rects = wsItemRects();
+  if(!rects.length) return build(0);
+  if(!wireHitsItems(x1,y1,c1.x,c1.y,c2.x,c2.y,x2,y2,rects)) return build(0);
+
+  /* หาขอบบนสุด/ล่างสุดของกล่องทั้งหมด แล้วลองอ้อมทั้งสองทาง
+     คูณ 1.4 เพราะเส้นโค้ง cubic เบนได้ราว 3/4 ของระยะที่ยก control point */
+  var top = Infinity, bot = -Infinity;
+  rects.forEach(function(r){ top = Math.min(top,r.y1); bot = Math.max(bot,r.y2); });
+  var midY = (y1+y2)/2;
+  var cands = [
+    -(midY - top + 30) * 1.4,   /* อ้อมข้างบน */
+     (bot - midY + 30) * 1.4    /* อ้อมข้างล่าง */
+  ];
+  /* เลือกทางที่ยกน้อยกว่าก่อน จะได้เส้นสั้นและสวยกว่า */
+  cands.sort(function(a,b){ return Math.abs(a) - Math.abs(b); });
+
+  for(var k=0;k<cands.length;k++){
+    var o = cands[k];
+    if(!wireHitsItems(x1,y1,c1.x,c1.y+o,c2.x,c2.y+o,x2,y2,rects)) return build(o);
+  }
+  /* อ้อมยังไงก็ยังทับ (อุปกรณ์วางชิดกันมาก) — เอาทางที่ยกน้อยสุดไว้ก่อน */
+  return build(cands[0]);
 }
 
 function showWirePreview(x1,y1,x2,y2){
   var p=document.getElementById('wire-preview');
-  p.setAttribute('d',bezierPath(x1,y1,x2,y2));
+  /* เส้น preview ไม่ต้องหลบ ไม่งั้นจะกระตุกตามเมาส์ */
+  p.setAttribute('d',bezierPath(x1,y1,x2,y2,null,null,false));
   p.style.display='';
 }
 function hideWirePreview(){
@@ -305,6 +390,7 @@ function addWire(fromItemId,fromPort,fx,fy,toItemId,toPort,tx,ty,forcedFromPol,f
 
   /* คำนวณตำแหน่งจาก port element จริงเสมอ (แก้ปัญหาสายไม่ตรงจุด)
      ไม่ใช้ค่า fx,fy,tx,ty ที่ส่งมาเพราะอาจคลาดเคลื่อน */
+  clearWsRectCache();
   var fc=getPortCenter(fromPort);
   var tc=getPortCenter(toPort);
 
@@ -531,21 +617,25 @@ function colorPortDots(){
 }
 
 
+/* วาดสายใหม่ทุกเส้น
+   ไม่ได้กรองเฉพาะสายที่ต่อกับ itemId แล้ว เพราะการลากอุปกรณ์ไปขวางกลาง
+   ทำให้ "สายเส้นอื่นที่ไม่ได้ต่อกับมัน" ต้องเปลี่ยนทางอ้อมด้วย
+   (พารามิเตอร์ itemId เก็บไว้เพื่อความเข้ากันได้กับที่เรียกอยู่เดิม) */
 function refreshWires(itemId){
+  clearWsRectCache();   /* ตำแหน่งกล่องเปลี่ยนแล้ว ต้องวัดใหม่รอบนี้ */
   G.wires.forEach(function(w){
-    if(w.fromItemId===itemId || w.toItemId===itemId){
-      var fc=getPortCenter(w.fromPort);
-      var tc=getPortCenter(w.toPort);
-      var d=bezierPath(fc.x,fc.y,tc.x,tc.y,fc.dir,tc.dir);
-      w.pathEl.setAttribute('d',d);
-      /* อัปเดตเส้นทางของจุดกระแสไฟ (ถ้ากำลังแสดงอยู่) */
-      if(G.flowDots && G.flowDots.length){
-        G.flowDots.forEach(function(dot){
-          if(dot.style.offsetPath && dot._wireId===w.id){
-            dot.style.offsetPath='path("'+d+'")';
-          }
-        });
-      }
+    var fc=getPortCenter(w.fromPort);
+    var tc=getPortCenter(w.toPort);
+    var d=bezierPath(fc.x,fc.y,tc.x,tc.y,fc.dir,tc.dir);
+    w.pathEl.setAttribute('d',d);
+    /* อัปเดตเส้นทางของจุดกระแสไฟ (ถ้ากำลังแสดงอยู่) */
+    if(G.flowDots && G.flowDots.length){
+      G.flowDots.forEach(function(dot){
+        if(dot.style.offsetPath && dot._wireId===w.id){
+          dot.style.offsetPath='path("'+d+'")';
+        }
+      });
     }
   });
+  clearWsRectCache();   /* กันค่าค้างข้ามเฟรม */
 }

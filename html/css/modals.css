@@ -83,8 +83,9 @@
   font-size:.8rem;font-weight:700;color:var(--accent2);
 }
 .hint-title svg{color:var(--accent2);}
-/* แผนภาพย่อ-ขยายตามความกว้างกล่อง ไม่ล้นออกนอกจอ */
-.hint-svg{width:100%;height:auto;max-width:100%;display:block;}
+/* แผนภาพย่อตามความกว้างกล่อง แต่ไม่ขยายเกิน max-width ที่ JS คำนวณให้
+   (ผังที่มีอุปกรณ์น้อย viewBox จะแคบ ถ้าปล่อยให้ยืดเต็มจะบวมผิดสัดส่วน) */
+.hint-svg{width:100%;height:auto;display:block;margin:0 auto;}
 .hint-note{font-size:.78rem;color:var(--text);line-height:1.6;text-align:center;}
 .hint-sub{font-size:.72rem;color:var(--text-dim);opacity:.85;text-align:center;}
 
