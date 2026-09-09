@@ -105,7 +105,7 @@ function toggleProbeMode(){
   var svg = document.getElementById('wire-svg');
 
   /* ปิดโหมดต่อสายถ้าเปิดอยู่ (กันชนกัน) */
-  if(G.probeMode && G.wireMode) toggleWireMode();
+  if(G.probeMode) cancelTapConnect();
 
   btn.classList.toggle('active', G.probeMode);
   disp.style.display = G.probeMode ? 'block' : 'none';
@@ -248,7 +248,7 @@ function clearProbeReading(){
     w.pathEl.classList.remove('probe-target');
     /* คืน pointer-events ให้ระบบลบสาย (คลิกลบ) ทำงานปกติ */
     w.pathEl.style.pointerEvents = '';
-    w.pathEl.onclick = function(){ if(!G.wireMode && !G.probeMode) removeWire(w.id); };
+    w.pathEl.onclick = function(){ if(!G.probeMode) removeWire(w.id); };
   });
   document.getElementById('probe-voltage').textContent = '-- V';
   document.getElementById('probe-current').textContent = '-- mA';

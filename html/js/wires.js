@@ -6,25 +6,13 @@
 /* ============================================================
    WIRE SYSTEM — Bezier curves
    ============================================================ */
-function toggleWireMode(){
-  G.wireMode=!G.wireMode;
-  var btn=document.getElementById('btn-wire');
-  var svg=document.getElementById('wire-svg');
-  btn.classList.toggle('active',G.wireMode);
-  svg.classList.toggle('drawing',G.wireMode);
-  /* CSS ใช้คลาสนี้ขยายพื้นที่รับสัมผัสของจุดขั้วเฉพาะตอนต่อสาย */
-  document.body.classList.toggle('wire-mode',G.wireMode);
-  if(!G.wireMode){
-    G.drawingFrom=null;
-    hideWirePreview();
-    /* ล้าง tap port ที่ค้างไว้ */
-    if(G.tapWireFrom){ G.tapWireFrom.classList.remove('tap-selected'); G.tapWireFrom=null; }
-  }
-  var isTouch = ('ontouchstart' in window);
-  var msg = G.wireMode
-    ? (isTouch ? 'โหมดต่อสาย: แตะจุดขั้วที่ 1 แล้วแตะจุดขั้วที่ 2' : 'โหมดต่อสาย: ลากจากจุดขั้วหนึ่งไปอีกจุด')
-    : 'ออกจากโหมดต่อสาย';
-  showToast(msg, G.wireMode?'success':'');
+/* ยกเลิกการต่อสายที่ค้างอยู่ (มือถือแตะจุดแรกไว้แล้วเปลี่ยนใจ) */
+function cancelTapConnect(){
+  if(G.tapWireFrom){ G.tapWireFrom.classList.remove('tap-selected'); G.tapWireFrom=null; }
+  G.tapFromForcedPol = null;
+  G.tapToForcedPol   = null;
+  G.drawingFrom = null;
+  hideWirePreview();
 }
 
 function getPortCenter(portEl){
@@ -71,6 +59,7 @@ function wsItemRects(){
     if(!it.el) return;
     var r = it.el.getBoundingClientRect();
     out.push({
+      id:it.id,   /* ใช้แยกว่ากล่องนี้เป็นต้นทาง/ปลายทางของสายเส้นที่กำลังวาดไหม */
       x1:r.left  - ws.left - bx, y1:r.top    - ws.top - by,
       x2:r.right - ws.left - bx, y2:r.bottom - ws.top - by
     });
@@ -85,16 +74,25 @@ function cubicAt(t,a,b,c,d){
 }
 
 /* เส้นนี้ทับกล่องอุปกรณ์ตัวไหนไหม
-   ตรวจเฉพาะช่วงกลางเส้น (t 0.12-0.88) เพราะช่วงต้น/ปลายอยู่ติดจุดขั้ว
-   ซึ่งเกาะขอบกล่องอยู่แล้วโดยธรรมชาติ ไม่นับว่าทับ */
-function wireHitsItems(x1,y1,c1x,c1y,c2x,c2y,x2,y2,rects){
-  var PAD = 5;
-  for(var i=3;i<=22;i++){
-    var t = i/25;
-    var x = cubicAt(t,x1,c1x,c2x,x2), y = cubicAt(t,y1,c1y,c2y,y2);
-    for(var j=0;j<rects.length;j++){
-      var r = rects[j];
-      if(x > r.x1-PAD && x < r.x2+PAD && y > r.y1-PAD && y < r.y2+PAD) return true;
+
+   แยกเกณฑ์ 2 แบบ:
+   • กล่องต้นทาง/ปลายทางของสายเส้นนี้เอง — สายออกจากจุดขั้วที่เกาะขอบกล่องอยู่แล้ว
+     จึงตรวจเฉพาะช่วงกลางจริง ๆ (t 0.24-0.76) และเผื่อระยะแค่ 2px
+   • กล่องอื่น — ตรวจเกือบทั้งเส้น (t 0.08-0.92) และเผื่อระยะ 12px ให้เห็นช่องว่างชัด
+
+   เดิมใช้เกณฑ์เดียวกันหมด (t 0.12-0.88) เลยมีจุดบอด: อุปกรณ์ตัวอื่นที่วางใกล้
+   ปลายสายจะอยู่นอกช่วงตรวจ สายจึงพาดทับได้โดยระบบไม่รู้ตัว */
+function wireHitsItems(x1,y1,c1x,c1y,c2x,c2y,x2,y2,rects,ownIds){
+  for(var j=0;j<rects.length;j++){
+    var r = rects[j];
+    var own = ownIds && ownIds.indexOf(r.id) >= 0;
+    var pad = own ? 2 : 12;
+    var i0  = own ? 6 : 2;      /* t เริ่มที่ 0.24 : 0.08 */
+    var i1  = own ? 19 : 23;    /* t จบที่   0.76 : 0.92 */
+    for(var i=i0;i<=i1;i++){
+      var t = i/25;
+      var x = cubicAt(t,x1,c1x,c2x,x2), y = cubicAt(t,y1,c1y,c2y,y2);
+      if(x > r.x1-pad && x < r.x2+pad && y > r.y1-pad && y < r.y2+pad) return true;
     }
   }
   return false;
@@ -106,55 +104,70 @@ function wireHitsItems(x1,y1,c1x,c1y,c2x,c2y,x2,y2,rects){
   fromDir/toDir: 'left'/'right'/'top'/'bottom' (ทิศที่ port ยื่นออก)
   avoid: false = ไม่ต้องหลบกล่อง (ใช้กับเส้น preview ตอนลาก จะได้ไม่กระตุก)
 */
-function bezierPath(x1,y1,x2,y2,fromDir,toDir,avoid){
+function bezierPath(x1,y1,x2,y2,fromDir,toDir,avoid,ownIds){
   fromDir = fromDir || 'right';
   toDir   = toDir   || 'left';
 
-  /* ระยะยื่น control point ออกจาก port (ยิ่งไกลยิ่งโค้งนุ่ม) */
-  var dist = Math.max(40, Math.hypot(x2-x1, y2-y1) * 0.4);
+  /* ระยะยื่น control point ออกจากจุดขั้ว = ความยาว "ขาสาย" ที่พุ่งตรงออกมา
+     ก่อนจะเริ่มโค้ง
 
-  /* offset ของ control point ตามทิศ port */
-  function ctrl(x, y, dir){
+     ต้องมีเพดาน! เดิมเป็น hypot*0.4 ไม่จำกัด ปลายสายห่างกัน 370px
+     จะได้ขายาว 148px ทั้งสองฝั่ง เส้นเลยเหวี่ยงเลยจุดปลายไปคนละทาง
+     กลายเป็นตัว S ยักษ์ ดูไม่เป็นสายไฟ
+
+     34-78px คือช่วงที่ดูเหมือนสายจริง: มีขาสั้น ๆ ออกจากขั้วแล้วโค้งไปเลย */
+  var span = Math.hypot(x2-x1, y2-y1);
+  var dist = Math.max(34, Math.min(78, span * 0.32));
+
+  /* offset ของ control point ตามทิศ port (d = ความยาวขาสาย) */
+  function ctrl(x, y, dir, d){
     switch(dir){
-      case 'left':   return {x:x-dist, y:y};
-      case 'right':  return {x:x+dist, y:y};
-      case 'top':    return {x:x, y:y-dist};
-      case 'bottom': return {x:x, y:y+dist};
-      default:       return {x:x+dist, y:y};
+      case 'left':   return {x:x-d, y:y};
+      case 'right':  return {x:x+d, y:y};
+      case 'top':    return {x:x, y:y-d};
+      case 'bottom': return {x:x, y:y+d};
+      default:       return {x:x+d, y:y};
     }
   }
-  var c1 = ctrl(x1, y1, fromDir);
-  var c2 = ctrl(x2, y2, toDir);
 
-  /* เลื่อน control point ขึ้น/ลง เพื่ออ้อมกล่อง (o = ระยะยก) */
-  function build(o){
-    return 'M'+x1+','+y1+' C'+c1.x+','+(c1.y+o)+' '+c2.x+','+(c2.y+o)+' '+x2+','+y2;
+  /* สร้างเส้นจาก 2 ตัวแปร:
+       o = เลื่อน control point ขึ้น/ลง (อ้อมบน-ล่าง)
+       m = ตัวคูณความยาวขาสาย (ยืดขาให้เส้นโก่งอ้อมออกด้านข้าง) */
+  function ctrls(m){
+    return [ ctrl(x1,y1,fromDir,dist*m), ctrl(x2,y2,toDir,dist*m) ];
+  }
+  function build(o,m){
+    var c = ctrls(m||1);
+    return 'M'+x1+','+y1+' C'+c[0].x+','+(c[0].y+o)+' '+c[1].x+','+(c[1].y+o)+' '+x2+','+y2;
+  }
+  function clear(o,m,rects){
+    var c = ctrls(m);
+    return !wireHitsItems(x1,y1,c[0].x,c[0].y+o,c[1].x,c[1].y+o,x2,y2,rects,ownIds);
   }
 
-  if(avoid === false) return build(0);
+  if(avoid === false) return build(0,1);
 
   var rects = wsItemRects();
-  if(!rects.length) return build(0);
-  if(!wireHitsItems(x1,y1,c1.x,c1.y,c2.x,c2.y,x2,y2,rects)) return build(0);
+  if(!rects.length) return build(0,1);
+  if(clear(0,1,rects)) return build(0,1);
 
-  /* หาขอบบนสุด/ล่างสุดของกล่องทั้งหมด แล้วลองอ้อมทั้งสองทาง
-     คูณ 1.4 เพราะเส้นโค้ง cubic เบนได้ราว 3/4 ของระยะที่ยก control point */
-  var top = Infinity, bot = -Infinity;
-  rects.forEach(function(r){ top = Math.min(top,r.y1); bot = Math.max(bot,r.y2); });
-  var midY = (y1+y2)/2;
-  var cands = [
-    -(midY - top + 30) * 1.4,   /* อ้อมข้างบน */
-     (bot - midY + 30) * 1.4    /* อ้อมข้างล่าง */
-  ];
-  /* เลือกทางที่ยกน้อยกว่าก่อน จะได้เส้นสั้นและสวยกว่า */
-  cands.sort(function(a,b){ return Math.abs(a) - Math.abs(b); });
+  /* ค่อย ๆ ขยับทีละขั้นแล้วหยุดที่ขั้นแรกที่พ้น = ทางอ้อมสั้นที่สุดเท่าที่จำเป็น
 
-  for(var k=0;k<cands.length;k++){
-    var o = cands[k];
-    if(!wireHitsItems(x1,y1,c1.x,c1.y+o,c2.x,c2.y+o,x2,y2,rects)) return build(o);
+     ลอง 2 มิติ เพราะการเลื่อนขึ้น-ลงอย่างเดียวแก้ไม่ได้ทุกกรณี:
+     ถ้ากล่องขวางอยู่ "ด้านข้าง" ต้องยืดขาสายให้เส้นโก่งอ้อมออกไปแทน
+     (เดิมมีแต่มิติขึ้น-ลง พอไม่พ้นก็ยอมแพ้แล้วคืนเส้นที่ทับกล่องอยู่) */
+  var STEP = 22, MAX_TRY = 9, MULTS = [1, 1.7, 2.5];
+  for(var k=1;k<=MAX_TRY;k++){
+    for(var mi=0;mi<MULTS.length;mi++){
+      var m = MULTS[mi];
+      /* ลองขึ้นก่อนลงสลับกันในแต่ละขั้น จะได้เลือกฝั่งที่ใกล้กว่าเสมอ */
+      if(clear(-k*STEP, m, rects)) return build(-k*STEP, m);
+      if(clear( k*STEP, m, rects)) return build( k*STEP, m);
+    }
   }
-  /* อ้อมยังไงก็ยังทับ (อุปกรณ์วางชิดกันมาก) — เอาทางที่ยกน้อยสุดไว้ก่อน */
-  return build(cands[0]);
+  /* อ้อมยังไงก็ยังทับ (อุปกรณ์วางชิดกันมากจนไม่มีช่องให้ลอด)
+     ใช้ขาสายยาวสุดไว้ อย่างน้อยเส้นจะอ้อมออกนอกกลุ่มมากที่สุด */
+  return build(0, MULTS[MULTS.length-1]);
 }
 
 function showWirePreview(x1,y1,x2,y2){
@@ -167,8 +180,11 @@ function hideWirePreview(){
   document.getElementById('wire-preview').style.display='none';
 }
 
+/* จุดขั้วรับการต่อสายได้ตลอดเวลา ไม่ต้องเปิดโหมดอะไรก่อน
+   ไม่ชนกับการลากย้ายอุปกรณ์ เพราะ startDrag() ข้ามไปเมื่อ target เป็น .port
+   และ stopPropagation() ด้านล่างกันไม่ให้ event ลอยขึ้นไปถึงตัวอุปกรณ์ */
 function onPortMouseDown(e){
-  if(!G.wireMode) return;
+  if(G.probeMode) return;      /* โหมดเครื่องวัดใช้จิ้มสาย ไม่ใช่ต่อสาย */
   e.stopPropagation();
   if(e.cancelable) e.preventDefault();
   var port=e.currentTarget;
@@ -399,8 +415,9 @@ function addWire(fromItemId,fromPort,fx,fy,toItemId,toPort,tx,ty,forcedFromPol,f
   var path=document.createElementNS(ns,'path');
   path.id=wireId;
   path.className.baseVal='wire-path';
-  path.setAttribute('d',bezierPath(fc.x,fc.y,tc.x,tc.y,fc.dir,tc.dir));
-  path.addEventListener('click',function(){if(!G.wireMode&&!G.probeMode)removeWire(wireId);});
+  path.setAttribute('d',bezierPath(fc.x,fc.y,tc.x,tc.y,fc.dir,tc.dir,true,[fromItemId,toItemId]));
+  /* คลิก/แตะที่เส้น = ลบสาย (ทั้งคอมและมือถือ) ยกเว้นตอนใช้เครื่องวัด */
+  path.addEventListener('click',function(){if(!G.probeMode)removeWire(wireId);});
   /* คลิกขวา = ลบสาย (ใช้ได้ทุกโหมด) */
   path.addEventListener('contextmenu',function(e){
     e.preventDefault(); e.stopPropagation();
@@ -626,7 +643,7 @@ function refreshWires(itemId){
   G.wires.forEach(function(w){
     var fc=getPortCenter(w.fromPort);
     var tc=getPortCenter(w.toPort);
-    var d=bezierPath(fc.x,fc.y,tc.x,tc.y,fc.dir,tc.dir);
+    var d=bezierPath(fc.x,fc.y,tc.x,tc.y,fc.dir,tc.dir,true,[w.fromItemId,w.toItemId]);
     w.pathEl.setAttribute('d',d);
     /* อัปเดตเส้นทางของจุดกระแสไฟ (ถ้ากำลังแสดงอยู่) */
     if(G.flowDots && G.flowDots.length){

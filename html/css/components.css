@@ -31,10 +31,15 @@
 }
 .ws-item-svg{width:52px;height:52px;display:flex;align-items:center;justify-content:center;transition:transform .25s ease;}
 .ws-item-svg svg{width:52px;height:52px;}
+/* ชื่ออุปกรณ์ลอยอยู่นอกกล่อง จึงมีโอกาสไปทับกล่องของอุปกรณ์ตัวอื่น
+   ใส่พื้นหลังทึบเป็นป้ายเล็ก ๆ ให้อ่านออกเสมอ ไม่จมหายไปกับพื้นหลังด้านหลัง */
 .ws-item-name{
-  position:absolute;top:calc(100% + 12px);left:50%;transform:translateX(-50%);
-  font-size:.62rem;color:var(--text-dim);text-align:center;line-height:1.2;
+  position:absolute;top:calc(100% + 11px);left:50%;transform:translateX(-50%);
+  font-size:.62rem;color:var(--text);text-align:center;line-height:1.2;
   white-space:nowrap;pointer-events:none;
+  background:rgba(10,22,40,.9);
+  border:1px solid var(--border);
+  padding:1px 7px;border-radius:6px;
 }
 .ws-item-delete{
   position:absolute;top:-8px;right:-8px;width:18px;height:18px;background:var(--danger);
@@ -51,17 +56,17 @@
 .port.port-right {right:-8px;  top:50%;transform:translateY(-50%);}
 .port.port-top   {top:-8px;    left:50%;transform:translateX(-50%);}
 .port.port-bottom{bottom:-8px; left:50%;transform:translateX(-50%);}
-/* ขยายพื้นที่รับสัมผัส (invisible hit area) เฉพาะตอนอยู่ในโหมดต่อสาย
-   จุดจริงกว้าง 12-16px ซึ่งเล็กเกินไปสำหรับนิ้ว (ควรมี ~44px)
+/* ขยายพื้นที่รับสัมผัส (invisible hit area) ของจุดขั้ว
+   จุดจริงกว้าง 12-16px ซึ่งเล็กเกินไปสำหรับนิ้ว
    ใช้ ::before เป็นวงกลมใสครอบไว้ — pseudo-element รับ pointer event
    แทน element แม่ จึงขยายเป้าได้โดยที่หน้าตาไม่เปลี่ยน
 
-   จำกัดไว้แค่โหมดต่อสาย เพราะนอกโหมดนี้ port ไม่รับคลิกอยู่แล้ว
-   และวงใหญ่ ๆ จะไปบังการลาก/ย้ายอุปกรณ์ */
-body.wire-mode .port::before{
+   ขนาดต้องพอดี ๆ ไม่ใหญ่เกินไป เพราะการแตะโดนจุดขั้วจะไม่ลากย้ายอุปกรณ์
+   ถ้าวงกว้างเกินจะกินพื้นที่กลางกล่องจนจับตัวอุปกรณ์มาลากไม่ได้ */
+.port::before{
   content:'';position:absolute;
   top:50%;left:50%;transform:translate(-50%,-50%);
-  width:34px;height:34px;border-radius:50%;
+  width:30px;height:30px;border-radius:50%;
 }
 .port:hover{background:var(--accent);}
 .port.port-left:hover ,.port.port-right:hover {transform:translateY(-50%) scale(1.5);}
@@ -102,12 +107,11 @@ body.wire-mode .port::before{
 .port.port-multicolor::after{display:none;}
 
 /* ACTION BAR — แถบปุ่มคำสั่งใต้พื้นที่ทำงาน */
-#action-bar{display:flex;gap:8px;justify-content:flex-end;flex-wrap:wrap;}
+/* flex-shrink:0 = ห้ามถูกบีบหาย ต้องเห็นปุ่มคำสั่งเสมอไม่ว่าจอเตี้ยแค่ไหน */
+#action-bar{display:flex;gap:8px;justify-content:flex-end;flex-wrap:wrap;flex-shrink:0;}
 .btn-action{padding:8px 20px;border-radius:8px;border:none;font-size:.85rem;font-weight:700;cursor:pointer;transition:transform .15s;}
 .btn-action:hover{transform:translateY(-1px);}
 .btn-clear{background:var(--bg-card);color:var(--text-dim);border:1px solid var(--border);}
-.btn-wire{background:linear-gradient(135deg,#d97706,#b45309);color:#fff;}
-.btn-wire.active{background:linear-gradient(135deg,var(--accent2),#d97706);box-shadow:0 0 14px rgba(255,215,0,.5);}
 .btn-check{background:linear-gradient(135deg,var(--accent3),#059669);color:#000;font-weight:800;}
 
 /* UI ICONS (แทน emoji) — ขนาดกำหนดที่ attribute ของ SVG ตรงๆ ไม่ override */

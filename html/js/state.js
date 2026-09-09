@@ -10,17 +10,18 @@ var G = {
   level:0, score:0, lives:3,
   unlockedMax:0,  /* ด่านสูงสุดที่ปลดล็อกแล้ว (กลับไปเล่นด่านที่ผ่านมาได้) */
   finished:false, /* เล่นครบทุกด่านแล้ว (ไปหน้าแบบทดสอบหลังเรียน) */
-  /* ปลดล็อกโหมดพิเศษ (อิสระ/ไม่รู้จบ) — ติดถาวรเมื่อเล่นครบทุกด่านครั้งแรก
+  /* ปลดล็อกโหมดพิเศษ (อิสระ/วัดความเร็ว) — ติดถาวรเมื่อเล่นครบทุกด่านครั้งแรก
      ต่างจาก finished ตรงที่ initGame() จะไม่รีเซ็ตค่านี้ */
   modesUnlocked:false,
   sandbox:false,  /* อยู่ในโหมดอิสระ — ไม่จับเวลา ไม่เสียชีวิต ไม่บันทึกทับ */
-  endless:false, endlessRound:1, endlessScore:0, genLevel:null,  /* โหมดไม่รู้จบ */
+  /* โหมดวัดความเร็ว — มีชีวิตเดียว ตอบผิดครั้งเดียวจบรัน */
+  endless:false, endlessRound:1, endlessScore:0, endlessLives:1, genLevel:null,
   timerSec:0, timerInt:null, levelStartTime:0,
   doneLevels:{},
   wsItems:[], wsCounter:0,
   wires:[], wireCounter:0,
   invCounts:{},
-  wireMode:false, drawingFrom:null,
+  drawingFrom:null,   /* จุดขั้วต้นทางระหว่างลากสายบนคอม */
   selectedItemId:null,
   tapWireFrom:null,  /* มือถือ: port แรกที่แตะไว้ (แตะทีละจุด) */
   flowDots:[],  /* จุดกระแสไฟที่วิ่งตามสาย */
@@ -34,7 +35,7 @@ var G = {
    HELPERS
    ============================================================ */
 /* ด่านที่กำลังเล่นอยู่
-   โหมดปกติ = ด่านจาก LEVELS, โหมดไม่รู้จบ = ด่านที่สุ่มสร้างขึ้นมา
+   โหมดปกติ = ด่านจาก LEVELS, โหมดวัดความเร็ว = ด่านที่สุ่มสร้างขึ้นมา
    ทุกที่ที่เคยอ่าน LEVELS[G.level] ตรง ๆ ต้องเรียกผ่านฟังก์ชันนี้แทน */
 function currentLevel(){
   return (G.endless && G.genLevel) ? G.genLevel : LEVELS[G.level];

@@ -61,7 +61,7 @@
     <div class="hud-item"><span class="hud-label">คะแนน</span><span class="hud-value" id="hud-score">0</span></div>
     <div class="hud-item"><span class="hud-label">เวลา</span><span class="hud-value" id="timer-display">03:00</span></div>
     <div class="hud-item"><span class="hud-label">ชีวิต</span><span class="hud-value hud-hearts" id="hud-lives"></span></div>
-    <button class="btn-endless" id="btn-endless" onclick="toggleEndless()">ไม่รู้จบ</button>
+    <button class="btn-endless" id="btn-endless" onclick="toggleEndless()">วัดความเร็ว</button>
     <button class="btn-sandbox" id="btn-sandbox" onclick="toggleSandbox()">โหมดอิสระ</button>
     <button class="btn-tutorial" onclick="openTutorial()"><span id="btn-book-ic"></span> คู่มือ</button>
   </header>
@@ -80,7 +80,7 @@
         <div id="workspace-hint">
           <span style="font-size:2rem;opacity:.3">&#x2B07;</span>
           <span>ลากอุปกรณ์จากคลังมาวางที่นี่</span>
-          <span style="font-size:.75rem">กด E หรือปุ่ม "ต่อสายไฟ" เพื่อลากสายระหว่างจุด &#x25CF; &nbsp;|&nbsp; คลิกขวาที่สาย = ลบ</span>
+          <span style="font-size:.75rem">ต่อสาย: ลาก (หรือแตะ) จากจุดขั้ว &#x25CF; ไปอีกจุดหนึ่ง &nbsp;|&nbsp; ลบสาย: คลิก/แตะที่เส้นสาย</span>
         </div>
         <!-- Mobile floating toolbar -->
         <div id="mobile-toolbar" style="display:none;position:absolute;z-index:20;background:rgba(10,22,40,.95);border:1px solid var(--border2);border-radius:10px;padding:6px 8px;gap:8px;flex-direction:row;box-shadow:0 4px 20px rgba(0,0,0,.5);">
@@ -99,7 +99,6 @@
       </div>
       <div id="action-bar">
         <button class="btn-action btn-clear" onclick="clearWorkspace()"><span id="ic-clear"></span> ล้างพื้นที่</button>
-        <button class="btn-action btn-wire" id="btn-wire" onclick="toggleWireMode()"><span id="ic-wire"></span> ต่อสายไฟ <small>(E)</small></button>
         <button class="btn-action" style="background:var(--bg-card);color:var(--accent2);border:1px solid var(--border);" onclick="G.selectedItemId?rotateItem(G.selectedItemId):showToast('คลิกเลือกอุปกรณ์ก่อน','error')"><span id="ic-rotate"></span> หมุน <small>(R)</small></button>
         <button class="btn-action" id="btn-probe" style="background:linear-gradient(135deg,#059669,#047857);color:#fff;" onclick="toggleProbeMode()"><span id="ic-probe"></span> เครื่องวัด</button>
         <button class="btn-action btn-check" onclick="checkCircuit()"><span id="ic-check"></span> ตรวจวงจร</button>
@@ -165,7 +164,7 @@
           โหมดอิสระ<small>ทดลองต่อวงจรได้เต็มที่ อุปกรณ์ครบทุกชนิด</small>
         </button>
         <button class="btn-unlock endless" onclick="enterEndless()">
-          โหมดไม่รู้จบ<small>โจทย์สุ่มไม่มีที่สิ้นสุด แข่งทำคะแนนขึ้นตารางอันดับ</small>
+          โหมดวัดความเร็ว<small>โจทย์สุ่มไม่มีที่สิ้นสุด แข่งทำคะแนนขึ้นตารางอันดับ</small>
         </button>
       </div>
     </div>
@@ -198,11 +197,11 @@
   </div>
 </div>
 
-<!-- MODAL ENDLESS OVER — หน้าจบรันโหมดไม่รู้จบ + ตารางอันดับ -->
+<!-- MODAL ENDLESS OVER — หน้าจบรันโหมดวัดความเร็ว + ตารางอันดับ -->
 <div id="modal-endless-over" class="modal-overlay">
   <div class="modal-box" style="max-width:480px">
     <div class="modal-header">
-      <h3>จบรัน &#x2014; โหมดไม่รู้จบ</h3>
+      <h3>จบรัน &#x2014; โหมดวัดความเร็ว</h3>
       <button class="modal-close" onclick="closeModal('modal-endless-over')">&#x2715;</button>
     </div>
     <div class="modal-body">
@@ -286,8 +285,9 @@
        workspace       อุปกรณ์บนพื้นที่ทำงาน + หมุน + เลือก
        wires           ระบบสายไฟ + ลงสีตามขั้ว
        probe           กระแสไหล + เครื่องวัด
+       damage          ความเสียหายจากการต่อผิด (ลัดวงจร/กระแสเกิน)
        sandbox         โหมดอิสระ (เล่นทดลองไม่จำกัด)
-       endless         โหมดไม่รู้จบ + ตัวสุ่มโจทย์ + ตารางอันดับ
+       endless         โหมดวัดความเร็ว + ตัวสุ่มโจทย์ + ตารางอันดับ
        game            วงจรการเล่นหลัก + คีย์ลัด (โหลดท้ายสุด)
      ============================================================ -->
 <script src="js/device-symbols.js"></script>
@@ -302,6 +302,7 @@
 <script src="js/workspace.js"></script>
 <script src="js/wires.js"></script>
 <script src="js/probe.js"></script>
+<script src="js/damage.js"></script>
 <script src="js/sandbox.js"></script>
 <script src="js/endless.js"></script>
 <script src="js/game.js"></script>
