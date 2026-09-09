@@ -10,6 +10,21 @@
   background-size:cover;background-position:center;background-attachment:fixed;
 }
 
+/* หน้าเกมต้องสูง "เท่าจอพอดี" ไม่ใช่ min-height เหมือนหน้าอื่น
+
+   .screen ใช้ min-height:100vh ซึ่งยืดตามเนื้อหาได้ พอคลังอุปกรณ์ยาว
+   (โหมดอิสระมี 16 ชนิด ~750px) ทั้งหน้าจะสูงตาม แล้วแถบปุ่มคำสั่ง
+   หลุดลงไปใต้จอ แทนที่คลังจะเลื่อนอยู่ในกล่องตัวเอง
+
+   พอตรึงความสูงไว้ #game-main (flex:1 + min-height:0) จึงถูกจำกัด
+   และ #inventory (overflow-y:auto) ก็เลื่อนในตัวเองตามที่ตั้งใจไว้
+   dvh เผื่อมือถือที่แถบ address bar ยุบ-ขยาย */
+#screen-game.active{
+  height:100vh;
+  height:100dvh;
+  overflow:hidden;
+}
+
 /* HEADER */
 #game-header{
   background:rgba(10,22,40,.95);backdrop-filter:blur(12px);
@@ -80,6 +95,8 @@ body.endless-mode #workspace{border-color:rgba(255,215,0,.45);}
 body.endless-mode #level-goal{border-color:rgba(255,215,0,.4);}
 /* สัญลักษณ์ ∞ แทนชีวิต/เวลาในโหมดอิสระ */
 .hud-inf{font-size:1.1rem;font-weight:800;color:var(--accent3);line-height:1;}
+/* โหมดอิสระไม่มีด่าน จึงซ่อนแถบด่านทิ้ง (เหมือนโหมดวัดความเร็ว) */
+body.sandbox-mode #level-bar{display:none;}
 /* ขอบพื้นที่ทำงานเป็นสีเขียว บอกว่ากำลังอยู่ในโหมดอิสระ */
 body.sandbox-mode #workspace{border-color:rgba(0,255,136,.45);}
 body.sandbox-mode #level-goal{border-color:rgba(0,255,136,.4);color:var(--accent3);}
@@ -121,18 +138,24 @@ body.sandbox-mode #level-goal{border-color:rgba(0,255,136,.4);color:var(--accent
   background:rgba(0,212,255,.06);
   box-shadow:0 0 0 2px rgba(0,212,255,.15), 0 0 24px rgba(0,212,255,.12);
 }
-#inventory h3{font-size:.72rem;color:var(--text-dim);text-transform:uppercase;letter-spacing:1.5px;padding:4px 4px 8px;border-bottom:1px solid var(--border);}
-.inv-category{font-size:.67rem;color:var(--accent);margin-top:8px;font-weight:700;padding:0 2px;}
+/* หัวข้อค้างไว้ด้านบนตอนเลื่อนคลัง จะได้รู้ตลอดว่ากำลังดูอะไรอยู่ */
+#inventory h3{
+  font-size:.72rem;color:var(--text-dim);text-transform:uppercase;letter-spacing:1.5px;
+  padding:4px 4px 7px;border-bottom:1px solid var(--border);
+  position:sticky;top:-8px;background:rgba(17,34,64,.97);z-index:2;
+}
+.inv-category{font-size:.66rem;color:var(--accent);margin-top:6px;font-weight:700;padding:0 2px;}
+/* รายการกระชับกว่าเดิม — โหมดอิสระมี 16 ชนิด ยิ่งเตี้ยยิ่งเห็นต่อจอได้มาก */
 .inv-item{
   background:var(--bg-card2);border:1px solid var(--border);
-  border-radius:8px;padding:6px 8px;display:flex;align-items:center;gap:7px;
-  cursor:grab;transition:all .18s;
+  border-radius:8px;padding:4px 7px;display:flex;align-items:center;gap:7px;
+  cursor:grab;transition:all .18s;flex-shrink:0;
 }
 .inv-item:hover:not(.empty){border-color:var(--accent);transform:translateX(2px);background:rgba(0,212,255,.06);}
 .inv-item.empty{opacity:.35;cursor:not-allowed;pointer-events:none;}
-.inv-item-icon{width:34px;height:34px;flex-shrink:0;display:flex;align-items:center;justify-content:center;}
-.inv-item-icon svg{width:34px;height:34px;}
-.inv-item-name{font-size:.69rem;flex:1;line-height:1.25;color:var(--text);}
+.inv-item-icon{width:28px;height:28px;flex-shrink:0;display:flex;align-items:center;justify-content:center;}
+.inv-item-icon svg{width:28px;height:28px;}
+.inv-item-name{font-size:.67rem;flex:1;line-height:1.25;color:var(--text);}
 .inv-count{background:var(--accent2);color:#000;font-size:.65rem;font-weight:800;border-radius:12px;padding:2px 7px;min-width:22px;text-align:center;flex-shrink:0;}
 .inv-count.zero{background:var(--danger);color:#fff;}
 
@@ -141,12 +164,14 @@ body.sandbox-mode #level-goal{border-color:rgba(0,255,136,.4);color:var(--accent
 #level-goal{
   background:rgba(17,34,64,.92);border:1px solid var(--border2);
   border-radius:var(--radius);padding:10px 16px;font-size:.85rem;color:var(--accent2);
-  display:flex;align-items:center;gap:10px;flex-wrap:wrap;
+  display:flex;align-items:center;gap:10px;flex-wrap:wrap;flex-shrink:0;
 }
 #level-goal span{color:var(--text-dim);font-size:.8rem;flex:1;}
+/* min-height ต่ำ ๆ + flex-shrink เปิด = พื้นที่ทำงานยอมหดให้ก่อน
+   แถบเป้าหมายกับแถบปุ่มจึงไม่โดนดันตกจอเวลาหน้าต่างเตี้ย */
 #workspace{
-  flex:1;background:rgba(10,22,40,.82);border:2px dashed var(--border2);
-  border-radius:var(--radius);position:relative;overflow:hidden;min-height:350px;
+  flex:1 1 auto;background:rgba(10,22,40,.82);border:2px dashed var(--border2);
+  border-radius:var(--radius);position:relative;overflow:hidden;min-height:180px;
 }
 #workspace.drag-over{border-color:var(--accent);background:rgba(0,212,255,.04);}
 #workspace-hint{
@@ -155,28 +180,22 @@ body.sandbox-mode #level-goal{border-color:rgba(0,255,136,.4);color:var(--accent
   flex-direction:column;gap:8px;
 }
 
-/* SVG wire layer */
+/* SVG wire layer
+   z-index ต่ำกว่า .ws-item (3) โดยตั้งใจ — สายจึงอยู่ "ใต้" อุปกรณ์
+
+   เดิมอยู่ที่ 6 (บนอุปกรณ์) ทำให้เส้นสายทับจุดขั้วแล้วแย่งการคลิก/แตะ
+   จนต้องมีโหมดต่อสายคอยปิดการรับคลิกของสายไว้ พอย้ายลงมาชั้นล่าง
+   จุดขั้วรับสัมผัสได้เสมอ และสายก็ยังคลิกลบได้เสมอ ไม่ต้องมีโหมดอีก
+
+   สายลอดใต้กล่องอุปกรณ์แทบไม่เกิด เพราะระบบเดินสายหลบกล่องให้อยู่แล้ว
+   (ดู bezierPath ใน js/wires.js) */
 #wire-svg{
   position:absolute;top:0;left:0;width:100%;height:100%;
-  pointer-events:none;z-index:6;overflow:visible;
+  pointer-events:none;z-index:2;overflow:visible;cursor:crosshair;
 }
 /* svg ต้อง pointer-events:none เสมอ ให้คลิกทะลุไปโดน port ที่อยู่ล่าง
    เฉพาะ path สายไฟที่รับคลิกเอง (ลบสาย/probe) */
-#wire-svg.drawing{cursor:crosshair;}
 
-/* ปิดการรับคลิกของสายเฉพาะตอนกำลังลากจริง (ให้ลากทะลุไปโดน port ได้)
-   นอกจากนั้นสายยังรับคลิกขวาเพื่อลบได้ตลอด แม้อยู่ในโหมดต่อสาย */
+/* ปิดการรับคลิกของสายเฉพาะตอนกำลังลากสายจริง
+   (ให้ลากทะลุไปโดน port ปลายทางได้) นอกนั้นสายรับคลิกลบได้ตลอด */
 #wire-svg.dragging .wire-path{pointer-events:none;}
-
-/* เฉพาะอุปกรณ์สัมผัส: ปิดการรับสัมผัสของสายตลอดโหมดต่อสาย (.drawing)
-
-   ทำไมต้องทำเฉพาะมือถือ: #wire-svg อยู่ z-index 6 ส่วน .ws-item อยู่ 3
-   (และสร้าง stacking context ทำให้ .port ข้างในไม่มีทางขึ้นสูงกว่าได้)
-   → เส้นสายทับอยู่บนจุดขั้วเสมอ และปลายสาย "จบตรงจุดขั้วพอดี"
-   นิ้วที่ใหญ่กว่าเมาส์จึงแตะโดนเส้นสายแทนจุดขั้ว = "กดต่อสายไม่ค่อยติด"
-
-   เดสก์ท็อปชี้แม่นกว่า จึงไม่ต้องปิด และยังคลิกขวาลบสายได้ตามปกติ
-   ส่วนมือถือให้ออกจากโหมดต่อสายก่อนแล้วค่อยแตะที่เส้นเพื่อลบ */
-@media (max-width:640px), (pointer:coarse){
-  #wire-svg.drawing .wire-path{pointer-events:none;}
-}

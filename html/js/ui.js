@@ -34,7 +34,7 @@ function makeSvgIcon(svgId,w,h){
 function injectUIIcons(){
   var map = {
     'hdr-bolt':'bolt', 'btn-book-ic':'book', 'inv-box-ic':'box',
-    'goal-target-ic':'target', 'ic-clear':'trash', 'ic-wire':'plug',
+    'goal-target-ic':'target', 'ic-clear':'trash',
     'ic-rotate':'rotate', 'ic-probe':'gauge', 'ic-check':'bolt',
     'pretest-bolt':'bolt', 'pre-ic':'clipboard', 'post-ic':'clipboard',
     'enter-ic':'checkCircle', 'win-ic':'trophy'

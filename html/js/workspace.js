@@ -62,8 +62,11 @@ function removeWsItem(itemId){
   G.wsItems.forEach(function(item,i){if(item.id===itemId)idx=i;});
   if(idx<0) return;
   var item=G.wsItems[idx];
-  G.invCounts[item.deviceId]=(G.invCounts[item.deviceId]||0)+1;
-  updateInvCount(item.deviceId);
+  /* โหมดอิสระไม่จำกัดจำนวน จึงไม่ต้องคืนของเข้าคลัง */
+  if(!invUnlimited()){
+    G.invCounts[item.deviceId]=(G.invCounts[item.deviceId]||0)+1;
+    updateInvCount(item.deviceId);
+  }
   G.wires.filter(function(w){return w.fromItemId===itemId||w.toItemId===itemId;})
          .forEach(function(w){removeWire(w.id);});
   item.el.remove();
@@ -73,7 +76,9 @@ function removeWsItem(itemId){
 
 function clearWorkspace(silent){
   stopCurrentFlow();
-  G.wsItems.forEach(function(item){G.invCounts[item.deviceId]=(G.invCounts[item.deviceId]||0)+1;});
+  if(!invUnlimited()){
+    G.wsItems.forEach(function(item){G.invCounts[item.deviceId]=(G.invCounts[item.deviceId]||0)+1;});
+  }
   G.wsItems=[]; G.wires=[]; G.wsCounter=0; G.wireCounter=0; G.drawingFrom=null;
   G.selectedItemId=null;
   var ws=document.getElementById('workspace');
@@ -95,7 +100,7 @@ function getUpXY(e){ return e.changedTouches ? {x:e.changedTouches[0].clientX,y:
 
 function makeDraggable(el){
   function startDrag(e){
-    if(G.wireMode) return;
+    /* แตะจุดขั้ว/ปุ่มลบ = ไม่ใช่การลากย้าย (เช็คที่ target ด้านล่าง) */
     if(e.target.classList.contains('port')||e.target.classList.contains('ws-item-delete')) return;
     if(e.cancelable) e.preventDefault();
     e.stopPropagation();

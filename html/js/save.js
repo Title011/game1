@@ -8,7 +8,7 @@
    ข้อมูลเก็บในเครื่องผู้เล่นเท่านั้น ไม่ส่งออกไปไหน
    และเป็นของแยกกันต่อเบราว์เซอร์/ต่อเครื่อง
    ============================================================ */
-var SAVE_KEY = 'save-op-v2';
+var SAVE_KEY = 'save-op-v1';
 
 /* localStorage ใช้ไม่ได้ในบางกรณี (โหมดส่วนตัว, ปิดการเก็บข้อมูลเว็บ,
    หรือเปิดไฟล์แบบ file:// ในบางเบราว์เซอร์) → ต้องเช็คก่อนเสมอ
@@ -27,7 +27,7 @@ var SAVE_OK = (function(){
 /* ---------- เขียน ---------- */
 function saveGame(){
   if(!SAVE_OK) return;
-  /* โหมดอิสระ/ไม่รู้จบ เปลี่ยนคลังอุปกรณ์และคะแนนชั่วคราว
+  /* โหมดอิสระ/วัดความเร็ว เปลี่ยนคลังอุปกรณ์และคะแนนชั่วคราว
      ห้ามเขียนทับความคืบหน้าจริงของผู้เล่น */
   if(G.sandbox || G.endless) return;
   try{
@@ -139,12 +139,21 @@ function continueGame(){
   if(FormStatus.pretest)  applyFormStatusUI('pretest');
   if(FormStatus.posttest) applyFormStatusUI('posttest');
 
-  /* เล่นจบครบทุกด่านแล้ว → กลับไปหน้าแบบทดสอบหลังเรียน */
+  /* เล่นจบครบทุกด่านแล้ว → กลับไปหน้าแบบทดสอบหลังเรียน
+
+     ต้องคืนค่าให้ครบและสร้างแถบด่านด้วย ถึงจะไม่ได้เข้าหน้าเกมทันที
+     เพราะจากหน้านี้ผู้เล่นกดเข้าโหมดพิเศษได้ พอออกจากโหมดกลับมาหน้าเกม
+     ถ้าแถบด่านไม่เคยถูกสร้าง จะไม่มีจุดด่านให้กดเลือกเลย */
   if(s.finished){
     G.score       = s.score;
+    G.lives       = s.lives;
     G.doneLevels  = s.doneLevels;
     G.unlockedMax = s.unlockedMax;
+    G.level       = Math.min(s.level, LEVELS.length-1);
     G.finished    = true;
+    G.modesUnlocked = !!s.modesUnlocked;
+    updateModeButtons();
+    buildLevelBar();
     showScreen('screen-posttest');
     showToast('กลับมาที่หน้าแบบทดสอบหลังเรียน','success');
     return;

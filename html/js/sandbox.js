@@ -38,7 +38,7 @@ function enterSandbox(){
 
   /* ปิดโหมดค้างต่าง ๆ + หยุดเวลาของด่านเดิม */
   clearInterval(G.timerInt);
-  if(G.wireMode)  toggleWireMode();
+  cancelTapConnect();
   if(G.probeMode) toggleProbeMode();
   stopCurrentFlow();
   deselectAll();
@@ -62,10 +62,14 @@ function enterSandbox(){
 }
 
 /* ออกจากโหมดอิสระ กลับไปเล่นด่านเดิม
-   ธงและคลาสถูกล้างใน loadLevel() อยู่แล้ว จึงเรียกต่อได้เลย */
+   ธงและคลาสถูกล้างใน loadLevel() อยู่แล้ว จึงเรียกต่อได้เลย
+
+   buildLevelBar() เรียกซ้ำได้ปลอดภัย (ลบจุดเดิมก่อนสร้างใหม่)
+   ใส่ไว้กันกรณีเข้าโหมดนี้จากหน้าที่ยังไม่เคยสร้างแถบด่าน */
 function exitSandbox(){
   stopCurrentFlow();
   if(G.probeMode) toggleProbeMode();
+  buildLevelBar();
   loadLevel(G.level);
   showToast('กลับสู่โหมดด่าน','');
 }
@@ -86,7 +90,17 @@ function sandboxCheck(){
     showToast('ยังไม่มีอุปกรณ์ในพื้นที่ทำงาน','error');
     return;
   }
+  clearDamage();
   var c = isClosedCircuit(G.wsItems, G.wires);
+
+  /* โหมดอิสระก็มีผลจากการต่อผิดเหมือนกัน — ทดลองแล้วต้องเห็นผลจริง */
+  var fault = analyzeCircuitFaults(G.wsItems, G.wires);
+  if(!fault.ok){
+    applyDamage(fault);
+    showToast(fault.msg,'error');
+    return;
+  }
+
   if(c.ok){
     G.wsItems.forEach(function(it){ it.el.classList.add('powered'); });
     startCurrentFlow();

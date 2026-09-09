@@ -11,7 +11,7 @@
    ============================================================ */
 function makeInvTouchHandler(deviceId){
   return function(e){
-    if((G.invCounts[deviceId]||0)<=0) return;
+    if(!invUnlimited() && (G.invCounts[deviceId]||0)<=0) return;
     if(e.cancelable) e.preventDefault();
     var t0=e.touches[0];
     var ghost=document.createElement('div');
@@ -38,10 +38,12 @@ function makeInvTouchHandler(deviceId){
       var t=ev.changedTouches[0];
       var r=document.getElementById('workspace').getBoundingClientRect();
       if(t.clientX>=r.left&&t.clientX<=r.right&&t.clientY>=r.top&&t.clientY<=r.bottom){
-        if((G.invCounts[deviceId]||0)<=0){showToast('อุปกรณ์หมด!','error');return;}
+        if(!invUnlimited() && (G.invCounts[deviceId]||0)<=0){showToast('อุปกรณ์หมด!','error');return;}
         addWsItem(deviceId, Math.max(0,t.clientX-r.left-36), Math.max(0,t.clientY-r.top-36));
-        G.invCounts[deviceId]=(G.invCounts[deviceId]||0)-1;
-        updateInvCount(deviceId);
+        if(!invUnlimited()){
+          G.invCounts[deviceId]=(G.invCounts[deviceId]||0)-1;
+          updateInvCount(deviceId);
+        }
         document.getElementById('workspace-hint').style.display='none';
       }
     }
@@ -50,29 +52,35 @@ function makeInvTouchHandler(deviceId){
   };
 }
 
+/* โหมดอิสระใช้อุปกรณ์ได้ไม่จำกัด — ไม่หักและไม่คืนจำนวน แสดงเป็น ∞ */
+function invUnlimited(){ return !!G.sandbox; }
+
 function renderInventory(){
   var inv=document.getElementById('inventory');
   inv.innerHTML='<h3>'+ICON('box',18)+' คลังอุปกรณ์</h3>';
-  var lv=currentLevel();
   var cats=[
     {label:ICON('bolt',15)+' พลังงาน/ควบคุม', ids:['battery_aa','battery_9v','transformer','switch','fuse']},
     {label:ICON('chip',15)+' อิเล็กทรอนิกส์', ids:['resistor','ldr','diode','led','capacitor','transistor']},
     {label:ICON('bulbIdea',15)+' เปลี่ยนพลังงาน',  ids:['bulb','motor','buzzer']},
     {label:ICON('wrench',15)+' เครื่องมือ',   ids:['wire','breadboard','multimeter']},
   ];
+  var unlimited = invUnlimited();
   cats.forEach(function(cat){
-    var avail=cat.ids.filter(function(id){return id in lv.inventory;});
+    /* กรองจาก G.invCounts ไม่ใช่ lv.inventory
+       เพราะ G.invCounts คือคลังจริงที่ใช้อยู่ตอนนั้น ครอบคลุมทั้ง 3 โหมด
+       (ถ้าอ่าน lv.inventory โหมดอิสระจะเห็นแค่อุปกรณ์ของด่านที่ค้างอยู่) */
+    var avail=cat.ids.filter(function(id){return id in G.invCounts;});
     if(!avail.length) return;
     var lbl=document.createElement('div');
     lbl.className='inv-category'; lbl.innerHTML=cat.label;
     inv.appendChild(lbl);
     avail.forEach(function(deviceId){
       var dev=DEVICES[deviceId];
-      /* อ่าน count จาก G.invCounts โดยตรง ถ้าไม่มี key ให้เอาจาก lv.inventory */
-      var count = (G.invCounts[deviceId] !== undefined) ? G.invCounts[deviceId] : (lv.inventory[deviceId]||0);
+      var count = G.invCounts[deviceId] || 0;
+      var empty = !unlimited && count===0;
       var el=document.createElement('div');
-      el.className='inv-item'+(count===0?' empty':'');
-      el.draggable=count>0;
+      el.className='inv-item'+(empty?' empty':'');
+      el.draggable=!empty;
       el.dataset.deviceId=deviceId;
       el.id='inv-'+deviceId;
       var iconWrap=document.createElement('div');
@@ -81,11 +89,12 @@ function renderInventory(){
       var name=document.createElement('span');
       name.className='inv-item-name'; name.textContent=dev.name;
       var cnt=document.createElement('span');
-      cnt.className='inv-count'+(count===0?' zero':'');
-      cnt.id='inv-cnt-'+deviceId; cnt.textContent=count;
+      cnt.className='inv-count'+(empty?' zero':'');
+      cnt.id='inv-cnt-'+deviceId;
+      cnt.textContent = unlimited ? '∞' : count;
       el.appendChild(iconWrap); el.appendChild(name); el.appendChild(cnt);
       el.addEventListener('dragstart',function(e){
-        if((G.invCounts[deviceId]||0)<=0){e.preventDefault();return;}
+        if(!invUnlimited() && (G.invCounts[deviceId]||0)<=0){e.preventDefault();return;}
         e.dataTransfer.setData('text/plain',deviceId);
         e.dataTransfer.effectAllowed='copy';
       });
@@ -99,11 +108,16 @@ function renderInventory(){
 }
 
 function updateInvCount(deviceId){
-  var c = (G.invCounts[deviceId] !== undefined) ? G.invCounts[deviceId] : 0;
+  var unlimited = invUnlimited();
+  var c = G.invCounts[deviceId] || 0;
+  var empty = !unlimited && c===0;
   var el=document.getElementById('inv-cnt-'+deviceId);
-  if(el){el.textContent=c;el.className='inv-count'+(c===0?' zero':'');}
+  if(el){
+    el.textContent = unlimited ? '∞' : c;
+    el.className='inv-count'+(empty?' zero':'');
+  }
   var item=document.getElementById('inv-'+deviceId);
-  if(item){item.classList.toggle('empty',c===0);item.draggable=c>0;}
+  if(item){item.classList.toggle('empty',empty);item.draggable=!empty;}
 }
 
 /* ============================================================
@@ -115,11 +129,14 @@ function onWsDrop(e){
   e.preventDefault();
   document.getElementById('workspace').classList.remove('drag-over');
   var deviceId=e.dataTransfer.getData('text/plain');
-  if(!deviceId||(G.invCounts[deviceId]||0)<=0){showToast('อุปกรณ์หมด!','error');return;}
+  if(!deviceId) return;
+  if(!invUnlimited() && (G.invCounts[deviceId]||0)<=0){showToast('อุปกรณ์หมด!','error');return;}
   var ws=document.getElementById('workspace');
   var r=ws.getBoundingClientRect();
   addWsItem(deviceId,Math.max(0,e.clientX-r.left-36),Math.max(0,e.clientY-r.top-36));
-  G.invCounts[deviceId]=(G.invCounts[deviceId]||0)-1;
-  updateInvCount(deviceId);
+  if(!invUnlimited()){
+    G.invCounts[deviceId]=(G.invCounts[deviceId]||0)-1;
+    updateInvCount(deviceId);
+  }
   document.getElementById('workspace-hint').style.display='none';
 }

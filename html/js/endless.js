@@ -1,5 +1,5 @@
 /* ============================================================
-   ENDLESS — โหมดไม่รู้จบ (Endless / Arcade)
+   ENDLESS — โหมดวัดความเร็ว (Endless / Arcade)
 
    เล่นทีละรอบต่อเนื่อง ยิ่งรอบสูงยิ่งยาก ยิ่งต่อเร็วยิ่งได้คะแนนเยอะ
    หมดเวลา = จบรัน แล้วบันทึกคะแนนลงตารางอันดับ
@@ -100,11 +100,16 @@ function buildEndlessLevel(round){
     topology: isParallel
       ? { type:'parallel', branches:branches, mustHave:chain.slice() }
       : { type:'series' },
-    /* เวลาลดลงเรื่อย ๆ แต่ไม่ต่ำกว่า 45 วิ และเผื่อเวลาตามจำนวนสาย */
-    timeLimit: Math.max(45, 130 - round*4) + sol.length*4,
+    /* เวลา: คิดจาก "จำนวนสายที่ต้องต่อ" เป็นหลัก แล้วบีบลงตามรอบ (สูงสุด 30%)
+       ผูกกับขนาดวงจรตรง ๆ แบบนี้ยุติธรรมกว่าให้เวลาก้อนใหญ่ตายตัว
+       เพราะโจทย์ 2 ชิ้นกับ 6 ชิ้นใช้เวลาต่างกันมาก
+
+       พื้นขั้นต่ำ 65 วินาที — ทุกรอบต้องเกิน 1 นาทีเสมอ
+       ความยากมาจากวงจรที่ใหญ่ขึ้น ไม่ใช่การบีบเวลาจนเล่นไม่ทัน */
+    timeLimit: Math.max(65, Math.round((30 + sol.length*10) * (1 - Math.min(0.3, round*0.02)))),
     baseScore: 50 + round*10,
-    tutorial:[{ img:'', text:'โหมดไม่รู้จบ — รอบที่ ' + round + '\n\n' + goal +
-      '\n\nต่อให้เร็วที่สุดเพื่อคะแนนโบนัส\nตอบผิดโดนหักเวลา 10 วินาที แต่ไม่เสียชีวิต' }],
+    tutorial:[{ img:'', text:'โหมดวัดความเร็ว — รอบที่ ' + round + '\n\n' + goal +
+      '\n\nต่อให้เร็วที่สุดเพื่อคะแนนโบนัส\nมีชีวิตเดียว — ตอบผิดหรือหมดเวลา = จบรันทันที' }],
     check:function(items,wires){
       var c = isClosedCircuit(items,wires);
       if(!c.ok) return c;
@@ -114,12 +119,12 @@ function buildEndlessLevel(round){
 }
 
 /* ============================================================
-   วงจรการเล่นของโหมดไม่รู้จบ
+   วงจรการเล่นของโหมดวัดความเร็ว
    ============================================================ */
 function toggleEndless(){
   if(G.endless){
     showConfirm({
-      title:'ออกจากโหมดไม่รู้จบ',
+      title:'ออกจากโหมดวัดความเร็ว',
       message:'จบรันนี้เลยไหม?',
       detail:'คะแนนปัจจุบัน <b>' + G.endlessScore + '</b> จะถูกนำไปบันทึกลงตารางอันดับ',
       icon:'trophy', okText:'จบรัน', cancelText:'เล่นต่อ', danger:true,
@@ -141,10 +146,11 @@ function enterEndless(){
   G.endless = true;
   G.endlessRound = 1;
   G.endlessScore = 0;
+  G.endlessLives = 1;
   document.body.classList.add('endless-mode');
   updateEndlessButton();
   loadEndlessRound();
-  showToast('โหมดไม่รู้จบ! ต่อให้เร็วที่สุด ยิ่งเร็วยิ่งได้คะแนน','success');
+  showToast('โหมดวัดความเร็ว! ต่อให้เร็วที่สุด ยิ่งเร็วยิ่งได้คะแนน','success');
 }
 
 function loadEndlessRound(){
@@ -152,7 +158,7 @@ function loadEndlessRound(){
   var lv = G.genLevel;
 
   clearInterval(G.timerInt);
-  if(G.wireMode)  toggleWireMode();
+  cancelTapConnect();
   if(G.probeMode) toggleProbeMode();
   stopCurrentFlow();
   deselectAll();
@@ -171,7 +177,7 @@ function loadEndlessRound(){
   updateLevelBar();
 }
 
-/* ผลการตรวจในโหมดไม่รู้จบ — เรียกจาก checkCircuit() */
+/* ผลการตรวจในโหมดวัดความเร็ว — เรียกจาก checkCircuit() */
 function endlessResult(result, elapsed){
   if(result.ok){
     clearInterval(G.timerInt);
@@ -179,17 +185,21 @@ function endlessResult(result, elapsed){
     startCurrentFlow();
 
     /* ยิ่งเหลือเวลามาก = ต่อเร็ว = โบนัสเยอะ */
-    var speedBonus = Math.max(0, G.timerSec) * 5;
+    var speedBonus = Math.max(0, G.timerSec) * 6;
     var earned = G.genLevel.baseScore + speedBonus;
     G.endlessScore += earned;
     G.endlessRound++;
     updateLevelBar();
     showEndlessWin(earned, speedBonus, elapsed);
   } else {
-    /* ตอบผิดไม่เสียชีวิต แต่โดนหักเวลา — เกมไหลต่อไม่สะดุด */
-    G.timerSec = Math.max(1, G.timerSec - 10);
-    updateTimerDisplay();
-    showToast(result.msg + '  (−10 วินาที)','error');
+    /* มีชีวิตเดียว — ตอบผิดครั้งเดียวจบรันทันที */
+    G.endlessLives--;
+    updateLevelBar();
+    showToast(result.msg,'error');
+    if(G.endlessLives <= 0){
+      clearInterval(G.timerInt);
+      setTimeout(function(){ endEndlessRun('ต่อวงจรผิด'); }, 1200);
+    }
   }
 }
 
@@ -250,7 +260,7 @@ function quitEndlessToLevels(){
 function updateEndlessButton(){
   var b = document.getElementById('btn-endless');
   if(!b) return;
-  b.innerHTML = G.endless ? ICON('trophy',15) + ' จบรัน' : ICON('trophy',15) + ' ไม่รู้จบ';
+  b.innerHTML = G.endless ? ICON('trophy',15) + ' จบรัน' : ICON('trophy',15) + ' วัดความเร็ว';
   b.classList.toggle('active', !!G.endless);
 }
 

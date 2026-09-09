@@ -40,7 +40,7 @@
   .port.port-bottom{top:auto;bottom:-11px;}
   .port.port-pos,.port.port-neg{width:19px;height:19px;}
   /* นิ้วต้องการเป้าใหญ่กว่าเมาส์ — ขยายพื้นที่รับสัมผัสตอนต่อสาย */
-  body.wire-mode .port::before{width:46px;height:46px;}
+  .port::before{width:38px;height:38px;}
 
   /* mobile toolbar แสดงปุ่มหมุน/ลบ ใต้ item ที่เลือก */
   .ws-item.selected::after{bottom:-44px;font-size:.62rem;padding:2px 8px;}

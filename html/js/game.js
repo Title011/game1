@@ -64,20 +64,23 @@ function updateLevelBar(){
     }
     dot.className=cls;
   });
-  /* โหมดอิสระ/ไม่รู้จบไม่มีเลขด่านและไม่เสียชีวิต แสดงเป็นสัญลักษณ์แทน */
+  /* โหมดอิสระ/วัดความเร็วไม่มีเลขด่านและไม่เสียชีวิต แสดงเป็นสัญลักษณ์แทน */
   document.getElementById('hud-level').textContent =
     G.sandbox ? 'อิสระ'
     : G.endless ? ('รอบ '+G.endlessRound)
     : (G.level+1)+'/'+LEVELS.length;
   document.getElementById('hud-score').textContent = G.endless ? G.endlessScore : G.score;
+  /* อิสระ = ไม่มีชีวิต (∞) · วัดความเร็ว = ชีวิตเดียว · ปกติ = 3 ดวง */
   document.getElementById('hud-lives').innerHTML =
-    (G.sandbox||G.endless) ? '<span class="hud-inf">∞</span>' : renderHearts(G.lives, 3);
+    G.sandbox ? '<span class="hud-inf">∞</span>'
+    : G.endless ? renderHearts(G.endlessLives, 1)
+    : renderHearts(G.lives, 3);
 }
 
 function loadLevel(idx){
   if(idx>=LEVELS.length){endGame();return;}
   /* ออกจากโหมดพิเศษอัตโนมัติ ครอบคลุมทั้งปุ่มกลับสู่ด่าน
-     และการกดจุดด่านบนแถบด้านบนขณะอยู่ในโหมดอิสระ/ไม่รู้จบ */
+     และการกดจุดด่านบนแถบด้านบนขณะอยู่ในโหมดอิสระ/วัดความเร็ว */
   if(G.sandbox){
     G.sandbox=false;
     document.body.classList.remove('sandbox-mode');
@@ -92,7 +95,7 @@ function loadLevel(idx){
   if(idx>G.unlockedMax) G.unlockedMax=idx;  /* จำด่านไกลสุดที่ปลดล็อก */
   clearInterval(G.timerInt);
   clearWorkspace(true);
-  if(G.wireMode) toggleWireMode();
+  cancelTapConnect();
   var lv=LEVELS[idx];
   G.invCounts=Object.assign({},lv.inventory);
   renderInventory();
@@ -120,7 +123,7 @@ function updateTimerDisplay(){
   document.getElementById('timer-display').textContent=mm+':'+ss;
 }
 function onTimeUp(){
-  /* โหมดไม่รู้จบ: หมดเวลา = จบรัน ไปหน้าตารางอันดับ */
+  /* โหมดวัดความเร็ว: หมดเวลา = จบรัน ไปหน้าตารางอันดับ */
   if(G.endless){ endEndlessRun('หมดเวลา'); return; }
   G.lives--;
   updateLevelBar();
@@ -136,6 +139,8 @@ function checkCircuit(){
   /* โหมดอิสระ: ไม่มีเฉลยให้เทียบ ไม่มีคะแนน ไม่เสียชีวิต */
   if(G.sandbox){ sandboxCheck(); return; }
 
+  clearDamage();   /* ล้างรอยไหม้ของรอบก่อน แล้วประเมินใหม่ทั้งหมด */
+
   var lv=currentLevel();
   var result=lv.check(G.wsItems,G.wires);
   /* เช็คเทียบเฉลย (ยืดหยุ่น: สลับซ้ายขวา/กลับทิศได้ แต่การเชื่อมต้องครบ ไม่เกิน ขั้วถูก) */
@@ -143,9 +148,18 @@ function checkCircuit(){
     var exact = checkExactWiring(G.wsItems, G.wires, lv.solution);
     if(!exact.ok) result = exact;
   }
+
+  /* อันตรายทางไฟฟ้าเกิดก่อนเสมอ — ต่อให้ตรงเฉลย ถ้าลัดวงจรก็ยังไหม้
+     (ตรวจแล้วว่าเฉลยของทั้ง 20 ด่านไม่มีด่านไหนเข้าเงื่อนไขนี้) */
+  var fault = analyzeCircuitFaults(G.wsItems, G.wires);
+  if(!fault.ok){
+    applyDamage(fault);
+    result = { ok:false, msg:fault.msg };
+  }
+
   var elapsed=Math.floor((Date.now()-G.levelStartTime)/1000);
 
-  /* โหมดไม่รู้จบมีระบบคะแนน/เวลาของตัวเอง ไม่ยุ่งกับคะแนนและชีวิตของโหมดด่าน */
+  /* โหมดวัดความเร็วมีระบบคะแนน/เวลาของตัวเอง ไม่ยุ่งกับคะแนนและชีวิตของโหมดด่าน */
   if(G.endless){ endlessResult(result, elapsed); return; }
 
   if(result.ok){
@@ -457,7 +471,7 @@ function nextLevel(){
   G.wsItems.forEach(function(i){i.el.classList.remove('powered');});
   stopCurrentFlow();
   if(G.probeMode) toggleProbeMode();
-  /* โหมดไม่รู้จบ: ปุ่มนี้คือ "รอบถัดไป" สุ่มโจทย์ใหม่ ไม่ใช่เลื่อนด่าน */
+  /* โหมดวัดความเร็ว: ปุ่มนี้คือ "รอบถัดไป" สุ่มโจทย์ใหม่ ไม่ใช่เลื่อนด่าน */
   if(G.endless){ loadEndlessRound(); return; }
   var next=G.level+1;
   if(next>=LEVELS.length) endGame();
@@ -468,14 +482,14 @@ function endGame(){
   clearInterval(G.timerInt);
   G.finished=true;
   var firstTime = !G.modesUnlocked;
-  G.modesUnlocked=true;          /* รางวัล: ปลดล็อกโหมดอิสระ + โหมดไม่รู้จบ */
+  G.modesUnlocked=true;          /* รางวัล: ปลดล็อกโหมดอิสระ + โหมดวัดความเร็ว */
   updateModeButtons();
   saveGame();   /* บันทึกว่าเล่นจบครบทุกด่านแล้ว */
   showScreen('screen-posttest');
-  if(firstTime) showToast('ปลดล็อกโหมดพิเศษแล้ว! โหมดอิสระ และ โหมดไม่รู้จบ','success');
+  if(firstTime) showToast('ปลดล็อกโหมดพิเศษแล้ว! โหมดอิสระ และ โหมดวัดความเร็ว','success');
 }
 
-/* โหมดพิเศษ (อิสระ/ไม่รู้จบ) โผล่หลังเล่นครบทุกด่านแล้วเท่านั้น
+/* โหมดพิเศษ (อิสระ/วัดความเร็ว) โผล่หลังเล่นครบทุกด่านแล้วเท่านั้น
    ซ่อน/แสดงด้วยคลาสเดียวบน body — ดู css/game-layout.css */
 function updateModeButtons(){
   document.body.classList.toggle('modes-unlocked', !!G.modesUnlocked);
@@ -556,7 +570,7 @@ document.addEventListener('keydown',function(e){
   var code = e.code || '';
 
   /* E หรือ W = สลับโหมดต่อสายไฟ */
-  if(k==='e' || k==='w' || code==='KeyE' || code==='KeyW'){ toggleWireMode(); return; }
+  /* ไม่มีคีย์ E/W แล้ว — ต่อสายได้ตลอดเวลาโดยลากจากจุดขั้ว ไม่ต้องสลับโหมด */
 
   /* R = หมุน item ที่เลือกอยู่ 90° */
   if(k==='r' || code==='KeyR'){
@@ -569,7 +583,8 @@ document.addEventListener('keydown',function(e){
   }
 
   if(k==='escape' || code==='Escape'){
-    if(G.wireMode){toggleWireMode();return;}
+    /* กำลังแตะจุดขั้วแรกค้างไว้ → Esc ยกเลิกการต่อสายก่อน */
+    if(G.tapWireFrom || G.drawingFrom){ cancelTapConnect(); return; }
     deselectAll();
     document.querySelectorAll('.modal-overlay.open').forEach(function(m){m.classList.remove('open');});
     return;

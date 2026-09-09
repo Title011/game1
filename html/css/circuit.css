@@ -71,6 +71,56 @@
 .wire-path.probe-target{stroke-width:5!important;filter:drop-shadow(0 0 8px #00ff88)!important;}
 
 /* ============================================================
+   DAMAGE — ความเสียหายจากการต่อวงจรผิด (ดู js/damage.js)
+   ============================================================ */
+/* อุปกรณ์ไหม้ — ซีดเป็นสีเทาไหม้ ขอบแดง มีควันลอย */
+.ws-item.burned{
+  border-color:#7a2a1a!important;
+  background:#2a1410!important;
+  box-shadow:0 0 18px rgba(255,60,0,.35)!important;
+  animation:cg-burn-in .35s ease;
+}
+.ws-item.burned .ws-item-svg{filter:grayscale(1) brightness(.45) sepia(.6) hue-rotate(-20deg);}
+.ws-item.burned .ws-item-name{color:#ff8a70;border-color:#7a2a1a;}
+@keyframes cg-burn-in{0%{transform:scale(1.12)}100%{transform:scale(1)}}
+/* ควันลอยขึ้นจากอุปกรณ์ที่ไหม้ */
+.ws-item.burned::before{
+  content:'';position:absolute;top:-14px;left:50%;
+  width:16px;height:16px;border-radius:50%;
+  background:radial-gradient(circle,rgba(160,160,160,.55),rgba(160,160,160,0) 70%);
+  pointer-events:none;
+  animation:cg-smoke 1.8s ease-out infinite;
+}
+@keyframes cg-smoke{
+  0%  {opacity:0;  transform:translate(-50%,6px)  scale(.5)}
+  35% {opacity:.75;transform:translate(-50%,-6px) scale(1)}
+  100%{opacity:0;  transform:translate(-58%,-26px) scale(1.7)}
+}
+
+/* ฟิวส์ขาด — ไม่ไหม้ แต่ตัดวงจรแล้ว (ฟิวส์ทำหน้าที่สำเร็จ) */
+.ws-item.fuse-blown{
+  border-color:var(--accent2)!important;
+  box-shadow:0 0 18px rgba(255,215,0,.45)!important;
+}
+.ws-item.fuse-blown .ws-item-svg{filter:grayscale(.7) brightness(.7);}
+.ws-item.fuse-blown::after{
+  content:'ฟิวส์ขาด';
+  position:absolute;top:-11px;left:50%;transform:translateX(-50%);
+  background:var(--accent2);color:#2a1a00;
+  font-size:.55rem;font-weight:800;padding:1px 7px;border-radius:6px;
+  white-space:nowrap;pointer-events:none;
+}
+
+/* สายไหม้ — ดำคล้ำ ขาดเป็นช่วง */
+.wire-path.wire-burned{
+  stroke:#4a2418!important;
+  stroke-dasharray:9 7!important;
+  filter:drop-shadow(0 0 5px rgba(255,60,0,.5))!important;
+  animation:cg-wire-burn .9s ease-in-out infinite;
+}
+@keyframes cg-wire-burn{0%,100%{opacity:.85}50%{opacity:.45}}
+
+/* ============================================================
    DEVICE ANIMATIONS — ทำงานเมื่ออุปกรณ์มีไฟ (.ws-item.powered)
    ============================================================ */
 /* มอเตอร์: โรเตอร์หมุน */
