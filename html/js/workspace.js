@@ -9,6 +9,17 @@
 function addWsItem(deviceId,x,y){
   var dev=DEVICES[deviceId];
   var itemId='ws-'+(++G.wsCounter);
+
+  /* บังคับตำแหน่งให้อยู่ในพื้นที่ทำงาน — ที่เรียกเข้ามาคุมแต่ขอบล่าง (Math.max(0,..))
+     ถ้าวางชิดขอบขวา/ล่าง อุปกรณ์จะโดน overflow:hidden ตัดจนแตะไม่ถูก
+     (ประมาณขนาดกล่องไว้ 78x74 เพราะยังไม่ได้ใส่ลง DOM จึงวัดจริงไม่ได้) */
+  var wsEl=document.getElementById('workspace');
+  if(wsEl){
+    var M=6, BW=78, BH=74;
+    x=Math.min(Math.max(M,x||0), Math.max(M, wsEl.clientWidth  - BW - M));
+    y=Math.min(Math.max(M,y||0), Math.max(M, wsEl.clientHeight - BH - M));
+  }
+
   var el=document.createElement('div');
   el.className='ws-item'; el.id=itemId;
   el.style.left=x+'px'; el.style.top=y+'px';
@@ -62,6 +73,18 @@ function removeWsItem(itemId){
   G.wsItems.forEach(function(item,i){if(item.id===itemId)idx=i;});
   if(idx<0) return;
   var item=G.wsItems[idx];
+
+  /* ถ้ากำลังค้างการต่อสายจากจุดขั้วของอุปกรณ์ตัวนี้ ต้องยกเลิกก่อนลบ
+
+     ไม่งั้น G.tapWireFrom จะชี้ไป DOM ที่หลุดออกจากหน้าไปแล้ว
+     พอแตะจุดขั้วตัวถัดไป จะสร้างสายที่ปลายด้านหนึ่งอ่านตำแหน่งได้ (0,0)
+     = สายพุ่งไปเกาะมุมซ้ายบนของพื้นที่ทำงาน และลบไม่ออกเพราะ
+     อุปกรณ์ต้นทางถูกลบไปแล้ว ไม่มีอะไรมาเก็บกวาดสายเส้นนั้น */
+  if((G.tapWireFrom && G.tapWireFrom.dataset.itemId===itemId) ||
+     (G.drawingFrom && G.drawingFrom.itemId===itemId)){
+    cancelTapConnect();
+  }
+
   /* โหมดอิสระไม่จำกัดจำนวน จึงไม่ต้องคืนของเข้าคลัง */
   if(!invUnlimited()){
     G.invCounts[item.deviceId]=(G.invCounts[item.deviceId]||0)+1;
@@ -71,6 +94,8 @@ function removeWsItem(itemId){
          .forEach(function(w){removeWire(w.id);});
   item.el.remove();
   G.wsItems.splice(idx,1);
+  pruneOrphanWires();   /* กันสายที่หลุดอ้างอิงเหลือค้างอยู่ */
+  recolorWires();
   if(G.wsItems.length===0) document.getElementById('workspace-hint').style.display='';
 }
 
@@ -79,7 +104,8 @@ function clearWorkspace(silent){
   if(!invUnlimited()){
     G.wsItems.forEach(function(item){G.invCounts[item.deviceId]=(G.invCounts[item.deviceId]||0)+1;});
   }
-  G.wsItems=[]; G.wires=[]; G.wsCounter=0; G.wireCounter=0; G.drawingFrom=null;
+  cancelTapConnect();   /* ล้างการต่อสายที่ค้าง ไม่ให้ชี้ไป DOM ที่กำลังจะถูกลบ */
+  G.wsItems=[]; G.wires=[]; G.wsCounter=0; G.wireCounter=0;
   G.selectedItemId=null;
   var ws=document.getElementById('workspace');
   Array.from(ws.children).forEach(function(ch){
@@ -126,14 +152,30 @@ function makeDraggable(el){
       inv.classList.remove('return-hover');
       var p=getUpXY(ev);
       var r=inv.getBoundingClientRect();
-      var dropped=(p.x>=r.left&&p.x<=r.right&&p.y>=r.top&&p.y<=r.bottom);
+      /* เผื่อขอบรอบคลัง 28px — ลากเลยไปนิดเดียวก็ยังนับว่าคืนของ
+         เดิมต้องปล่อยในกรอบพอดี ถ้าเลยไปหน่อยจะไม่ลบ แล้วอุปกรณ์
+         ค้างอยู่นอกจอจนหยิบกลับไม่ได้ */
+      var T=28;
+      var dropped=(p.x>=r.left-T&&p.x<=r.right+T&&p.y>=r.top-T&&p.y<=r.bottom+T);
       if(dropped){
         var itemId=el.id; deselectAll(); removeWsItem(itemId);
         showToast('คืนอุปกรณ์กลับคลัง','success');
       } else {
+        /* บังคับให้อยู่ในพื้นที่ทำงานเสมอ
+           #workspace เป็น overflow:hidden ถ้าปล่อยให้ตำแหน่งติดลบหรือเลยขอบ
+           อุปกรณ์จะถูกตัดหายไปจนแตะไม่ถูก ต้องล้างพื้นที่ทั้งหมดถึงจะกู้คืนได้ */
+        var wsEl=document.getElementById('workspace');
+        var M=6;
+        var maxX=Math.max(M, wsEl.clientWidth  - el.offsetWidth  - M);
+        var maxY=Math.max(M, wsEl.clientHeight - el.offsetHeight - M);
+        var nx=Math.min(Math.max(M, parseInt(el.style.left)||0), maxX);
+        var ny=Math.min(Math.max(M, parseInt(el.style.top)||0),  maxY);
+        el.style.left=nx+'px'; el.style.top=ny+'px';
+
         var item=null;
         G.wsItems.forEach(function(i){if(i.id===el.id)item=i;});
-        if(item){item.x=parseInt(el.style.left);item.y=parseInt(el.style.top);}
+        if(item){item.x=nx;item.y=ny;}
+        refreshWires(el.id);   /* ตำแหน่งเพิ่งถูกดึงกลับ สายต้องตามไปด้วย */
       }
       document.removeEventListener('mousemove',dragOnMove);
       document.removeEventListener('mouseup',dragOnUp);

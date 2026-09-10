@@ -66,12 +66,26 @@ function applyFormStatusUI(which){
   if(nextBtn) nextBtn.classList.remove('locked');
 }
 
-/* เมื่อคลิกปุ่มเปิดลิงก์แบบทดสอบ -> ปลดล็อกปุ่มถัดไป */
-function onFormLinkClick(which){
+/* บันทึกว่าเข้าทำแบบทดสอบแล้ว + ปลดล็อกปุ่มถัดไป
+   เรียกซ้ำได้ปลอดภัย (กันไว้ตรงบรรทัดแรก) เพราะมีหลายทางที่เรียกเข้ามา:
+   pointerdown, click และปุ่มสำรองที่ผู้เรียนกดเอง */
+function markFormDone(which, silent){
+  if(FormStatus[which]) return;
   FormStatus[which] = true;
   applyFormStatusUI(which);
   saveGame();
+  if(!silent) showToast('ปลดล็อกปุ่มถัดไปแล้ว','success');
+}
 
+/* ปุ่มสำรอง — เผื่อการตรวจจับอัตโนมัติพลาด ผู้เรียนจะได้ไม่ติดค้าง */
+function manualFormDone(which){
+  markFormDone(which, true);
+  showToast('ปลดล็อกปุ่มถัดไปแล้ว','success');
+}
+
+/* เมื่อคลิกปุ่มเปิดลิงก์แบบทดสอบ -> ปลดล็อกปุ่มถัดไป */
+function onFormLinkClick(which){
+  markFormDone(which, true);
   showToast(which==='pretest' ? 'เปิดแบบทดสอบก่อนเรียนแล้ว ทำเสร็จแล้วกดปุ่มเข้าสู่เกมได้เลย' : 'เปิดแบบทดสอบหลังเรียนแล้ว ทำเสร็จแล้วกดยืนยันได้เลย','success');
   /* ไม่ block การเปิดลิงก์ - ให้ target=_blank ทำงานตามปกติ */
 }

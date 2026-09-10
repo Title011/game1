@@ -6,6 +6,28 @@
 /* ============================================================
    WIRE SYSTEM — Bezier curves
    ============================================================ */
+/* เก็บกวาดสาย "กำพร้า" — สายที่ปลายด้านใดด้านหนึ่งหลุดออกจากหน้าไปแล้ว
+   หรืออ้างอิงอุปกรณ์ที่ไม่มีอยู่ใน G.wsItems
+
+   สายพวกนี้อ่านตำแหน่งได้ (0,0) จึงพุ่งไปเกาะมุมพื้นที่ทำงาน และลบไม่ออก
+   เพราะ removeWsItem() ของอุปกรณ์ต้นทางทำงานไปแล้ว ไม่มีใครมาเก็บ
+   ฟังก์ชันนี้เรียกซ้ำได้ปลอดภัย ใช้กู้สถานะที่พังอยู่แล้วได้ด้วย */
+function pruneOrphanWires(){
+  var alive = {};
+  G.wsItems.forEach(function(it){ alive[it.id] = true; });
+  var dead = G.wires.filter(function(w){
+    return !alive[w.fromItemId] || !alive[w.toItemId]
+        || !document.body.contains(w.fromPort) || !document.body.contains(w.toPort);
+  });
+  if(!dead.length) return 0;
+  dead.forEach(function(w){
+    if(w.pathEl) w.pathEl.remove();
+  });
+  var deadIds = dead.map(function(w){ return w.id; });
+  G.wires = G.wires.filter(function(w){ return deadIds.indexOf(w.id) < 0; });
+  return dead.length;
+}
+
 /* ยกเลิกการต่อสายที่ค้างอยู่ (มือถือแตะจุดแรกไว้แล้วเปลี่ยนใจ) */
 function cancelTapConnect(){
   if(G.tapWireFrom){ G.tapWireFrom.classList.remove('tap-selected'); G.tapWireFrom=null; }
@@ -247,6 +269,14 @@ function onPortMouseDown(e){
 
 /* ===== มือถือ: แตะ port ทีละจุดเพื่อต่อสาย ===== */
 function handleTapConnect(port){
+  /* จุดขั้วที่ค้างไว้อาจถูกลบไปแล้ว (ลบอุปกรณ์ทิ้งระหว่างค้างการต่อสาย)
+     ถ้าไม่เช็ค จะสร้างสายจาก element ที่หลุด DOM ไปแล้ว
+     ซึ่ง getBoundingClientRect() คืน 0 ทั้งหมด = สายพุ่งไปเกาะมุมจอ
+     แล้วลบไม่ออกด้วย เพราะอุปกรณ์ต้นทางไม่มีอยู่แล้ว */
+  if(G.tapWireFrom && !document.body.contains(G.tapWireFrom)){
+    cancelTapConnect();
+  }
+
   /* ยังไม่มี port แรก → เลือก port นี้เป็นจุดเริ่ม */
   if(!G.tapWireFrom){
     /* ถ้าจุดนี้มี 2 สีต่ออยู่ → ให้เลือกขั้วก่อน */
@@ -403,6 +433,16 @@ function addWire(fromItemId,fromPort,fx,fy,toItemId,toPort,tx,ty,forcedFromPol,f
        (w.fromPort===toPort&&w.toPort===fromPort)) dupExact=true;
   });
   if(dupExact){showToast('สายนี้ต่ออยู่แล้ว','error');return;}
+
+  /* ปลายสายต้องยังอยู่ในหน้าจริง ๆ
+     กันกรณีค้างการต่อสายไว้แล้วอุปกรณ์ต้นทางถูกลบไปก่อน
+     ถ้าปล่อยผ่าน getPortCenter() จะอ่าน element ที่หลุด DOM ได้ (0,0)
+     กลายเป็นสายเกาะมุมจอที่ลบไม่ออก */
+  if(!document.body.contains(fromPort) || !document.body.contains(toPort)){
+    cancelTapConnect();
+    showToast('อุปกรณ์ต้นทางถูกลบไปแล้ว — เริ่มต่อสายใหม่','error');
+    return;
+  }
 
   /* คำนวณตำแหน่งจาก port element จริงเสมอ (แก้ปัญหาสายไม่ตรงจุด)
      ไม่ใช้ค่า fx,fy,tx,ty ที่ส่งมาเพราะอาจคลาดเคลื่อน */
@@ -639,6 +679,7 @@ function colorPortDots(){
    ทำให้ "สายเส้นอื่นที่ไม่ได้ต่อกับมัน" ต้องเปลี่ยนทางอ้อมด้วย
    (พารามิเตอร์ itemId เก็บไว้เพื่อความเข้ากันได้กับที่เรียกอยู่เดิม) */
 function refreshWires(itemId){
+  pruneOrphanWires();   /* เก็บสายที่ปลายหลุด DOM ทิ้งก่อน ไม่ให้วาดเป็นเส้นเกาะมุมจอ */
   clearWsRectCache();   /* ตำแหน่งกล่องเปลี่ยนแล้ว ต้องวัดใหม่รอบนี้ */
   G.wires.forEach(function(w){
     var fc=getPortCenter(w.fromPort);
