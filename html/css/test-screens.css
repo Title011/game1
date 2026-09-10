@@ -50,6 +50,15 @@
 }
 .form-status.done .status-dot{background:var(--accent3);box-shadow:0 0 8px rgba(0,255,136,.7);}
 .form-hint{font-size:.78rem;color:var(--text-dim);text-align:center;opacity:.8;}
+/* ปุ่มสำรองปลดล็อกเอง — เผื่อมือถือตัดจังหวะจนตรวจจับอัตโนมัติพลาด
+   ทำให้ดูเบา ๆ ไม่ให้เด่นกว่าปุ่มเปิดแบบทดสอบจริง */
+.form-manual{
+  background:none;border:none;
+  color:var(--text-dim);font-family:inherit;font-size:.74rem;
+  text-decoration:underline;text-underline-offset:3px;
+  cursor:pointer;padding:2px 4px;opacity:.75;transition:color .15s,opacity .15s;
+}
+.form-manual:hover{color:var(--accent);opacity:1;}
 
 /* ปุ่มหลัก (เข้าสู่เกม / ยืนยัน) — ล็อกไว้จนกว่าจะกดเปิดแบบทดสอบ */
 .btn-primary{

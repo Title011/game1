@@ -534,6 +534,18 @@ document.addEventListener('DOMContentLoaded', function(){
   restoreFormStatus(); /* เคยทำข้อสอบก่อนเรียนแล้ว → ปลดล็อกให้เลย ไม่ต้องทำซ้ำ */
   restoreUnlocks();    /* เคยเล่นจบครบทุกด่านไหม → โชว์ปุ่มโหมดพิเศษ */
   renderResumeBox();   /* มีข้อมูลบันทึกไว้ไหม → โชว์กล่อง "เล่นต่อ" */
+
+  /* บันทึกสถานะตั้งแต่ pointerdown ไม่ต้องรอ click
+     บนมือถือ พอแตะลิงก์ที่ target=_blank เบราว์เซอร์เปิดแท็บใหม่แล้ว
+     พักหน้าเดิมทันที onclick อาจถูกตัดจังหวะจนทำงานไม่จบ
+     pointerdown เกิดก่อนเสมอ จึงบันทึกลง localStorage ได้ทัน */
+  ['pretest','posttest'].forEach(function(which){
+    var a = document.getElementById(which+'-link');
+    if(!a) return;
+    a.addEventListener('pointerdown', function(){ markFormDone(which,true); });
+    a.addEventListener('touchstart',  function(){ markFormDone(which,true); }, {passive:true});
+  });
+
   var ws = document.getElementById('workspace');
   if(ws){
     ws.addEventListener('click', function(e){
@@ -554,6 +566,22 @@ document.addEventListener('DOMContentLoaded', function(){
       closeModal(ov.id);
     });
   });
+});
+
+/* กลับมาที่หน้าเกมหลังไปทำแบบทดสอบในแท็บอื่น
+
+   มือถือมักทิ้งหน้าที่พักไว้เพื่อประหยัดหน่วยความจำ พอกลับมาจะได้หน้าใหม่
+   ที่ FormStatus ว่างเปล่า ปุ่มจึงกลับไปล็อกอีก
+   pageshow ทำงานทั้งตอนโหลดใหม่และตอนคืนจาก bfcache จึงคืนสถานะได้ทุกกรณี */
+window.addEventListener('pageshow', function(){
+  restoreFormStatus();
+  restoreUnlocks();
+  renderResumeBox();
+});
+
+/* กลับมาโฟกัสหน้านี้อีกครั้ง (สลับแท็บกลับมา) — คืนสถานะให้ด้วย */
+document.addEventListener('visibilitychange', function(){
+  if(!document.hidden) restoreFormStatus();
 });
 
 document.addEventListener('keydown',function(e){

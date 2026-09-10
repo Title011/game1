@@ -33,6 +33,7 @@
         <span id="pretest-status-text">ยังไม่ได้กดเข้าทำแบบทดสอบ</span>
       </div>
       <span class="form-hint">* ปุ่มจะเปิดแบบทดสอบในแท็บใหม่ และระบบจะปลดล็อกปุ่ม "เข้าสู่เกม" ให้อัตโนมัติ</span>
+      <button class="form-manual" onclick="manualFormDone('pretest')">ทำแบบทดสอบแล้วแต่ปุ่มยังล็อกอยู่? แตะที่นี่</button>
     </div>
 
     <button class="btn-primary locked" id="pretest-continue-btn" onclick="confirmPretest()">
@@ -149,6 +150,7 @@
         <span id="posttest-status-text">ยังไม่ได้กดเข้าทำแบบทดสอบ</span>
       </div>
       <span class="form-hint">* ปุ่มจะเปิดแบบทดสอบในแท็บใหม่ และระบบจะปลดล็อกปุ่มยืนยันให้อัตโนมัติ</span>
+      <button class="form-manual" onclick="manualFormDone('posttest')">ทำแบบทดสอบแล้วแต่ปุ่มยังล็อกอยู่? แตะที่นี่</button>
     </div>
 
     <button class="btn-primary locked" id="posttest-confirm-btn" onclick="confirmPosttest()">
