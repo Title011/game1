@@ -591,17 +591,11 @@ document.addEventListener('keydown',function(e){
   /* กันกดค้างแล้วสั่งซ้ำ (เช่น E สลับโหมดกลับไปกลับมา) */
   if(e.repeat) return;
 
-  /* ตรวจทั้ง e.key (ตามภาษา) และ e.code (ปุ่มจริง)
-     สำคัญ: ถ้าคีย์บอร์ดอยู่โหมดภาษาไทย e.key จะเป็น 'ต'/'พ'/'ไ' ไม่ตรง 'e'/'r'/'w'
-     ต้องเทียบ e.code ('KeyE' ฯลฯ) ซึ่งไม่ขึ้นกับภาษาที่พิมพ์ */
-  var k = (e.key || '').toLowerCase();
-  var code = e.code || '';
+  /* ทุกคีย์ลัดเทียบผ่าน isKey/isNamedKey (js/ui.js)
+     ซึ่งดู e.code + e.keyCode ก่อน e.key จึงใช้ได้ทุกภาษาแป้นพิมพ์ */
 
-  /* E หรือ W = สลับโหมดต่อสายไฟ */
-  /* ไม่มีคีย์ E/W แล้ว — ต่อสายได้ตลอดเวลาโดยลากจากจุดขั้ว ไม่ต้องสลับโหมด */
-
-  /* R = หมุน item ที่เลือกอยู่ 90° */
-  if(k==='r' || code==='KeyR'){
+  /* R = หมุนอุปกรณ์ที่เลือกอยู่ 90° */
+  if(isKey(e,'r')){
     if(G.selectedItemId){
       rotateItem(G.selectedItemId);
     } else {
@@ -610,7 +604,16 @@ document.addEventListener('keydown',function(e){
     return;
   }
 
-  if(k==='escape' || code==='Escape'){
+  /* C = ตรวจวงจร */
+  if(isKey(e,'c')){ checkCircuit(); return; }
+
+  /* M = เปิด/ปิดเครื่องวัด */
+  if(isKey(e,'m')){ toggleProbeMode(); return; }
+
+  /* H = เปิดคู่มือ */
+  if(isKey(e,'h')){ openTutorial(); return; }
+
+  if(isNamedKey(e,'Escape')){
     /* กำลังแตะจุดขั้วแรกค้างไว้ → Esc ยกเลิกการต่อสายก่อน */
     if(G.tapWireFrom || G.drawingFrom){ cancelTapConnect(); return; }
     deselectAll();
@@ -618,8 +621,8 @@ document.addEventListener('keydown',function(e){
     return;
   }
 
-  /* Delete / Backspace = ลบ item ที่เลือก */
-  if((k==='delete' || k==='backspace' || code==='Delete' || code==='Backspace') && G.selectedItemId){
+  /* Delete / Backspace = ลบอุปกรณ์ที่เลือก */
+  if((isNamedKey(e,'Delete') || isNamedKey(e,'Backspace')) && G.selectedItemId){
     var id=G.selectedItemId;
     deselectAll();
     removeWsItem(id);
