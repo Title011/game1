@@ -152,19 +152,24 @@ function makeDraggable(el){
       inv.classList.remove('return-hover');
       var p=getUpXY(ev);
       var r=inv.getBoundingClientRect();
-      /* เผื่อขอบรอบคลัง 28px — ลากเลยไปนิดเดียวก็ยังนับว่าคืนของ
-         เดิมต้องปล่อยในกรอบพอดี ถ้าเลยไปหน่อยจะไม่ลบ แล้วอุปกรณ์
-         ค้างอยู่นอกจอจนหยิบกลับไม่ได้ */
-      var T=28;
-      var dropped=(p.x>=r.left-T&&p.x<=r.right+T&&p.y>=r.top-T&&p.y<=r.bottom+T);
-      if(dropped){
+      var wsEl=document.getElementById('workspace');
+      var wr=wsEl.getBoundingClientRect();
+
+      /* คืนของเข้าคลังเมื่อ "ปล่อยบนคลัง" หรือ "ปล่อยนอกพื้นที่ทำงาน"
+         สองเงื่อนไขนี้ชัดเจนไม่กำกวม จึงไม่ต้องเผื่อขอบรอบคลังอีก
+
+         เดิมเผื่อขอบไว้ 28px ซึ่งใช้ไม่ได้บนมือถือ — เพราะคลังอยู่เป็นแถบ
+         ใต้พื้นที่ทำงานติดกันพอดี ขอบที่เผื่อจะกินขึ้นมาในพื้นที่ทำงาน
+         ทำให้วางอุปกรณ์ใกล้ขอบล่างแล้วถูกลบทิ้งโดยไม่ได้ตั้งใจ */
+      var onInv    = (p.x>=r.left && p.x<=r.right && p.y>=r.top && p.y<=r.bottom);
+      var outsideWs= (p.x<wr.left || p.x>wr.right || p.y<wr.top || p.y>wr.bottom);
+      if(onInv || outsideWs){
         var itemId=el.id; deselectAll(); removeWsItem(itemId);
         showToast('คืนอุปกรณ์กลับคลัง','success');
       } else {
         /* บังคับให้อยู่ในพื้นที่ทำงานเสมอ
            #workspace เป็น overflow:hidden ถ้าปล่อยให้ตำแหน่งติดลบหรือเลยขอบ
            อุปกรณ์จะถูกตัดหายไปจนแตะไม่ถูก ต้องล้างพื้นที่ทั้งหมดถึงจะกู้คืนได้ */
-        var wsEl=document.getElementById('workspace');
         var M=6;
         var maxX=Math.max(M, wsEl.clientWidth  - el.offsetWidth  - M);
         var maxY=Math.max(M, wsEl.clientHeight - el.offsetHeight - M);

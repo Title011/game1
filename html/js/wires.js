@@ -12,12 +12,20 @@
    สายพวกนี้อ่านตำแหน่งได้ (0,0) จึงพุ่งไปเกาะมุมพื้นที่ทำงาน และลบไม่ออก
    เพราะ removeWsItem() ของอุปกรณ์ต้นทางทำงานไปแล้ว ไม่มีใครมาเก็บ
    ฟังก์ชันนี้เรียกซ้ำได้ปลอดภัย ใช้กู้สถานะที่พังอยู่แล้วได้ด้วย */
+function portUnusable(p){
+  if(!p || !document.body.contains(p)) return true;
+  /* จุดที่หลุด DOM หรือถูกซ่อน จะวัดขนาดได้ 0 → getPortCenter() คืนพิกัดติดลบ
+     เช็คขนาดจริงจึงครอบคลุมกว่าเช็คแค่ contains() */
+  var r = p.getBoundingClientRect();
+  return (r.width === 0 && r.height === 0);
+}
+
 function pruneOrphanWires(){
   var alive = {};
   G.wsItems.forEach(function(it){ alive[it.id] = true; });
   var dead = G.wires.filter(function(w){
     return !alive[w.fromItemId] || !alive[w.toItemId]
-        || !document.body.contains(w.fromPort) || !document.body.contains(w.toPort);
+        || portUnusable(w.fromPort) || portUnusable(w.toPort);
   });
   if(!dead.length) return 0;
   dead.forEach(function(w){
@@ -34,6 +42,13 @@ function cancelTapConnect(){
   G.tapFromForcedPol = null;
   G.tapToForcedPol   = null;
   G.drawingFrom = null;
+  /* สองตัวนี้ก็เก็บ reference ของ port ไว้เหมือนกัน (popup เลือกขั้ว)
+     ถ้าไม่ล้างด้วย จะเหลือ port ที่หลุด DOM ค้างอยู่แล้วรั่วออกไปสร้างสายเสีย */
+  G.pendingPickPort = null;
+  G.pendingPickRole = null;
+  G.dragPending     = null;
+  var pp = document.getElementById('polarity-picker');
+  if(pp) pp.style.display = 'none';
   hideWirePreview();
 }
 
@@ -333,6 +348,14 @@ function startTapFrom(port){
 /* ต่อสายจริง (หลังผ่านการเลือกขั้วถ้าจำเป็น) */
 function finalizeTapConnect(port){
   var from = G.tapWireFrom;
+  /* จุดต้นทางอาจหายไปแล้ว (ลบอุปกรณ์ทิ้งระหว่างค้างการต่อสาย)
+     เดิมโค้ดอ่าน from.dataset ทันที ซึ่งจะ throw ถ้า from เป็น null
+     ทำให้ handler ตายกลางทางและสถานะค้างเพี้ยนต่อไปเรื่อย ๆ */
+  if(!from || portUnusable(from) || portUnusable(port)){
+    cancelTapConnect();
+    showToast('จุดต้นทางหายไปแล้ว — เริ่มต่อสายใหม่','error');
+    return;
+  }
   var fromId = from.dataset.itemId;
   var toId = port.dataset.itemId;
 
@@ -526,6 +549,11 @@ function removeWire(wireId){
   - สายที่ผู้เล่นเลือกขั้วเอง (forcedColor) เป็นจุดตั้งต้นเพิ่ม
 */
 function recolorWires(){
+  /* เก็บกวาดสายกำพร้าที่นี่ = ครอบทุกทางที่สายเปลี่ยนแปลง
+     เพราะ recolorWires() ถูกเรียกหลัง addWire / removeWire / removeWsItem เสมอ
+     ไม่ว่ารูรั่วจะอยู่ทางไหน สายเสียจะถูกกวาดทิ้งภายในจังหวะเดียวกัน */
+  pruneOrphanWires();
+
   var RED='#ff4444', BLUE='#00aaff', YEL='#ffd700';
 
   /* หาสายทั้งหมดที่ต่อกับจุดหนึ่ง */
