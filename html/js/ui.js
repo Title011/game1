@@ -52,6 +52,43 @@ function injectUIIcons(){
 /* ============================================================
    MODALS / TOAST
    ============================================================ */
+/* ============================================================
+   KEY MATCHING — เทียบปุ่มบนแป้นพิมพ์แบบไม่ขึ้นกับภาษา
+
+   ปัญหา: e.key คืน "ตัวอักษรที่พิมพ์ออกมา" ซึ่งเปลี่ยนตามภาษาที่ตั้งไว้
+          อยู่โหมดไทย กดปุ่ม R จะได้ 'พ' ไม่ใช่ 'r' คีย์ลัดจึงเงียบสนิท
+
+   ตรวจ 3 ทาง เพราะแต่ละทางมีจุดอ่อนต่างกัน:
+     1. e.code    'KeyR' = ตำแหน่งปุ่มจริงบนแป้น ไม่ขึ้นกับภาษาเลย (แม่นสุด)
+     2. e.keyCode 82     = รหัสปุ่มแบบเก่า อิงตำแหน่งปุ่มเหมือนกัน
+                           ใช้สำรองเบราว์เซอร์เก่าที่ไม่มี e.code
+     3. e.key     'r'    = ตัวอักษรจริง ใช้เป็นทางสุดท้าย
+                           เผื่อแป้นแปลก ๆ ที่ e.code ไม่ตรงตำแหน่งมาตรฐาน
+   ============================================================ */
+
+/* เทียบปุ่มตัวอักษร A-Z เช่น isKey(e,'r') */
+function isKey(e, letter){
+  var U = letter.toUpperCase();
+  if(e.code === 'Key' + U) return true;
+  if(e.keyCode === U.charCodeAt(0)) return true;
+  if((e.key || '').toUpperCase() === U) return true;
+  return false;
+}
+
+/* เทียบปุ่มพิเศษ เช่น isNamedKey(e,'Escape') */
+var NAMED_KEYCODES = {
+  Escape:27, Delete:46, Backspace:8, Enter:13, Tab:9, Space:32,
+  ArrowLeft:37, ArrowUp:38, ArrowRight:39, ArrowDown:40
+};
+function isNamedKey(e, name){
+  if(e.code === name) return true;
+  if(e.key  === name) return true;
+  if(NAMED_KEYCODES[name] && e.keyCode === NAMED_KEYCODES[name]) return true;
+  /* Space มีชื่อไม่ตรงกันระหว่าง key (' ') กับ code ('Space') */
+  if(name === 'Space' && e.key === ' ') return true;
+  return false;
+}
+
 function openModal(id){document.getElementById(id).classList.add('open');}
 function closeModal(id){document.getElementById(id).classList.remove('open');}
 

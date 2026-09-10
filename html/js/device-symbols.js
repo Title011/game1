@@ -423,56 +423,70 @@ var DEVICE_SYMBOLS_SVG = `
   <text x="30" y="48" text-anchor="middle" fill="#6e88a8" font-size="6.5">LDR  (Light Sensor)</text>
 </symbol>
 
-  <!-- Breadboard -->
+  <!-- Breadboard — บอร์ดทดลองจริง 400 จุด
+       พลาสติกขาวครีม / ร่องกลางแบ่งซ้าย-ขวา / ตารางรูเสียบ 5 แถวบน + 5 แถวล่าง
+       รางจ่ายไฟบน-ล่าง มีเส้นแดง(+) และน้ำเงิน(−) -->
 <symbol id="dev-breadboard" viewBox="0 0 80 56">
-  <!-- PCB substrate -->
-  <rect x="1" y="1" width="78" height="54" rx="4" fill="#1a5f2a" stroke="#0d3d18" stroke-width="1.8"/>
-  <!-- power rail top RED + -->
-  <rect x="3" y="3"  width="74" height="9" rx="3" fill="#2a0808"/>
-  <rect x="4" y="5"  width="72" height="5" rx="2" fill="#3d0000" opacity=".8"/>
-  <line x1="4" y1="7.5" x2="76" y2="7.5" stroke="#c0392b" stroke-width="1.5" stroke-dasharray="4 3"/>
-  <text x="4" y="9.5" fill="#c0392b" font-size="5" font-weight="bold">+ + + + + + + + + + + + + +</text>
-  <!-- power rail bottom BLUE - -->
-  <rect x="3" y="44" width="74" height="9" rx="3" fill="#080826"/>
-  <rect x="4" y="45" width="72" height="5" rx="2" fill="#000033" opacity=".8"/>
-  <line x1="4" y1="48.5" x2="76" y2="48.5" stroke="#2980b9" stroke-width="1.5" stroke-dasharray="4 3"/>
-  <text x="4" y="50.5" fill="#2980b9" font-size="5" font-weight="bold">- - - - - - - - - - - - - -</text>
-  <!-- center channel -->
-  <rect x="3" y="28" width="74" height="3" rx="1" fill="#0d3d18"/>
-  <!-- hole grid upper -->
-  <g fill="#88aa88" stroke="#6a8a6a" stroke-width=".3">
-    <rect x="7"  y="14" width="4" height="4" rx="1"/>  <rect x="14" y="14" width="4" height="4" rx="1"/>
-    <rect x="21" y="14" width="4" height="4" rx="1"/>  <rect x="28" y="14" width="4" height="4" rx="1"/>
-    <rect x="35" y="14" width="4" height="4" rx="1"/>  <rect x="42" y="14" width="4" height="4" rx="1"/>
-    <rect x="49" y="14" width="4" height="4" rx="1"/>  <rect x="56" y="14" width="4" height="4" rx="1"/>
-    <rect x="63" y="14" width="4" height="4" rx="1"/>  <rect x="70" y="14" width="4" height="4" rx="1"/>
-
-    <rect x="7"  y="20" width="4" height="4" rx="1"/>  <rect x="14" y="20" width="4" height="4" rx="1"/>
-    <rect x="21" y="20" width="4" height="4" rx="1"/>  <rect x="28" y="20" width="4" height="4" rx="1"/>
-    <rect x="35" y="20" width="4" height="4" rx="1"/>  <rect x="42" y="20" width="4" height="4" rx="1"/>
-    <rect x="49" y="20" width="4" height="4" rx="1"/>  <rect x="56" y="20" width="4" height="4" rx="1"/>
-    <rect x="63" y="20" width="4" height="4" rx="1"/>  <rect x="70" y="20" width="4" height="4" rx="1"/>
+  <!-- ขาต่อสายไปยังจุดขั้วทั้ง 4 ทิศ (อุปกรณ์เดียวในเกมที่มี 4 จุด) -->
+  <g stroke="#b0b8c0" stroke-width="2.2" stroke-linecap="round">
+    <line x1="0"  y1="28" x2="3"  y2="28"/>
+    <line x1="77" y1="28" x2="80" y2="28"/>
+    <line x1="40" y1="0"  x2="40" y2="3"/>
+    <line x1="40" y1="53" x2="40" y2="56"/>
   </g>
-  <!-- hole grid lower -->
-  <g fill="#88aa88" stroke="#6a8a6a" stroke-width=".3">
-    <rect x="7"  y="32" width="4" height="4" rx="1"/>  <rect x="14" y="32" width="4" height="4" rx="1"/>
-    <rect x="21" y="32" width="4" height="4" rx="1"/>  <rect x="28" y="32" width="4" height="4" rx="1"/>
-    <rect x="35" y="32" width="4" height="4" rx="1"/>  <rect x="42" y="32" width="4" height="4" rx="1"/>
-    <rect x="49" y="32" width="4" height="4" rx="1"/>  <rect x="56" y="32" width="4" height="4" rx="1"/>
-    <rect x="63" y="32" width="4" height="4" rx="1"/>  <rect x="70" y="32" width="4" height="4" rx="1"/>
+  <!-- เงาใต้บอร์ด -->
+  <rect x="3.4" y="3.4" width="75" height="50" rx="2.5" fill="#000" opacity=".4"/>
+  <!-- ตัวบอร์ดพลาสติกขาวครีม -->
+  <rect x="2.5" y="2.5" width="75" height="50" rx="2.5" fill="#edebe1" stroke="#adaa9d" stroke-width="1"/>
+  <rect x="3.4" y="3.4" width="73.2" height="2" rx="1" fill="#f9f8f3"/>
+  <rect x="3.4" y="49.6" width="73.2" height="2" rx="1" fill="#d6d3c6"/>
 
-    <rect x="7"  y="38" width="4" height="4" rx="1"/>  <rect x="14" y="38" width="4" height="4" rx="1"/>
-    <rect x="21" y="38" width="4" height="4" rx="1"/>  <rect x="28" y="38" width="4" height="4" rx="1"/>
-    <rect x="35" y="38" width="4" height="4" rx="1"/>  <rect x="42" y="38" width="4" height="4" rx="1"/>
-    <rect x="49" y="38" width="4" height="4" rx="1"/>  <rect x="56" y="38" width="4" height="4" rx="1"/>
-    <rect x="63" y="38" width="4" height="4" rx="1"/>  <rect x="70" y="38" width="4" height="4" rx="1"/>
+  <!-- ร่องกลางบอร์ด (center channel) -->
+  <rect x="3.4" y="26.6" width="73.2" height="4" fill="#dbd8ca"/>
+  <line x1="3.4" y1="26.8" x2="76.6" y2="26.8" stroke="#a8a598" stroke-width=".6"/>
+  <line x1="3.4" y1="30.4" x2="76.6" y2="30.4" stroke="#f5f4ed" stroke-width=".6"/>
+
+  <!-- เส้นรางจ่ายไฟ: แดง = + , น้ำเงิน = − -->
+  <g stroke-width=".8">
+    <line x1="7" y1="4.2"  x2="73" y2="4.2"  stroke="#d1392c"/>
+    <line x1="7" y1="9.4"  x2="73" y2="9.4"  stroke="#2a68c8"/>
+    <line x1="7" y1="46.2" x2="73" y2="46.2" stroke="#2a68c8"/>
+    <line x1="7" y1="51.2" x2="73" y2="51.2" stroke="#d1392c"/>
   </g>
-  <!-- row numbers -->
-  <text x="3" y="17" fill="#4a7a4a" font-size="4">a</text>
-  <text x="3" y="23" fill="#4a7a4a" font-size="4">b</text>
-  <text x="3" y="35" fill="#4a7a4a" font-size="4">c</text>
-  <text x="3" y="41" fill="#4a7a4a" font-size="4">d</text>
-  <text x="40" y="56" text-anchor="middle" fill="#6e88a8" font-size="6">BREADBOARD 400pt</text>
+  <g font-size="4.2" font-weight="bold" font-family="Arial">
+    <text x="3.6" y="5.7"  fill="#d1392c">+</text><text x="74" y="5.7"  fill="#d1392c">+</text>
+    <text x="3.6" y="11"   fill="#2a68c8">&#x2212;</text><text x="74" y="11"   fill="#2a68c8">&#x2212;</text>
+    <text x="3.6" y="47.7" fill="#2a68c8">&#x2212;</text><text x="74" y="47.7" fill="#2a68c8">&#x2212;</text>
+    <text x="3.6" y="52.7" fill="#d1392c">+</text><text x="74" y="52.7" fill="#d1392c">+</text>
+  </g>
+
+  <!-- ตารางรูเสียบ: 20 คอลัมน์ x 12 แถว = 240 รู -->
+  <g fill="#55534e">
+    <rect x="6.8" y="6.6" width="1.95" height="1.95" rx=".35"/><rect x="10.15" y="6.6" width="1.95" height="1.95" rx=".35"/><rect x="13.5" y="6.6" width="1.95" height="1.95" rx=".35"/><rect x="16.85" y="6.6" width="1.95" height="1.95" rx=".35"/><rect x="20.2" y="6.6" width="1.95" height="1.95" rx=".35"/><rect x="23.55" y="6.6" width="1.95" height="1.95" rx=".35"/><rect x="26.9" y="6.6" width="1.95" height="1.95" rx=".35"/><rect x="30.25" y="6.6" width="1.95" height="1.95" rx=".35"/><rect x="33.6" y="6.6" width="1.95" height="1.95" rx=".35"/><rect x="36.95" y="6.6" width="1.95" height="1.95" rx=".35"/>
+    <rect x="40.3" y="6.6" width="1.95" height="1.95" rx=".35"/><rect x="43.65" y="6.6" width="1.95" height="1.95" rx=".35"/><rect x="47" y="6.6" width="1.95" height="1.95" rx=".35"/><rect x="50.35" y="6.6" width="1.95" height="1.95" rx=".35"/><rect x="53.7" y="6.6" width="1.95" height="1.95" rx=".35"/><rect x="57.05" y="6.6" width="1.95" height="1.95" rx=".35"/><rect x="60.4" y="6.6" width="1.95" height="1.95" rx=".35"/><rect x="63.75" y="6.6" width="1.95" height="1.95" rx=".35"/><rect x="67.1" y="6.6" width="1.95" height="1.95" rx=".35"/><rect x="70.45" y="6.6" width="1.95" height="1.95" rx=".35"/>
+    <rect x="6.8" y="12.2" width="1.95" height="1.95" rx=".35"/><rect x="10.15" y="12.2" width="1.95" height="1.95" rx=".35"/><rect x="13.5" y="12.2" width="1.95" height="1.95" rx=".35"/><rect x="16.85" y="12.2" width="1.95" height="1.95" rx=".35"/><rect x="20.2" y="12.2" width="1.95" height="1.95" rx=".35"/><rect x="23.55" y="12.2" width="1.95" height="1.95" rx=".35"/><rect x="26.9" y="12.2" width="1.95" height="1.95" rx=".35"/><rect x="30.25" y="12.2" width="1.95" height="1.95" rx=".35"/><rect x="33.6" y="12.2" width="1.95" height="1.95" rx=".35"/><rect x="36.95" y="12.2" width="1.95" height="1.95" rx=".35"/>
+    <rect x="40.3" y="12.2" width="1.95" height="1.95" rx=".35"/><rect x="43.65" y="12.2" width="1.95" height="1.95" rx=".35"/><rect x="47" y="12.2" width="1.95" height="1.95" rx=".35"/><rect x="50.35" y="12.2" width="1.95" height="1.95" rx=".35"/><rect x="53.7" y="12.2" width="1.95" height="1.95" rx=".35"/><rect x="57.05" y="12.2" width="1.95" height="1.95" rx=".35"/><rect x="60.4" y="12.2" width="1.95" height="1.95" rx=".35"/><rect x="63.75" y="12.2" width="1.95" height="1.95" rx=".35"/><rect x="67.1" y="12.2" width="1.95" height="1.95" rx=".35"/><rect x="70.45" y="12.2" width="1.95" height="1.95" rx=".35"/>
+    <rect x="6.8" y="15.2" width="1.95" height="1.95" rx=".35"/><rect x="10.15" y="15.2" width="1.95" height="1.95" rx=".35"/><rect x="13.5" y="15.2" width="1.95" height="1.95" rx=".35"/><rect x="16.85" y="15.2" width="1.95" height="1.95" rx=".35"/><rect x="20.2" y="15.2" width="1.95" height="1.95" rx=".35"/><rect x="23.55" y="15.2" width="1.95" height="1.95" rx=".35"/><rect x="26.9" y="15.2" width="1.95" height="1.95" rx=".35"/><rect x="30.25" y="15.2" width="1.95" height="1.95" rx=".35"/><rect x="33.6" y="15.2" width="1.95" height="1.95" rx=".35"/><rect x="36.95" y="15.2" width="1.95" height="1.95" rx=".35"/>
+    <rect x="40.3" y="15.2" width="1.95" height="1.95" rx=".35"/><rect x="43.65" y="15.2" width="1.95" height="1.95" rx=".35"/><rect x="47" y="15.2" width="1.95" height="1.95" rx=".35"/><rect x="50.35" y="15.2" width="1.95" height="1.95" rx=".35"/><rect x="53.7" y="15.2" width="1.95" height="1.95" rx=".35"/><rect x="57.05" y="15.2" width="1.95" height="1.95" rx=".35"/><rect x="60.4" y="15.2" width="1.95" height="1.95" rx=".35"/><rect x="63.75" y="15.2" width="1.95" height="1.95" rx=".35"/><rect x="67.1" y="15.2" width="1.95" height="1.95" rx=".35"/><rect x="70.45" y="15.2" width="1.95" height="1.95" rx=".35"/>
+    <rect x="6.8" y="18.2" width="1.95" height="1.95" rx=".35"/><rect x="10.15" y="18.2" width="1.95" height="1.95" rx=".35"/><rect x="13.5" y="18.2" width="1.95" height="1.95" rx=".35"/><rect x="16.85" y="18.2" width="1.95" height="1.95" rx=".35"/><rect x="20.2" y="18.2" width="1.95" height="1.95" rx=".35"/><rect x="23.55" y="18.2" width="1.95" height="1.95" rx=".35"/><rect x="26.9" y="18.2" width="1.95" height="1.95" rx=".35"/><rect x="30.25" y="18.2" width="1.95" height="1.95" rx=".35"/><rect x="33.6" y="18.2" width="1.95" height="1.95" rx=".35"/><rect x="36.95" y="18.2" width="1.95" height="1.95" rx=".35"/>
+    <rect x="40.3" y="18.2" width="1.95" height="1.95" rx=".35"/><rect x="43.65" y="18.2" width="1.95" height="1.95" rx=".35"/><rect x="47" y="18.2" width="1.95" height="1.95" rx=".35"/><rect x="50.35" y="18.2" width="1.95" height="1.95" rx=".35"/><rect x="53.7" y="18.2" width="1.95" height="1.95" rx=".35"/><rect x="57.05" y="18.2" width="1.95" height="1.95" rx=".35"/><rect x="60.4" y="18.2" width="1.95" height="1.95" rx=".35"/><rect x="63.75" y="18.2" width="1.95" height="1.95" rx=".35"/><rect x="67.1" y="18.2" width="1.95" height="1.95" rx=".35"/><rect x="70.45" y="18.2" width="1.95" height="1.95" rx=".35"/>
+    <rect x="6.8" y="21.2" width="1.95" height="1.95" rx=".35"/><rect x="10.15" y="21.2" width="1.95" height="1.95" rx=".35"/><rect x="13.5" y="21.2" width="1.95" height="1.95" rx=".35"/><rect x="16.85" y="21.2" width="1.95" height="1.95" rx=".35"/><rect x="20.2" y="21.2" width="1.95" height="1.95" rx=".35"/><rect x="23.55" y="21.2" width="1.95" height="1.95" rx=".35"/><rect x="26.9" y="21.2" width="1.95" height="1.95" rx=".35"/><rect x="30.25" y="21.2" width="1.95" height="1.95" rx=".35"/><rect x="33.6" y="21.2" width="1.95" height="1.95" rx=".35"/><rect x="36.95" y="21.2" width="1.95" height="1.95" rx=".35"/>
+    <rect x="40.3" y="21.2" width="1.95" height="1.95" rx=".35"/><rect x="43.65" y="21.2" width="1.95" height="1.95" rx=".35"/><rect x="47" y="21.2" width="1.95" height="1.95" rx=".35"/><rect x="50.35" y="21.2" width="1.95" height="1.95" rx=".35"/><rect x="53.7" y="21.2" width="1.95" height="1.95" rx=".35"/><rect x="57.05" y="21.2" width="1.95" height="1.95" rx=".35"/><rect x="60.4" y="21.2" width="1.95" height="1.95" rx=".35"/><rect x="63.75" y="21.2" width="1.95" height="1.95" rx=".35"/><rect x="67.1" y="21.2" width="1.95" height="1.95" rx=".35"/><rect x="70.45" y="21.2" width="1.95" height="1.95" rx=".35"/>
+    <rect x="6.8" y="24.2" width="1.95" height="1.95" rx=".35"/><rect x="10.15" y="24.2" width="1.95" height="1.95" rx=".35"/><rect x="13.5" y="24.2" width="1.95" height="1.95" rx=".35"/><rect x="16.85" y="24.2" width="1.95" height="1.95" rx=".35"/><rect x="20.2" y="24.2" width="1.95" height="1.95" rx=".35"/><rect x="23.55" y="24.2" width="1.95" height="1.95" rx=".35"/><rect x="26.9" y="24.2" width="1.95" height="1.95" rx=".35"/><rect x="30.25" y="24.2" width="1.95" height="1.95" rx=".35"/><rect x="33.6" y="24.2" width="1.95" height="1.95" rx=".35"/><rect x="36.95" y="24.2" width="1.95" height="1.95" rx=".35"/>
+    <rect x="40.3" y="24.2" width="1.95" height="1.95" rx=".35"/><rect x="43.65" y="24.2" width="1.95" height="1.95" rx=".35"/><rect x="47" y="24.2" width="1.95" height="1.95" rx=".35"/><rect x="50.35" y="24.2" width="1.95" height="1.95" rx=".35"/><rect x="53.7" y="24.2" width="1.95" height="1.95" rx=".35"/><rect x="57.05" y="24.2" width="1.95" height="1.95" rx=".35"/><rect x="60.4" y="24.2" width="1.95" height="1.95" rx=".35"/><rect x="63.75" y="24.2" width="1.95" height="1.95" rx=".35"/><rect x="67.1" y="24.2" width="1.95" height="1.95" rx=".35"/><rect x="70.45" y="24.2" width="1.95" height="1.95" rx=".35"/>
+    <rect x="6.8" y="31.6" width="1.95" height="1.95" rx=".35"/><rect x="10.15" y="31.6" width="1.95" height="1.95" rx=".35"/><rect x="13.5" y="31.6" width="1.95" height="1.95" rx=".35"/><rect x="16.85" y="31.6" width="1.95" height="1.95" rx=".35"/><rect x="20.2" y="31.6" width="1.95" height="1.95" rx=".35"/><rect x="23.55" y="31.6" width="1.95" height="1.95" rx=".35"/><rect x="26.9" y="31.6" width="1.95" height="1.95" rx=".35"/><rect x="30.25" y="31.6" width="1.95" height="1.95" rx=".35"/><rect x="33.6" y="31.6" width="1.95" height="1.95" rx=".35"/><rect x="36.95" y="31.6" width="1.95" height="1.95" rx=".35"/>
+    <rect x="40.3" y="31.6" width="1.95" height="1.95" rx=".35"/><rect x="43.65" y="31.6" width="1.95" height="1.95" rx=".35"/><rect x="47" y="31.6" width="1.95" height="1.95" rx=".35"/><rect x="50.35" y="31.6" width="1.95" height="1.95" rx=".35"/><rect x="53.7" y="31.6" width="1.95" height="1.95" rx=".35"/><rect x="57.05" y="31.6" width="1.95" height="1.95" rx=".35"/><rect x="60.4" y="31.6" width="1.95" height="1.95" rx=".35"/><rect x="63.75" y="31.6" width="1.95" height="1.95" rx=".35"/><rect x="67.1" y="31.6" width="1.95" height="1.95" rx=".35"/><rect x="70.45" y="31.6" width="1.95" height="1.95" rx=".35"/>
+    <rect x="6.8" y="34.6" width="1.95" height="1.95" rx=".35"/><rect x="10.15" y="34.6" width="1.95" height="1.95" rx=".35"/><rect x="13.5" y="34.6" width="1.95" height="1.95" rx=".35"/><rect x="16.85" y="34.6" width="1.95" height="1.95" rx=".35"/><rect x="20.2" y="34.6" width="1.95" height="1.95" rx=".35"/><rect x="23.55" y="34.6" width="1.95" height="1.95" rx=".35"/><rect x="26.9" y="34.6" width="1.95" height="1.95" rx=".35"/><rect x="30.25" y="34.6" width="1.95" height="1.95" rx=".35"/><rect x="33.6" y="34.6" width="1.95" height="1.95" rx=".35"/><rect x="36.95" y="34.6" width="1.95" height="1.95" rx=".35"/>
+    <rect x="40.3" y="34.6" width="1.95" height="1.95" rx=".35"/><rect x="43.65" y="34.6" width="1.95" height="1.95" rx=".35"/><rect x="47" y="34.6" width="1.95" height="1.95" rx=".35"/><rect x="50.35" y="34.6" width="1.95" height="1.95" rx=".35"/><rect x="53.7" y="34.6" width="1.95" height="1.95" rx=".35"/><rect x="57.05" y="34.6" width="1.95" height="1.95" rx=".35"/><rect x="60.4" y="34.6" width="1.95" height="1.95" rx=".35"/><rect x="63.75" y="34.6" width="1.95" height="1.95" rx=".35"/><rect x="67.1" y="34.6" width="1.95" height="1.95" rx=".35"/><rect x="70.45" y="34.6" width="1.95" height="1.95" rx=".35"/>
+    <rect x="6.8" y="37.6" width="1.95" height="1.95" rx=".35"/><rect x="10.15" y="37.6" width="1.95" height="1.95" rx=".35"/><rect x="13.5" y="37.6" width="1.95" height="1.95" rx=".35"/><rect x="16.85" y="37.6" width="1.95" height="1.95" rx=".35"/><rect x="20.2" y="37.6" width="1.95" height="1.95" rx=".35"/><rect x="23.55" y="37.6" width="1.95" height="1.95" rx=".35"/><rect x="26.9" y="37.6" width="1.95" height="1.95" rx=".35"/><rect x="30.25" y="37.6" width="1.95" height="1.95" rx=".35"/><rect x="33.6" y="37.6" width="1.95" height="1.95" rx=".35"/><rect x="36.95" y="37.6" width="1.95" height="1.95" rx=".35"/>
+    <rect x="40.3" y="37.6" width="1.95" height="1.95" rx=".35"/><rect x="43.65" y="37.6" width="1.95" height="1.95" rx=".35"/><rect x="47" y="37.6" width="1.95" height="1.95" rx=".35"/><rect x="50.35" y="37.6" width="1.95" height="1.95" rx=".35"/><rect x="53.7" y="37.6" width="1.95" height="1.95" rx=".35"/><rect x="57.05" y="37.6" width="1.95" height="1.95" rx=".35"/><rect x="60.4" y="37.6" width="1.95" height="1.95" rx=".35"/><rect x="63.75" y="37.6" width="1.95" height="1.95" rx=".35"/><rect x="67.1" y="37.6" width="1.95" height="1.95" rx=".35"/><rect x="70.45" y="37.6" width="1.95" height="1.95" rx=".35"/>
+    <rect x="6.8" y="40.6" width="1.95" height="1.95" rx=".35"/><rect x="10.15" y="40.6" width="1.95" height="1.95" rx=".35"/><rect x="13.5" y="40.6" width="1.95" height="1.95" rx=".35"/><rect x="16.85" y="40.6" width="1.95" height="1.95" rx=".35"/><rect x="20.2" y="40.6" width="1.95" height="1.95" rx=".35"/><rect x="23.55" y="40.6" width="1.95" height="1.95" rx=".35"/><rect x="26.9" y="40.6" width="1.95" height="1.95" rx=".35"/><rect x="30.25" y="40.6" width="1.95" height="1.95" rx=".35"/><rect x="33.6" y="40.6" width="1.95" height="1.95" rx=".35"/><rect x="36.95" y="40.6" width="1.95" height="1.95" rx=".35"/>
+    <rect x="40.3" y="40.6" width="1.95" height="1.95" rx=".35"/><rect x="43.65" y="40.6" width="1.95" height="1.95" rx=".35"/><rect x="47" y="40.6" width="1.95" height="1.95" rx=".35"/><rect x="50.35" y="40.6" width="1.95" height="1.95" rx=".35"/><rect x="53.7" y="40.6" width="1.95" height="1.95" rx=".35"/><rect x="57.05" y="40.6" width="1.95" height="1.95" rx=".35"/><rect x="60.4" y="40.6" width="1.95" height="1.95" rx=".35"/><rect x="63.75" y="40.6" width="1.95" height="1.95" rx=".35"/><rect x="67.1" y="40.6" width="1.95" height="1.95" rx=".35"/><rect x="70.45" y="40.6" width="1.95" height="1.95" rx=".35"/>
+    <rect x="6.8" y="43.6" width="1.95" height="1.95" rx=".35"/><rect x="10.15" y="43.6" width="1.95" height="1.95" rx=".35"/><rect x="13.5" y="43.6" width="1.95" height="1.95" rx=".35"/><rect x="16.85" y="43.6" width="1.95" height="1.95" rx=".35"/><rect x="20.2" y="43.6" width="1.95" height="1.95" rx=".35"/><rect x="23.55" y="43.6" width="1.95" height="1.95" rx=".35"/><rect x="26.9" y="43.6" width="1.95" height="1.95" rx=".35"/><rect x="30.25" y="43.6" width="1.95" height="1.95" rx=".35"/><rect x="33.6" y="43.6" width="1.95" height="1.95" rx=".35"/><rect x="36.95" y="43.6" width="1.95" height="1.95" rx=".35"/>
+    <rect x="40.3" y="43.6" width="1.95" height="1.95" rx=".35"/><rect x="43.65" y="43.6" width="1.95" height="1.95" rx=".35"/><rect x="47" y="43.6" width="1.95" height="1.95" rx=".35"/><rect x="50.35" y="43.6" width="1.95" height="1.95" rx=".35"/><rect x="53.7" y="43.6" width="1.95" height="1.95" rx=".35"/><rect x="57.05" y="43.6" width="1.95" height="1.95" rx=".35"/><rect x="60.4" y="43.6" width="1.95" height="1.95" rx=".35"/><rect x="63.75" y="43.6" width="1.95" height="1.95" rx=".35"/><rect x="67.1" y="43.6" width="1.95" height="1.95" rx=".35"/><rect x="70.45" y="43.6" width="1.95" height="1.95" rx=".35"/>
+    <rect x="6.8" y="48.6" width="1.95" height="1.95" rx=".35"/><rect x="10.15" y="48.6" width="1.95" height="1.95" rx=".35"/><rect x="13.5" y="48.6" width="1.95" height="1.95" rx=".35"/><rect x="16.85" y="48.6" width="1.95" height="1.95" rx=".35"/><rect x="20.2" y="48.6" width="1.95" height="1.95" rx=".35"/><rect x="23.55" y="48.6" width="1.95" height="1.95" rx=".35"/><rect x="26.9" y="48.6" width="1.95" height="1.95" rx=".35"/><rect x="30.25" y="48.6" width="1.95" height="1.95" rx=".35"/><rect x="33.6" y="48.6" width="1.95" height="1.95" rx=".35"/><rect x="36.95" y="48.6" width="1.95" height="1.95" rx=".35"/>
+    <rect x="40.3" y="48.6" width="1.95" height="1.95" rx=".35"/><rect x="43.65" y="48.6" width="1.95" height="1.95" rx=".35"/><rect x="47" y="48.6" width="1.95" height="1.95" rx=".35"/><rect x="50.35" y="48.6" width="1.95" height="1.95" rx=".35"/><rect x="53.7" y="48.6" width="1.95" height="1.95" rx=".35"/><rect x="57.05" y="48.6" width="1.95" height="1.95" rx=".35"/><rect x="60.4" y="48.6" width="1.95" height="1.95" rx=".35"/><rect x="63.75" y="48.6" width="1.95" height="1.95" rx=".35"/><rect x="67.1" y="48.6" width="1.95" height="1.95" rx=".35"/><rect x="70.45" y="48.6" width="1.95" height="1.95" rx=".35"/>
+  </g>
 </symbol>
 
   <!-- หม้อแปลง -->
