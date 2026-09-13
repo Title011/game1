@@ -54,9 +54,18 @@
 #probe-display{
   position:absolute;bottom:70px;right:16px;z-index:30;
   background:#0a1a0a;border:2px solid #059669;border-radius:12px;
-  padding:12px 14px;min-width:180px;
+  padding:10px 14px 12px;min-width:196px;
   box-shadow:0 4px 24px rgba(5,150,105,.4);
 }
+/* ชื่อสิ่งที่กำลังจิ้มวัดอยู่ (สายไฟเส้นไหน หรืออุปกรณ์ตัวไหน) */
+.probe-name{
+  font-size:.7rem;font-weight:800;color:#0f4;text-align:center;
+  letter-spacing:.3px;margin-bottom:7px;
+  text-shadow:0 0 6px rgba(0,255,68,.4);
+}
+/* อุปกรณ์ที่กำลังถูกวัด */
+.ws-item.probe-target{outline:2px solid #00ff88;outline-offset:3px;}
+body.probe-mode .ws-item{cursor:crosshair;}
 .probe-screen{
   background:#001a00;border:1px solid #033;border-radius:8px;
   padding:8px 10px;margin-bottom:8px;font-family:'Courier New',monospace;
@@ -121,36 +130,93 @@
 @keyframes cg-wire-burn{0%,100%{opacity:.85}50%{opacity:.45}}
 
 /* ============================================================
-   DEVICE ANIMATIONS — ทำงานเมื่ออุปกรณ์มีไฟ (.ws-item.powered)
+   DEVICE ANIMATIONS — อุปกรณ์ทำงาน "ตามค่าไฟฟ้าจริง"
+
+   ของเดิมเป็นแอนิเมชันตายตัว: ต่อถูก = สว่างเท่ากันหมดทุกกรณี
+   ตอนนี้ความสว่าง/ความเร็วมาจากตัวแปร CSS ที่ js/probe.js ตั้งให้
+   ทุกรอบของการจำลอง:
+
+     --glow  0..1  ความสว่าง/ความแรง เทียบกับพิกัดของอุปกรณ์ตัวนั้น
+     --spin  เวลา  วินาทีต่อรอบของมอเตอร์ (กระแสมาก = หมุนเร็ว)
+
+   จึงเห็นความต่างได้จริง เช่น หลอดอนุกรม 2 ดวงหรี่กว่าดวงเดียว
+   แต่หลอดขนาน 2 ดวงสว่างเท่ากับดวงเดียว
    ============================================================ */
-/* มอเตอร์: โรเตอร์หมุน */
+
+/* .lit = มีกระแสไหลผ่านจริง (ต่างจาก .powered ที่แปลว่าจ่ายไฟให้วงจรแล้ว) */
+.ws-item.lit{box-shadow:0 0 calc(var(--glow,0) * 24px) rgba(0,255,136,.4);}
+
+/* มอเตอร์: ใบพัดบนเพลาหมุนเร็วตามกระแส
+   transform-box:fill-box + origin:center = หมุนรอบจุดกึ่งกลางของตัวมันเอง
+   ทนต่อการแก้รูป ไม่ต้องมาไล่แก้พิกัดใน SVG ให้ตรงกับ CSS อีก
+   (ของเดิมตรึงไว้ที่ 26px 26px ซึ่งไม่ใช่จุดศูนย์กลางจริง ใบพัดจึงส่ายแทนที่จะหมุน) */
 @keyframes cg-spin{from{transform:rotate(0deg)}to{transform:rotate(360deg)}}
-.motor-rotor{transform-origin:26px 26px;}
-.ws-item.powered .motor-rotor{animation:cg-spin .6s linear infinite;}
+.motor-rotor{transform-box:fill-box;transform-origin:center;}
+.ws-item.lit .motor-rotor{animation:cg-spin var(--spin,.6s) linear infinite;}
 
-/* LED: เรืองแสง */
-@keyframes cg-led-glow{0%,100%{filter:drop-shadow(0 0 4px #00ff88)}50%{filter:drop-shadow(0 0 12px #00ff88)}}
-.ws-item.powered .led-bulb{animation:cg-led-glow 1s ease-in-out infinite;}
+/* LED: สว่างตามกระแสที่ไหลผ่านจริง */
+.ws-item.powered .led-bulb{
+  opacity:calc(.28 + var(--glow,0) * .72);
+  filter:drop-shadow(0 0 calc(var(--glow,0) * 13px) #00ff88);
+  transition:opacity .3s ease, filter .3s ease;
+}
 
-/* หลอดไฟ: สว่างวูบวาบ */
-@keyframes cg-bulb-glow{0%,100%{filter:drop-shadow(0 0 5px #ffd700)}50%{filter:drop-shadow(0 0 16px #ffd700)}}
-.ws-item.powered .bulb-glass{animation:cg-bulb-glow 1.2s ease-in-out infinite;}
+/* หลอดไฟ: สว่างตามกำลังไฟที่ได้รับจริง */
+.ws-item.powered .bulb-glass{
+  filter:drop-shadow(0 0 calc(var(--glow,0) * 18px) #ffd700)
+         brightness(calc(1 + var(--glow,0) * .9));
+  transition:filter .3s ease;
+}
 
-/* บัซเซอร์: สั่น */
+/* บัซเซอร์: สั่นเมื่อมีกระแสพอ */
 @keyframes cg-buzz-shake{0%,100%{transform:translateX(0)}25%{transform:translateX(-2px)}75%{transform:translateX(2px)}}
-.ws-item.powered .buzzer-body{animation:cg-buzz-shake .12s linear infinite;}
+.ws-item.lit .buzzer-body{animation:cg-buzz-shake .12s linear infinite;}
 
-/* แบตเตอรี่: วงแสงรอบตัว */
+/* แบตเตอรี่: วงแสงรอบตัวขณะจ่ายไฟ */
 @keyframes cg-batt-glow { 0%,100%{stroke:rgba(255,215,0,0);stroke-width:2} 50%{stroke:rgba(255,215,0,0.6);stroke-width:3} }
 .ws-item.powered .batt-glow { animation: cg-batt-glow 1.5s ease-in-out infinite; }
 
-/* ตัวเก็บประจุ: แสงตอนชาร์จ */
-@keyframes cg-cap-glow { 0%,100%{stroke:rgba(0,212,255,0)} 50%{stroke:rgba(0,212,255,0.7);stroke-width:3} }
-.ws-item.powered .cap-glow { animation: cg-cap-glow 2s ease-in-out infinite; }
-
-/* สวิตช์: คันโยกปิดวงจร */
-@keyframes cg-switch-close {
-  0%,40%  { transform: rotate(0deg);   transform-origin: 13px 20px; }
-  60%,100%{ transform: rotate(35deg);  transform-origin: 13px 20px; }
+/* ตัวเก็บประจุ: เรืองแสงตามปริมาณประจุที่เก็บอยู่จริง */
+.ws-item.powered .cap-glow{
+  stroke:rgba(0,212,255,calc(var(--glow,0) * .85 + .1));
+  stroke-width:calc(2px + var(--glow,0) * 1.5px);
+  transition:stroke .3s ease;
 }
-.ws-item.powered .switch-lever { animation: cg-switch-close .4s ease forwards; }
+
+/* สวิตช์: คันโยกบอกสถานะจริงของสวิตช์ ไม่ใช่บอกว่ามีไฟหรือไม่ */
+.switch-lever{transform-origin:13px 20px;transition:transform .25s ease;}
+.ws-item .switch-lever{transform:rotate(35deg);}              /* ON  = ปิดวงจร */
+.ws-item.switch-open .switch-lever{transform:rotate(0deg);}   /* OFF = เปิดวงจร */
+
+/* ป้ายสับสวิตช์ ON/OFF บนตัวอุปกรณ์ */
+.ws-switch-state{
+  position:absolute;top:-9px;left:-9px;z-index:6;cursor:pointer;
+  font-size:.5rem;font-weight:900;letter-spacing:.6px;
+  padding:1px 5px;border-radius:6px;line-height:1.5;
+  background:var(--accent3);color:#04231a;border:1px solid #0a5;
+  box-shadow:0 1px 4px rgba(0,0,0,.5);
+}
+.ws-item.switch-open .ws-switch-state{
+  background:#4b5563;color:#e5eaf2;border-color:#374151;
+}
+
+/* ============================================================
+   รายงานค่าไฟฟ้าหลังผ่านด่าน (ดู buildCircuitReport ใน js/probe.js)
+   ============================================================ */
+.report-box{
+  background:rgba(10,22,40,.6);border:1px solid var(--border);
+  border-radius:10px;padding:10px 12px;margin-bottom:10px;text-align:left;
+}
+.report-title{font-size:.72rem;color:var(--accent2);font-weight:800;margin-bottom:6px;}
+.report-tbl{width:100%;border-collapse:collapse;font-size:.68rem;}
+.report-tbl th{
+  color:var(--text-dim);font-weight:600;text-align:right;padding:2px 4px;
+  border-bottom:1px solid var(--border);
+}
+.report-tbl th:first-child{text-align:left;}
+.report-tbl td{padding:2px 4px;text-align:right;color:var(--text);font-variant-numeric:tabular-nums;}
+.report-tbl td:first-child{text-align:left;color:var(--text-dim);}
+.rep-bar{display:inline-block;width:46px;height:6px;border-radius:3px;background:var(--border);overflow:hidden;vertical-align:middle;}
+.rep-bar i{display:block;height:100%;background:linear-gradient(90deg,var(--accent3),var(--accent2));}
+.report-sum{font-size:.68rem;color:var(--text-dim);margin-top:7px;}
+.report-sum b{color:var(--accent);}

@@ -13,23 +13,23 @@
      ขนาน   : ทำสายโซ่ข้างบนซ้ำหลายสาขา แยกจากขั้วแหล่งจ่ายโดยตรง
 
    ทำไมแม่แบบนี้ผ่านเสมอ:
-   • ทุกจุดขั้วถูกใช้พอดี 1 เส้น และทุกชิ้นมีสายเข้า 1 ออก 1 → ผ่าน series
+   • เรียงหัวชนท้ายเป็นวงเดียว → ระบบวิเคราะห์อ่านได้เป็นอนุกรม 1 ทางเดิน
    • อุปกรณ์มีขั้วทุกตัวในเกมนี้ pos='left', neg='right' ส่วนแหล่งจ่าย
      pos='right', neg='left' → เรียงหัวชนท้ายแบบนี้ ขั้วตรงกันเสมอ
-   • จำนวนสาย = จำนวนชิ้น → ครบวงจรปิดพอดี ไม่ขาดไม่เกิน
+   • ไม่มีขาไหนลอย ไม่มีชิ้นไหนถูกต่อคร่อม → ผ่านทุกด่านของการวิเคราะห์
    ============================================================ */
 
 /* ---------- คลังอุปกรณ์ที่ตัวสุ่มหยิบได้ (แบ่งตามระดับความยาก) ---------- */
 var GEN_SOURCES = ['battery_aa','battery_9v'];
 var GEN_BASIC   = ['switch','fuse','resistor','bulb'];          /* ไม่มีขั้ว ง่าย */
 var GEN_MID     = ['diode','led','ldr','buzzer'];               /* เริ่มมีขั้ว */
-var GEN_HARD    = ['capacitor','motor','transistor','breadboard'];
+var GEN_HARD    = ['capacitor','motor','transistor'];
 var GEN_OUTPUTS = ['bulb','led','motor','buzzer'];               /* ต้องมีอย่างน้อย 1 */
 
-/* อุปกรณ์ที่มีจุดขั้วเกิน 2 จุด — ใช้ในวงจรขนานไม่ได้
-   เพราะ checkParallelTopology บังคับให้ "ทุกจุดของทุกชิ้น" มีสายพอดี 1 เส้น
-   จุดที่เหลือของทรานซิสเตอร์/บอร์ดจะมี 0 เส้น → ตรวจไม่ผ่าน */
-var GEN_NO_PARALLEL = { transistor:true, breadboard:true };
+/* อุปกรณ์ที่มีจุดขั้วเกิน 2 จุด — กันออกจากโจทย์วงจรขนาน
+   ระบบวิเคราะห์ใหม่รองรับได้แล้ว แต่กันไว้เพื่อให้โจทย์สุ่มอ่านง่าย
+   ไม่ต้องให้ผู้เล่นเดาว่าขาที่เหลือของทรานซิสเตอร์ต้องทำยังไง */
+var GEN_NO_PARALLEL = { transistor:true };
 
 function _rnd(a){ return a[Math.floor(Math.random()*a.length)]; }
 function _shuffle(a){
@@ -70,8 +70,14 @@ function buildEndlessLevel(round){
     chainLen = Math.min(chainLen, 2);       /* ขนานคูณจำนวนสาขา อย่าให้ยาวเกิน */
   }
 
-  var src   = _rnd(GEN_SOURCES);
   var chain = genChain(pool, chainLen);
+
+  /* เลือกแหล่งจ่ายให้วงจร "ทำงานได้จริง" ไม่ใช่แค่ต่อครบ
+     LED กับไดโอดมีแรงดันเกณฑ์ของตัวเอง (1.65V / 0.7V) ถ้าใช้ถ่าน AA 1.5V
+     แล้วในวงมีตัวใดตัวหนึ่ง กระแสจะแทบไม่ไหลเลย โจทย์จะกลายเป็นต่อยังไงก็ไม่ติด
+     สายโซ่ที่ยาวก็กินแรงดันมาก ต้องใช้ 9V เหมือนกัน */
+  var needsHighV = chain.indexOf('led') >= 0 || chain.indexOf('diode') >= 0 || chain.length >= 4;
+  var src = needsHighV ? 'battery_9v' : _rnd(GEN_SOURCES);
 
   /* ---- เฉลย: ต่อหัวชนท้ายแล้ววนกลับแหล่งจ่าย ---- */
   function branchPairs(){
@@ -92,14 +98,25 @@ function buildEndlessLevel(round){
     ? 'ต่อ ' + names + ' แบบขนาน ' + branches + ' สาขา จากแหล่งจ่ายเดียวกัน'
     : 'ต่อ ' + names + ' เรียงกันแบบอนุกรมให้ครบวงจร';
 
+  /* ผลที่ต้องได้ — บอกจากอุปกรณ์ที่กินไฟในโจทย์ ว่าต่อเสร็จแล้วต้องเห็นอะไร */
+  var showTh = { bulb:'หลอดไฟติด', led:'LED ติด', motor:'มอเตอร์หมุน', buzzer:'บัซเซอร์ดัง' };
+  var shows = [];
+  chain.forEach(function(d){ if(showTh[d] && shows.indexOf(showTh[d]) < 0) shows.push(showTh[d]); });
+  var outcome = shows.length
+    ? shows.join(' · ') + (isParallel ? ' ครบทุกสาขา' : ' พร้อมกันทั้งวง')
+    : 'วงจรปิดครบ ไฟไหลได้ตลอดวง';
+
   return {
     title:'รอบที่ ' + round,
     goal: goal,
+    outcome: outcome,
     inventory: inv,
     solution: sol,
     topology: isParallel
       ? { type:'parallel', branches:branches, mustHave:chain.slice() }
       : { type:'series' },
+    /* ข้อกำหนดผลลัพธ์ — โจทย์สุ่มก็ตัดสินจาก "ผลที่ออกมา" เหมือนโหมดด่าน */
+    require: autoRequire(inv, isParallel ? 'parallel' : 'series', branches),
     /* เวลา: คิดจาก "จำนวนสายที่ต้องต่อ" เป็นหลัก แล้วบีบลงตามรอบ (สูงสุด 30%)
        ผูกกับขนาดวงจรตรง ๆ แบบนี้ยุติธรรมกว่าให้เวลาก้อนใหญ่ตายตัว
        เพราะโจทย์ 2 ชิ้นกับ 6 ชิ้นใช้เวลาต่างกันมาก
@@ -168,6 +185,7 @@ function loadEndlessRound(){
   renderInventory();
   document.getElementById('goal-title').textContent = lv.title;
   document.getElementById('goal-desc').textContent  = lv.goal;
+  setGoalOutcome(lv.outcome);
 
   G.timerSec = lv.timeLimit;
   G.levelStartTime = Date.now();
@@ -175,6 +193,7 @@ function loadEndlessRound(){
   document.getElementById('timer-display').classList.remove('warning');
   G.timerInt = setInterval(tickTimer,1000);
   updateLevelBar();
+  ensureBreadboard();
 }
 
 /* ผลการตรวจในโหมดวัดความเร็ว — เรียกจาก checkCircuit() */

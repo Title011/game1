@@ -1,0 +1,195 @@
+@charset "UTF-8";
+/* ============================================================
+   HAZARD — หน้าตาของ "ระบบกำลังพัง"
+
+   ตัวแปร --heat (0..1) ถูกตั้งโดย js/hazard.js ทุกก้าวเวลา
+   สีและความแรงของเอฟเฟกต์จึงไล่ตามความร้อนที่สะสมจริง
+   ไม่ใช่สลับสถานะติด/ดับเฉย ๆ
+   ============================================================ */
+
+/* ---------- ร้อนผิดปกติ แต่ยังไม่พัง ---------- */
+.ws-item.heat-warn{
+  border-color:#e08a20!important;
+  box-shadow:0 0 calc(8px + var(--heat,0) * 20px) rgba(255,150,40,.55)!important;
+}
+.ws-item.heat-warn .ws-item-svg{
+  filter:drop-shadow(0 0 calc(var(--heat,0) * 7px) #ff9a30)
+         saturate(calc(1 + var(--heat,0) * .6));
+}
+
+/* ---------- ร้อนจัด มีควันแล้ว ---------- */
+.ws-item.heat-hot{
+  border-color:#ff4a1a!important;
+  box-shadow:0 0 calc(14px + var(--heat,0) * 26px) rgba(255,70,20,.75)!important;
+  animation:hz-throb .45s ease-in-out infinite;
+}
+.ws-item.heat-hot .ws-item-svg{
+  filter:drop-shadow(0 0 calc(var(--heat,0) * 12px) #ff5a20) saturate(1.5) brightness(1.15);
+}
+@keyframes hz-throb{0%,100%{transform:translate(0,0)}50%{transform:translate(.6px,-.6px)}}
+
+/* ควันลอยขึ้นตอนร้อนจัด — ความเข้มตามความร้อน */
+.ws-item.heat-hot::before{
+  content:'';position:absolute;top:-12px;left:50%;
+  width:18px;height:18px;border-radius:50%;
+  background:radial-gradient(circle,rgba(190,190,190,.6),rgba(190,190,190,0) 70%);
+  opacity:calc(var(--heat,0));pointer-events:none;
+  animation:cg-smoke 1.5s ease-out infinite;
+}
+
+/* ---------- พังแล้ว ---------- */
+/* ใช้สไตล์ .burned เดิมจาก css/circuit.css เป็นฐาน แล้วเติมรอยไหม้ */
+.ws-item.failed{ animation:none!important; }
+.ws-item.failed .ws-item-svg{ animation:none!important; }
+.ws-item.failed::after{
+  content:'เสียหาย';
+  position:absolute;top:-11px;left:50%;transform:translateX(-50%);
+  background:#7a2a1a;color:#ffd9cf;
+  font-size:.55rem;font-weight:800;padding:1px 7px;border-radius:6px;
+  white-space:nowrap;pointer-events:none;z-index:6;
+}
+.ws-item.selected.failed::after{ content:'เสียหาย'; border:none; }
+
+/* ตัวเก็บประจุที่ระเบิด — ฝาเปิด มีเศษกระเด็น */
+.ws-item.burst{
+  border-color:#ff7a2a!important;
+  box-shadow:0 0 24px rgba(255,120,40,.6)!important;
+}
+.ws-item.burst::before{
+  content:'';position:absolute;inset:-6px;pointer-events:none;border-radius:12px;
+  background:
+    radial-gradient(circle at 28% 18%, rgba(255,220,160,.9) 0 2px, transparent 3px),
+    radial-gradient(circle at 72% 26%, rgba(255,200,140,.8) 0 2px, transparent 3px),
+    radial-gradient(circle at 50% 6%,  rgba(255,180,110,.85) 0 3px, transparent 4px),
+    radial-gradient(circle at 18% 44%, rgba(230,230,230,.6) 0 2px, transparent 3px);
+  animation:hz-burst .9s ease-out 1 both;
+}
+@keyframes hz-burst{
+  0%  {transform:scale(.5);opacity:1}
+  70% {opacity:.9}
+  100%{transform:scale(2.1);opacity:0}
+}
+
+/* ประกายไฟที่หน้าสัมผัสสวิตช์ตอนตัดไฟขดลวด */
+.ws-item.arcing::before{
+  content:'';position:absolute;inset:-4px;border-radius:12px;pointer-events:none;
+  background:radial-gradient(circle at 50% 50%, rgba(180,230,255,.95) 0 4px, rgba(120,200,255,.5) 6px, transparent 12px);
+  animation:hz-arc .18s steps(2) 4;
+}
+@keyframes hz-arc{0%{opacity:1}100%{opacity:.15}}
+
+/* ---------- สายไฟ ---------- */
+.wire-path.wire-hot{
+  stroke:#ff8a30!important;
+  filter:drop-shadow(0 0 7px rgba(255,120,30,.85))!important;
+  animation:hz-wire-hot .7s ease-in-out infinite;
+}
+@keyframes hz-wire-hot{0%,100%{stroke-width:3.5}50%{stroke-width:5}}
+
+/* ---------- แถบสถานะความปลอดภัยเหนือพื้นที่ทำงาน ---------- */
+#hazard-bar{
+  position:absolute;top:8px;left:50%;transform:translateX(-50%);
+  z-index:18;display:flex;gap:6px;flex-wrap:wrap;justify-content:center;
+  max-width:94%;pointer-events:none;
+}
+.hz-chip{
+  font-size:.66rem;font-weight:700;padding:3px 10px;border-radius:999px;
+  border:1px solid;white-space:nowrap;backdrop-filter:blur(4px);
+}
+/* โทนพยากรณ์ของโหมดอิสระ — ยังไม่เกิดขึ้นจริง แค่บอกว่าถ้าจ่ายไฟจะเป็นแบบนี้ */
+.hz-info{background:rgba(8,26,46,.94);border-color:var(--border2);color:var(--text);}
+.hz-safe{background:rgba(4,36,24,.94);border-color:var(--accent3);color:var(--accent3);}
+.hz-warn{background:rgba(60,38,6,.92);border-color:#e08a20;color:#ffce7a;}
+.hz-hot {background:rgba(70,20,6,.94);border-color:#ff5a20;color:#ffb59a;
+         animation:hz-chip-pulse .8s ease-in-out infinite;}
+.hz-fail{background:rgba(74,10,10,.96);border-color:#ff4444;color:#ffc9c9;}
+@keyframes hz-chip-pulse{0%,100%{opacity:1}50%{opacity:.55}}
+
+/* ฉากตอนวงจรกำลังพัง — ย้อมขอบพื้นที่ทำงานเป็นสีเตือน */
+body.hazard-live #workspace{
+  border-color:#ff5a20!important;
+  box-shadow:inset 0 0 40px rgba(255,60,20,.18);
+}
+
+/* ============================================================
+   รายงานเหตุการณ์ — ต่อแบบนี้ / พังตรงไหน / อันตรายยังไง / ป้องกันยังไง
+   ============================================================ */
+.incident-wrap{display:flex;flex-direction:column;gap:10px;text-align:left;}
+
+.incident{
+  background:var(--bg-dark);border:1px solid var(--border);
+  border-left-width:4px;border-radius:var(--radius);
+  padding:11px 13px 12px;
+}
+.incident.sev-critical{border-left-color:#ff4444;}
+.incident.sev-danger  {border-left-color:#ff8a30;}
+.incident.sev-warning {border-left-color:var(--accent2);}
+
+.inc-head{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:5px;}
+.inc-sev{
+  font-size:.58rem;font-weight:900;letter-spacing:.5px;
+  padding:2px 8px;border-radius:999px;flex-shrink:0;
+}
+.sev-critical .inc-sev{background:#ff4444;color:#fff;}
+.sev-danger   .inc-sev{background:#ff8a30;color:#2a1000;}
+.sev-warning  .inc-sev{background:var(--accent2);color:#2a1a00;}
+.inc-title{font-size:.88rem;font-weight:800;color:var(--text);line-height:1.4;}
+
+.inc-measured{
+  font-size:.7rem;color:var(--accent);background:rgba(0,212,255,.07);
+  border:1px solid rgba(0,212,255,.2);border-radius:7px;
+  padding:4px 9px;margin-bottom:8px;font-variant-numeric:tabular-nums;
+}
+
+/* สี่คำถามเรียงเป็นคู่ หัวข้อซ้าย เนื้อหาขวา อ่านไล่ลงมาได้ */
+.inc-rows{display:grid;grid-template-columns:auto 1fr;gap:5px 12px;margin:0;}
+.inc-rows dt{
+  font-size:.68rem;font-weight:800;color:var(--text-dim);
+  white-space:nowrap;padding-top:2px;
+}
+.inc-rows dd{margin:0;font-size:.78rem;line-height:1.65;color:var(--text);}
+
+/* ============================================================
+   รายการตรวจผลลัพธ์ — ผลออกมาได้ตามต้องการหรือยัง
+   ============================================================ */
+.outcome-box{border-left:4px solid var(--accent2);}
+.outcome-box.all-ok{border-left-color:var(--accent3);}
+.outcome-box .report-title{color:var(--accent2);}
+.outcome-box.all-ok .report-title{color:var(--accent3);}
+
+.oc-list{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:4px;}
+.oc-list li{display:flex;align-items:flex-start;gap:8px;font-size:.78rem;line-height:1.55;}
+.oc-mark{
+  flex:0 0 auto;width:16px;height:16px;border-radius:50%;
+  display:flex;align-items:center;justify-content:center;
+  font-size:.62rem;font-weight:900;margin-top:2px;
+}
+.oc-ok  .oc-mark{background:rgba(0,255,136,.18);color:var(--accent3);border:1px solid rgba(0,255,136,.5);}
+.oc-no  .oc-mark{background:rgba(255,68,68,.16);color:#ff8a70;border:1px solid rgba(255,68,68,.5);}
+.oc-opt .oc-mark{background:rgba(110,136,168,.15);color:var(--text-dim);border:1px solid var(--border2);}
+.oc-ok  .oc-text{color:var(--text);}
+.oc-no  .oc-text{color:#ffc9c9;font-weight:600;}
+.oc-opt .oc-text{color:var(--text-dim);}
+.oc-opt{opacity:.85;border-top:1px dashed var(--border);padding-top:5px;margin-top:2px;}
+.oc-text em{display:block;font-style:normal;font-size:.72rem;color:var(--text-dim);font-weight:400;margin-top:1px;}
+
+/* แผงผลวิเคราะห์วงจร — โทนฟ้า แยกจากโทนเตือนของรายงานเหตุการณ์ */
+.analysis-box{border-left:4px solid var(--accent);}
+.analysis-box .report-title{color:var(--accent);}
+.analysis-box .inc-rows{grid-template-columns:auto 1fr;gap:4px 12px;}
+.analysis-box .inc-rows dd{font-size:.76rem;line-height:1.6;}
+
+/* หัวกล่องรายงานเป็นโทนเตือน ไม่ใช่โทนฟ้าเหมือน modal อื่น */
+.modal-header.incident-header{
+  background:rgba(255,68,68,.09);
+  border-bottom-color:rgba(255,68,68,.3);
+}
+.modal-header.incident-header h3{color:#ff8a70;display:flex;align-items:center;gap:8px;}
+.inc-bolt{font-size:1.05rem;line-height:1;}
+
+@media(max-width:640px){
+  .inc-rows{grid-template-columns:1fr;gap:1px 0;}
+  .inc-rows dt{padding-top:6px;}
+  #hazard-bar{top:4px;}
+  .hz-chip{font-size:.6rem;padding:2px 8px;}
+}

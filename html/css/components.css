@@ -7,12 +7,17 @@
    สำคัญ: กล่องต้อง "พอดี" กับไอคอน 52px เป๊ะ (ไม่รวมชื่อ)
    ชื่ออุปกรณ์จึงวางแบบ absolute ใต้กล่อง ไม่นับเป็นความสูง
    ไม่งั้นเวลาหมุนอุปกรณ์ จุดขั้วที่กลายเป็น port-bottom จะตกไปทับชื่อ
-   (ดูเหมือนจุดเหลืองมุดเข้าไปในกล่อง) */
+   (ดูเหมือนจุดเหลืองมุดเข้าไปในกล่อง)
+
+   กล่องต้อง "จัตุรัส" ด้วย เพราะระบบเบรดบอร์ดใช้ระยะระหว่างจุดขั้ว
+   เป็นตัวกำหนดระยะห่างรู (pitch) ถ้าแนวนอนกับแนวตั้งไม่เท่ากัน
+   พอหมุนอุปกรณ์ 90° ขาจะไม่ลงรูพอดีอีกต่อไป */
 .ws-item{
   position:absolute;background:var(--bg-card);border:1.5px solid var(--border2);
   touch-action:none;
-  border-radius:10px;padding:8px 10px;display:flex;flex-direction:column;
-  align-items:center;cursor:move;z-index:3;min-width:72px;
+  border-radius:10px;padding:5px;display:flex;flex-direction:column;
+  align-items:center;justify-content:center;cursor:move;z-index:3;
+  width:65px;height:65px;
   transition:border-color .2s,box-shadow .2s;
 }
 .ws-item:hover{border-color:var(--accent);box-shadow:0 0 16px rgba(0,212,255,.25);}
@@ -48,14 +53,24 @@
 }
 .ws-item:hover .ws-item-delete{opacity:1;}
 
-/* PORTS — จุดต่อสายไฟ
+/* PORTS — จุดต่อสายไฟ (= "ขา" ของอุปกรณ์ที่เสียบลงรูเบรดบอร์ด)
    วางอิงขอบกล่อง (ที่ตอนนี้พอดีไอคอน) ทั้ง 4 ทิศสมมาตรกัน
-   → หมุนอุปกรณ์แล้ว port ทุกทิศยังเกาะขอบไอคอนเสมอ ไม่มุดเข้ากล่อง */
-.port{width:12px;height:12px;background:var(--accent2);border-radius:50%;border:2px solid #000;cursor:crosshair;position:absolute;z-index:4;transition:transform .15s,background .15s;touch-action:none;}
-.port.port-left  {left:-8px;   top:50%;transform:translateY(-50%);}
-.port.port-right {right:-8px;  top:50%;transform:translateY(-50%);}
-.port.port-top   {top:-8px;    left:50%;transform:translateX(-50%);}
-.port.port-bottom{bottom:-8px; left:50%;transform:translateX(-50%);}
+   → หมุนอุปกรณ์แล้ว port ทุกทิศยังเกาะขอบไอคอนเสมอ ไม่มุดเข้ากล่อง
+
+   ทุกทิศใช้ translate(±50%) จัดกึ่งกลางเอง จุดศูนย์กลางจึงอยู่ห่าง
+   ขอบกล่อง 7px เท่ากันหมด "ไม่ขึ้นกับขนาดจุด"
+   สำคัญมากกับเบรดบอร์ด เพราะขั้ว +/− ตัวใหญ่กว่าจุดธรรมดา
+   ถ้าอิง left/right ตรง ๆ ศูนย์กลางจะเยื้องกันจนขาลงรูไม่ตรง */
+/* ห้ามใส่ transition ให้ transform เด็ดขาด
+   transform คือตัวจัดจุดศูนย์กลางของขั้ว ถ้าให้มันค่อย ๆ เคลื่อน
+   โค้ดที่ "วัดตำแหน่งขา" (วาดสายไฟ และหาว่าขาลงรูไหนบนเบรดบอร์ด)
+   จะอ่านค่าระหว่างทางแล้วได้ตำแหน่งผิด — ตอนหมุนอุปกรณ์เห็นชัดที่สุด
+   เพราะขาย้ายข้างพร้อมกับที่ระบบกำลังคำนวณรูที่จะเสียบ */
+.port{width:12px;height:12px;background:var(--accent2);border-radius:50%;border:2px solid #000;cursor:crosshair;position:absolute;z-index:4;transition:background .15s;touch-action:none;}
+.port.port-left  {left:-7px;   top:50%;   transform:translate(-50%,-50%);}
+.port.port-right {right:-7px;  top:50%;   transform:translate(50%,-50%);}
+.port.port-top   {top:-7px;    left:50%;  transform:translate(-50%,-50%);}
+.port.port-bottom{bottom:-7px; left:50%;  transform:translate(-50%,50%);}
 /* ขยายพื้นที่รับสัมผัส (invisible hit area) ของจุดขั้ว
    จุดจริงกว้าง 12-16px ซึ่งเล็กเกินไปสำหรับนิ้ว
    ใช้ ::before เป็นวงกลมใสครอบไว้ — pseudo-element รับ pointer event
@@ -69,8 +84,10 @@
   width:30px;height:30px;border-radius:50%;
 }
 .port:hover{background:var(--accent);}
-.port.port-left:hover ,.port.port-right:hover {transform:translateY(-50%) scale(1.5);}
-.port.port-top:hover  ,.port.port-bottom:hover{transform:translateX(-50%) scale(1.5);}
+.port.port-left:hover  {transform:translate(-50%,-50%) scale(1.5);}
+.port.port-right:hover {transform:translate(50%,-50%)  scale(1.5);}
+.port.port-top:hover   {transform:translate(-50%,-50%) scale(1.5);}
+.port.port-bottom:hover{transform:translate(-50%,50%)  scale(1.5);}
 .port.connected{background:var(--accent3);box-shadow:0 0 6px rgba(0,255,136,.6);}
 
 /* จุดที่เลือกไว้ตอนต่อสายบนมือถือ (แตะทีละจุด)
@@ -82,24 +99,76 @@
   box-shadow:0 0 0 3px rgba(255,215,0,.4), 0 0 14px rgba(255,215,0,.8)!important;
   animation:tap-pulse .8s ease-in-out infinite;
 }
-.port.port-left.tap-selected ,.port.port-right.tap-selected {transform:translateY(-50%) scale(1.6)!important;}
-.port.port-top.tap-selected  ,.port.port-bottom.tap-selected{transform:translateX(-50%) scale(1.6)!important;}
+.port.port-left.tap-selected  {transform:translate(-50%,-50%) scale(1.6)!important;}
+.port.port-right.tap-selected {transform:translate(50%,-50%)  scale(1.6)!important;}
+.port.port-top.tap-selected   {transform:translate(-50%,-50%) scale(1.6)!important;}
+.port.port-bottom.tap-selected{transform:translate(-50%,50%)  scale(1.6)!important;}
+
+/* จุดขั้วที่วางตามตำแหน่งขาจริงของอุปกรณ์ (ดู PORT_ANCHORS ใน js/devices.js)
+   ตำแหน่ง left/top มาเป็นพิกเซลจาก JS แบบ inline style ส่วน right/bottom
+   ถูกล้างเป็น auto ไปแล้วที่นั่น ที่นี่จึงเหลือแค่เรื่อง transform อย่างเดียว
+
+   ทุกทิศใช้ translate(-50%,-50%) เหมือนกันหมด เพราะพิกัดที่ส่งมาคือ
+   "จุดศูนย์กลางของขา" ตรง ๆ ไม่ได้อิงขอบกล่องแบบคลาสทิศเดิม
+   ต้องอยู่หลังกฎของคลาสทิศด้านบน (ความจำเพาะเท่ากัน ตัวหลังชนะ) */
+.port.port-anchored{transform:translate(-50%,-50%);}
+.port.port-anchored:hover{transform:translate(-50%,-50%) scale(1.5);}
+.port.port-anchored.tap-selected{transform:translate(-50%,-50%) scale(1.6)!important;}
+
+/* อุปกรณ์ที่ขาอยู่ก้น (หลอดไฟ LED ตัวเก็บประจุ บัซเซอร์ LDR ทรานซิสเตอร์ มัลติมิเตอร์)
+   จุดขั้วลงมาอยู่ใต้กล่อง ตรงที่ของป้ายชื่อพอดี ต้องเลื่อนป้ายลงไปให้พ้น
+   อุปกรณ์ที่ขาอยู่ด้านบน (แบต 9V) ป้ายสถานะที่ลอยเหนือกล่องก็ต้องหลบขึ้นเหมือนกัน
+   คลาสทั้งสองใส่โดย layoutPorts() ใน js/devices.js ตามทิศขาจริงหลังหมุนแล้ว */
+.ws-item.has-port-bottom .ws-item-name{top:calc(100% + 22px);}
+.ws-item.has-port-top.failed::after,
+.ws-item.has-port-top.burned::after,
+.ws-item.has-port-top.fuse-blown::after{top:-24px;}
 @keyframes tap-pulse{0%,100%{box-shadow:0 0 0 3px rgba(255,215,0,.4),0 0 14px rgba(255,215,0,.8)}50%{box-shadow:0 0 0 5px rgba(255,215,0,.6),0 0 20px rgba(255,215,0,1)}}
 
 /* ขั้วบวก/ลบ — สีแดง(+) น้ำเงิน(−) พร้อมป้ายกำกับ +/− ที่อ่านออกชัด
    อุปกรณ์มีขั้ว (ถ่าน/LED/ไดโอด/มอเตอร์/บัซเซอร์/ตัวเก็บประจุ) จะได้คลาสนี้อัตโนมัติ
    จุดขั้วทำใหญ่ขึ้นเล็กน้อย + เครื่องหมายหนา มีเงาดำ ให้เห็นชัดแม้จุดเล็ก */
-.port.port-pos,.port.port-neg{width:15px;height:15px;}
+/* ขนาดต้องเป็นเลขคู่ ไม่ใช่ 15px
+   วงกลมกว้างเลขคี่ = จุดกึ่งกลางตกที่ครึ่งพิกเซล เครื่องหมายที่วางกึ่งกลาง
+   จะคร่อมพิกเซลแล้วถูกปัดเบี้ยวไปข้างหนึ่งเสมอ มองเห็นชัดเพราะจุดมันเล็ก */
+.port.port-pos,.port.port-neg{width:16px;height:16px;}
 .port.port-pos{background:#ff4444;border-color:#fff;}
 .port.port-neg{background:#3b82f6;border-color:#fff;}
+/* เครื่องหมาย +/− วาดเป็นแท่งสี่เหลี่ยม ไม่ได้ใช้ตัวอักษร
+
+   ทำไมไม่ใช้ตัวอักษร: ตัวอักษรมีช่องว่างบน-ล่างในตัวมันเอง (ascender/descender)
+   ไม่เท่ากันและไม่สมมาตร จัดกึ่งกลาง "กล่องตัวอักษร" ได้ก็จริง
+   แต่ "ขีดที่มองเห็น" จะเยื้องขึ้นเสมอ และเยื้องไม่เท่ากันระหว่าง + กับ −
+   เพราะสองตัวนี้คนละขนาดคนละฟอนต์เมตริก
+
+   วาดเป็นแท่งด้วย background ทำให้ทุกแท่งอิง background-position:center
+   ซึ่งเป็นกึ่งกลางเชิงเรขาคณิตจริง ๆ ของวงกลม ไม่ขึ้นกับฟอนต์เลย
+
+   ขนาดต้องเป็น "พิกเซลเต็ม" ทุกค่า ห้ามใช้ % เด็ดขาด
+   ถ้าใช้ % จะได้ทศนิยม (70% ของ 11px = 7.7px) แล้วเบราว์เซอร์ปัดเข้าพิกเซล
+   ทำให้แท่งเบี้ยวออกจากกึ่งกลางไปข้างหนึ่ง เห็นชัดมากเพราะจุดขั้วเล็ก
+   ชุดเลขนี้ลงตัวหมด: กล่อง 16 → ในกรอบ 12 → เครื่องหมาย 8 → เหลือข้างละ 2
+   แท่งหนา 2 → (8−2)/2 = 3 ข้างละเท่ากันพอดี ไม่มีเศษให้ปัด */
 .port.port-pos::after,
 .port.port-neg::after{
-  position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);
-  font-weight:900;line-height:1;pointer-events:none;color:#fff;
-  text-shadow:0 0 2px rgba(0,0,0,.9),0 0 2px rgba(0,0,0,.9);
+  content:'';
+  position:absolute;top:50%;left:50%;
+  width:8px;height:8px;
+  transform:translate(-50%,-50%);
+  pointer-events:none;
+  background-repeat:no-repeat;
+  background-position:center;
 }
-.port.port-pos::after{content:'+';font-size:12px;}
-.port.port-neg::after{content:'−';font-size:14px;}
+/* − = แท่งนอนแท่งเดียว */
+.port.port-neg::after{
+  background-image:linear-gradient(#fff,#fff);
+  background-size:8px 2px;
+}
+/* + = แท่งนอนซ้อนแท่งตั้ง ทั้งคู่อิงกึ่งกลางเดียวกัน จึงตัดกันกลางพอดี */
+.port.port-pos::after{
+  background-image:linear-gradient(#fff,#fff),linear-gradient(#fff,#fff);
+  background-size:8px 2px, 2px 8px;
+}
 .port.port-pos.connected{background:#ff6666;box-shadow:0 0 8px rgba(255,68,68,.7);}
 .port.port-neg.connected{background:#66aaff;box-shadow:0 0 8px rgba(68,136,255,.7);}
 /* จุดที่มีหลายสี (สายต่างขั้วมาต่อจุดเดียว) — แบ่งครึ่งสี */

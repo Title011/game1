@@ -25,11 +25,13 @@ var LEVELS = [
 
   /* ══════════ บทที่ 1 — วงจรปิดพื้นฐาน ══════════ */
   {
-    title:'ด่านที่ 1 — หลอดไฟดวงแรก',
-    goal:'ต่อถ่านไฟฉายเข้ากับหลอดไฟให้ครบวงจร ไฟจึงจะติด',
+    title:'ด่านที่ 1 — ซ่อมไฟฉายให้กลับมาสว่าง',
+    goal:'ไฟฉายกระบอกนี้ถ่านหลุดออกมา ต่อถ่านกลับเข้ากับหลอดให้ไฟวิ่งครบรอบ มันจึงจะส่องสว่างได้อีกครั้ง',
+    outcome:'หลอดไฟติดสว่าง',
     inventory:{battery_aa:1,bulb:1},
     solution:[["battery_aa.right", "bulb.left"], ["bulb.right", "battery_aa.left"]],
     topology:{type:'series'},
+    require:{work:['bulb'], topology:'series'},
     timeLimit:150, baseScore:60,
     tutorial:[
       {img:'Insert_image_here',text:'วงจรไฟฟ้าที่ง่ายที่สุดมีแค่ 2 อย่าง:\n1. แหล่งพลังงาน (ถ่านไฟฉาย)\n2. อุปกรณ์ใช้ไฟ (หลอดไฟ)\n\nหัวใจสำคัญคือต้องต่อเป็น "วงจรปิด"\nคือไฟวิ่งออกจากถ่านด้านหนึ่ง ผ่านหลอดไฟ\nแล้ววิ่งกลับเข้าถ่านอีกด้านหนึ่งได้ครบรอบ\n\nถ้าขาดตอนตรงไหน ไฟจะไม่ไหล หลอดไม่ติด'},
@@ -44,11 +46,13 @@ var LEVELS = [
     }
   },
   {
-    title:'ด่านที่ 2 — เพิ่มสวิตช์',
-    goal:'เพิ่มสวิตช์เข้าไปในวงจร เพื่อควบคุมการเปิด-ปิดไฟ',
+    title:'ด่านที่ 2 — โคมไฟหัวเตียงที่สั่งปิดได้',
+    goal:'ทำโคมไฟหัวเตียงที่กดสวิตช์แล้วดับได้ โดยไม่ต้องถอดถ่านออก — สวิตช์ต้องแทรกอยู่ในทางเดินของไฟ ไม่ใช่ต่อคร่อมอยู่ข้าง ๆ',
+    outcome:'สับสวิตช์ ON แล้วหลอดติด · สับ OFF แล้วดับสนิท',
     inventory:{battery_aa:1,switch:1,bulb:1},
     solution:[["battery_aa.right", "switch.left"], ["switch.right", "bulb.left"], ["bulb.right", "battery_aa.left"]],
     topology:{type:'series'},
+    require:{work:['bulb'], topology:'series', switchControls:true},
     timeLimit:160, baseScore:70,
     tutorial:[
       {img:'Insert_image_here',text:'สวิตช์ = ตัวควบคุมวงจร\n\nทำหน้าที่ "ตัด" หรือ "ต่อ" ทางเดินของไฟ\n• สวิตช์ปิด (ON) → วงจรครบ ไฟไหลได้\n• สวิตช์เปิด (OFF) → วงจรขาด ไฟไม่ไหล\n\nต่อสวิตช์แบบอนุกรม คือแทรกอยู่ในเส้นทาง\nที่ไฟต้องวิ่งผ่าน ไม่ใช่ต่อคร่อมอยู่ข้าง ๆ\n\nลำดับที่ต้องต่อ:\nถ่าน → สวิตช์ → หลอดไฟ → กลับถ่าน'},
@@ -62,11 +66,13 @@ var LEVELS = [
     }
   },
   {
-    title:'ด่านที่ 3 — แบตเตอรี่ 9V',
-    goal:'เปลี่ยนมาใช้แบตเตอรี่ 9V เป็นแหล่งจ่ายไฟแทนถ่าน AA',
+    title:'ด่านที่ 3 — ทำให้ไฟฉายสว่างกว่าเดิม',
+    goal:'มีคนบ่นว่าไฟฉายสว่างไม่พอ เปลี่ยนจากถ่าน AA 1.5V ไปใช้แบตเตอรี่ 9V แล้วต่อวงจรเดิมให้กลับมาทำงาน',
+    outcome:'หลอดสว่างเต็มที่ — สว่างกว่าตอนใช้ถ่าน AA อย่างเห็นได้ชัด',
     inventory:{battery_9v:1,switch:1,bulb:1},
     solution:[["battery_9v.right", "switch.left"], ["switch.right", "bulb.left"], ["bulb.right", "battery_9v.left"]],
     topology:{type:'series'},
+    require:{work:['bulb'], minWork:0.9, topology:'series', switchControls:true},
     timeLimit:160, baseScore:80,
     tutorial:[
       {img:'Insert_image_here',text:'แหล่งจ่ายไฟมีหลายขนาด\n\n• ถ่านไฟฉาย AA = 1.5 โวลต์\n• แบตเตอรี่ 9V   = 9 โวลต์ (แรงกว่า 6 เท่า)\n\nแรงดัน (โวลต์) เปรียบเหมือน "แรงดันน้ำ"\nยิ่งแรงดันสูง ยิ่งดันกระแสผ่านวงจรได้มาก\nหลอดไฟก็สว่างขึ้น\n\nลองใช้ปุ่ม "เครื่องวัด" แล้วจิ้มที่เส้นสาย\nเพื่อดูค่าแรงดันและกระแสจริงในวงจรได้'},
@@ -79,11 +85,13 @@ var LEVELS = [
     }
   },
   {
-    title:'ด่านที่ 4 — ตัวต้านทาน',
-    goal:'เพิ่มตัวต้านทานเข้าไปในวงจร เพื่อจำกัดกระแสไฟ',
+    title:'ด่านที่ 4 — หรี่ไฟไม่ให้แสบตา',
+    goal:'ไฟ 9V จ้าจนแสบตา ใส่ตัวต้านทานคั่นไว้เพื่อบีบกระแสให้น้อยลง ให้หลอดติดแบบนวลตาแทนที่จะสว่างเต็มที่',
+    outcome:'หลอดยังติดอยู่แต่หรี่ลงชัดเจน — ใช้เครื่องวัดเทียบกระแสกับด่านที่แล้วได้',
     inventory:{battery_9v:1,switch:1,resistor:1,bulb:1},
     solution:[["battery_9v.right", "switch.left"], ["switch.right", "resistor.left"], ["resistor.right", "bulb.left"], ["bulb.right", "battery_9v.left"]],
     topology:{type:'series'},
+    require:{work:['bulb'], maxWork:0.7, topology:'series', switchControls:true},
     timeLimit:170, baseScore:90,
     tutorial:[
       {img:'Insert_image_here',text:'ตัวต้านทาน (Resistor) = ตัวจำกัดกระแส\n\nเปรียบเหมือนท่อน้ำที่แคบลง\nน้ำ (กระแส) ไหลผ่านได้น้อยลง\n\nกฎของโอห์ม:  I = V ÷ R\n  I = กระแส (แอมป์)\n  V = แรงดัน (โวลต์)\n  R = ความต้านทาน (โอห์ม)\n\nยิ่ง R มาก กระแสยิ่งน้อย\nใช้ป้องกันอุปกรณ์ไม่ให้พังเพราะกระแสเกิน'},
@@ -99,11 +107,13 @@ var LEVELS = [
 
   /* ══════════ บทที่ 2 — วงจรอนุกรม ══════════ */
   {
-    title:'ด่านที่ 5 — อนุกรม 2 หลอด',
-    goal:'ต่อหลอดไฟ 2 ดวงเรียงกันแบบอนุกรมในวงเดียว',
+    title:'ด่านที่ 5 — ไฟประดับแบบเส้นเดียว',
+    goal:'ทำไฟประดับสองดวงร้อยอยู่ในสายเส้นเดียวแบบรุ่นเก่า ไฟต้องวิ่งผ่านดวงแรกแล้วไปต่อดวงที่สองก่อนกลับเข้าถ่าน',
+    outcome:'หลอดติดทั้ง 2 ดวง แต่หรี่กว่าตอนมีดวงเดียว เพราะแรงดันถูกแบ่งกัน',
     inventory:{battery_9v:1,switch:1,bulb:2},
     solution:[["battery_9v.right", "switch.left"], ["switch.right", "bulb.left"], ["bulb.right", "bulb.left"], ["bulb.right", "battery_9v.left"]],
     topology:{type:'series'},
+    require:{work:['bulb'], maxWork:0.85, topology:'series', switchControls:true},
     timeLimit:180, baseScore:100,
     tutorial:[
       {img:'Insert_image_here',text:'วงจรอนุกรม = ต่อเรียงกันเป็นทอดเดียว\n\nไฟมีทางเดินเดียว วิ่งผ่านทุกอุปกรณ์เรียงกัน\nแล้ววนกลับมาที่แหล่งจ่าย\n\nคุณสมบัติสำคัญ:\n• กระแสเท่ากันทุกจุดในวง\n• แรงดันถูกแบ่งกันระหว่างอุปกรณ์\n• หลอด 2 ดวงอนุกรม → แต่ละดวงได้แรงดันครึ่งเดียว\n  จึงสว่างน้อยกว่าตอนมีดวงเดียว'},
@@ -117,11 +127,13 @@ var LEVELS = [
     }
   },
   {
-    title:'ด่านที่ 6 — ฟิวส์ป้องกัน',
-    goal:'เพิ่มฟิวส์ป้องกันกระแสเกิน โดยวางไว้ใกล้แหล่งจ่ายที่สุด',
+    title:'ด่านที่ 6 — ติดฟิวส์กันไฟไหม้',
+    goal:'วงจรนี้ยังไม่มีอะไรป้องกันเลย ลัดวงจรเมื่อไรสายไหม้ทันที ใส่ฟิวส์คั่นไว้ใกล้แหล่งจ่ายที่สุด ให้มันขาดแทนก่อนที่อย่างอื่นจะพัง',
+    outcome:'หลอดติดตามปกติ และถ้าเกิดลัดวงจร ฟิวส์จะขาดตัดไฟแทนทั้งวงจร',
     inventory:{battery_9v:1,fuse:1,switch:1,bulb:1},
     solution:[["battery_9v.right", "fuse.left"], ["fuse.right", "switch.left"], ["switch.right", "bulb.left"], ["bulb.right", "battery_9v.left"]],
     topology:{type:'series'},
+    require:{work:['bulb'], topology:'series', switchControls:true, fuseProtects:true},
     timeLimit:180, baseScore:110,
     tutorial:[
       {img:'Insert_image_here',text:'ฟิวส์ (Fuse) = อุปกรณ์นิรภัย\n\nข้างในเป็นลวดโลหะจุดหลอมเหลวต่ำ\nเมื่อกระแสเกินค่าพิกัด (ตัวนี้ 5 แอมป์)\nลวดจะร้อนจนหลอมขาด ตัดวงจรทันที\n\nป้องกันไม่ให้สายไฟไหม้\nและอุปกรณ์ราคาแพงเสียหาย\n\nฟิวส์ขาดแล้วใช้ซ้ำไม่ได้ ต้องเปลี่ยนใหม่'},
@@ -135,11 +147,13 @@ var LEVELS = [
     }
   },
   {
-    title:'ด่านที่ 7 — อนุกรมเต็มรูปแบบ',
-    goal:'รวมทุกอย่างที่เรียนมา: ฟิวส์ + สวิตช์ + หลอดไฟ 2 ดวงอนุกรม',
+    title:'ด่านที่ 7 — ชุดไฟส่องป้ายหน้าร้าน',
+    goal:'ประกอบชุดไฟส่องป้าย 2 ดวง ให้มีฟิวส์ป้องกันและสวิตช์คุมทั้งชุด เรียงลำดับแบบช่างไฟ: ป้องกันก่อน ควบคุมถัดมา แล้วค่อยถึงหลอด',
+    outcome:'หลอดติดพร้อมกันทั้ง 2 ดวง และปิดทั้งชุดได้ด้วยสวิตช์เดียว',
     inventory:{battery_9v:1,fuse:1,switch:1,bulb:2},
     solution:[["battery_9v.right", "fuse.left"], ["fuse.right", "switch.left"], ["switch.right", "bulb.left"], ["bulb.right", "bulb.left"], ["bulb.right", "battery_9v.left"]],
     topology:{type:'series'},
+    require:{work:['bulb'], maxWork:0.85, topology:'series', switchControls:true, fuseProtects:true},
     timeLimit:200, baseScore:120,
     tutorial:[
       {img:'Insert_image_here',text:'ทบทวนบทที่ 2 — วงจรอนุกรม\n\nด่านนี้รวมทุกอย่างที่ผ่านมาไว้ในวงเดียว\nแบตเตอรี่ + ฟิวส์ + สวิตช์ + หลอดไฟ 2 ดวง\n\nลำดับที่แนะนำ (ป้องกันก่อน ควบคุมทีหลัง):\n1. แบตเตอรี่ → ฟิวส์   (ป้องกันไว้ก่อน)\n2. ฟิวส์ → สวิตช์      (ควบคุม)\n3. สวิตช์ → หลอดที่ 1\n4. หลอดที่ 1 → หลอดที่ 2\n5. หลอดที่ 2 → กลับแบตเตอรี่\n\nรวม 5 เส้น ทุกจุดมีสายเส้นเดียว'},
@@ -156,11 +170,13 @@ var LEVELS = [
 
   /* ══════════ บทที่ 3 — ขั้วบวก/ลบ ══════════ */
   {
-    title:'ด่านที่ 8 — LED มีขั้ว!',
-    goal:'ต่อ LED ให้ถูกขั้ว โดยมีตัวต้านทานป้องกันเสมอ',
+    title:'ด่านที่ 8 — ไฟดวงเล็กบอกว่าเครื่องเปิดอยู่',
+    goal:'ทำไฟ LED แสดงสถานะว่าเครื่องยังเปิดอยู่ LED มีขั้วต้องต่อให้ถูกด้าน และต้องมีตัวต้านทานคั่นเสมอ ไม่งั้นไหม้ในเสี้ยววินาที',
+    outcome:'LED ติด — ถ่าน AA แรงดันไม่มาก จึงติดแบบสลัว ๆ ตามความเป็นจริง',
     inventory:{battery_aa:1,resistor:1,led:1},
     solution:[["battery_aa.right", "resistor.left"], ["resistor.right", "led.left"], ["led.right", "battery_aa.left"]],
     topology:{type:'series'},
+    require:{work:['led'], topology:'series', currentBelow:{led:0.04}},
     timeLimit:180, baseScore:130,
     tutorial:[
       {img:'Insert_image_here',text:'อุปกรณ์ "มีขั้ว" ต่อกลับด้านไม่ได้!\n\nหลอดไฟธรรมดาต่อทางไหนก็ติด\nแต่ LED ต้องต่อถูกขั้วเท่านั้น\n\nสังเกตสีของจุดขั้วในเกม:\n🔴 จุดแดงมีเครื่องหมาย +  = ขั้วบวก\n🔵 จุดน้ำเงินมีเครื่องหมาย − = ขั้วลบ\n🟡 จุดเหลือง = ไม่มีขั้ว ต่อทางไหนก็ได้\n\nกฎ: ขั้ว + ของถ่าน ต้องไปหาขั้ว + ของ LED\n     ขั้ว − ของถ่าน ต้องไปหาขั้ว − ของ LED\n\nถ้าต่อกลับด้าน กด R เพื่อหมุนอุปกรณ์แก้ได้'},
@@ -175,11 +191,13 @@ var LEVELS = [
     }
   },
   {
-    title:'ด่านที่ 9 — LED + สวิตช์',
-    goal:'เพิ่มสวิตช์ควบคุม LED โดยยังคงต่อขั้วให้ถูกต้อง',
+    title:'ด่านที่ 9 — ไฟสถานะที่สั่งเปิด-ปิดได้',
+    goal:'เพิ่มสวิตช์ให้ไฟสถานะดวงเดิม โดยยังต้องรักษาขั้ว LED และตัวต้านทานป้องกันไว้ครบทั้งคู่',
+    outcome:'สับ ON แล้ว LED ติด · สับ OFF แล้วดับ โดย LED ไม่เสียหาย',
     inventory:{battery_aa:1,switch:1,resistor:1,led:1},
     solution:[["battery_aa.right", "switch.left"], ["switch.right", "resistor.left"], ["resistor.right", "led.left"], ["led.right", "battery_aa.left"]],
     topology:{type:'series'},
+    require:{work:['led'], topology:'series', switchControls:true, currentBelow:{led:0.04}},
     timeLimit:190, baseScore:140,
     tutorial:[
       {img:'Insert_image_here',text:'ขั้วยังถูกอยู่ไหม เมื่อมีตัวกลางคั่น?\n\nด่านนี้มีสวิตช์กับตัวต้านทานคั่นอยู่\nระหว่างถ่านกับ LED\n\nสวิตช์และตัวต้านทาน "ไม่มีขั้ว"\nไฟวิ่งทะลุผ่านได้ทั้งสองทาง\nจึงไม่ทำให้ขั้วของ LED เปลี่ยนไป\n\nสิ่งที่ต้องดูคือ: ไล่จากขั้ว + ของถ่าน\nวิ่งตามสายไปเรื่อย ๆ ต้องไปถึงขั้ว + ของ LED ก่อน\nแล้วออกทางขั้ว − กลับเข้าขั้ว − ของถ่าน\n\nสังเกตสีสายในเกม: สายแดง = ฝั่งบวก, สายฟ้า = ฝั่งลบ'},
@@ -194,11 +212,13 @@ var LEVELS = [
     }
   },
   {
-    title:'ด่านที่ 10 — ไดโอดกันไฟย้อน',
-    goal:'ต่อไดโอดให้ถูกทิศ เพื่อให้ไฟไหลผ่านได้ทางเดียว',
+    title:'ด่านที่ 10 — กันคนใส่ถ่านกลับด้าน',
+    goal:'ใส่ไดโอดกันไฟย้อนไว้ในวงจร เพื่อให้ไฟไหลผ่านได้ทางเดียว ถ้าใครเผลอใส่ถ่านกลับด้าน เครื่องจะแค่ไม่ทำงาน ไม่ใช่พังทั้งชุด',
+    outcome:'หลอดติดเมื่อไฟไหลถูกทิศ · จิ้มเครื่องวัดจะเห็นแรงดันตกคร่อมไดโอดราว 0.7 V',
     inventory:{battery_9v:1,switch:1,diode:1,bulb:1},
     solution:[["battery_9v.right", "diode.left"], ["diode.right", "switch.left"], ["switch.right", "bulb.left"], ["bulb.right", "battery_9v.left"]],
     topology:{type:'series'},
+    require:{work:['bulb'], topology:'series', switchControls:true, conducting:['diode']},
     timeLimit:190, baseScore:150,
     tutorial:[
       {img:'Insert_image_here',text:'ไดโอด (Diode) = ประตูทางเดียว\n\nยอมให้กระแสไหลผ่านได้ทิศเดียวเท่านั้น\nถ้าไฟพยายามไหลย้อนกลับ ไดโอดจะกั้นไว้\n\nเปรียบเหมือนประตูที่ผลักเข้าได้อย่างเดียว\n\nขา A (Anode)   = ขั้วบวก  ไฟเข้าทางนี้\nขา K (Cathode) = ขั้วลบ   ไฟออกทางนี้\nสังเกตแถบสีเงินบนตัวไดโอด = ฝั่งขา K'},
@@ -214,11 +234,13 @@ var LEVELS = [
 
   /* ══════════ บทที่ 4 — วงจรขนาน ══════════ */
   {
-    title:'ด่านที่ 11 — ขนานครั้งแรก',
-    goal:'ต่อหลอดไฟ 2 ดวงแบบขนาน โดยแยกออกจากขั้วแบตเตอรี่โดยตรง',
+    title:'ด่านที่ 11 — ไฟสองดวงที่ต้องสว่างเท่ากัน',
+    goal:'ด่านที่แล้วต่ออนุกรมแล้วหลอดหรี่ทั้งคู่ คราวนี้ต้องให้ทั้งสองดวงสว่างเต็มที่ — แยกแต่ละดวงออกจากขั้วแบตเตอรี่โดยตรง',
+    outcome:'หลอดสว่างเต็มทั้ง 2 ดวงเท่ากัน แต่แบตต้องจ่ายกระแสรวมเป็น 2 เท่า',
     inventory:{battery_9v:1,bulb:2},
     solution:[["battery_9v.right", "bulb.left"], ["bulb.right", "battery_9v.left"], ["battery_9v.right", "bulb.left"], ["bulb.right", "battery_9v.left"]],
     topology:{type:'parallel',branches:2,mustHave:['bulb']},
+    require:{work:['bulb'], minWork:0.9, topology:'parallel', branches:2},
     timeLimit:200, baseScore:160,
     tutorial:[
       {img:'Insert_image_here',text:'วงจรขนาน = แยกเป็นหลายเส้นทาง\n\nต่างจากอนุกรมที่มีทางเดียว\nวงจรขนานแยกไฟออกเป็นหลาย "สาขา"\nแต่ละสาขาต่อคร่อมขั้วแบตเตอรี่โดยตรง\n\nคุณสมบัติสำคัญ:\n• ทุกสาขาได้แรงดันเต็มเท่ากัน\n  (หลอดจึงสว่างเต็มที่ ไม่หรี่เหมือนอนุกรม)\n• กระแสรวมถูกแบ่งไปตามแต่ละสาขา\n• สาขาหนึ่งขาด สาขาอื่นยังทำงานต่อได้'},
@@ -232,11 +254,13 @@ var LEVELS = [
     }
   },
   {
-    title:'ด่านที่ 12 — ขนาน + สวิตช์แยกสาขา',
-    goal:'ต่อหลอดไฟ 2 ดวงแบบขนาน ให้แต่ละดวงมีสวิตช์ควบคุมของตัวเอง',
+    title:'ด่านที่ 12 — ไฟห้องนอนกับไฟห้องน้ำ',
+    goal:'เดินไฟ 2 ห้องให้เปิด-ปิดแยกกันได้อิสระ ปิดห้องหนึ่งแล้วอีกห้องต้องยังสว่างอยู่ — นี่คือเหตุผลที่บ้านจริงเดินไฟแบบขนาน ไม่ใช่อนุกรม',
+    outcome:'ปิดสวิตช์ดวงใดดวงหนึ่ง อีกดวงยังติดอยู่ตามปกติ',
     inventory:{battery_9v:1,switch:2,bulb:2},
     solution:[["battery_9v.right", "switch.left"], ["switch.right", "bulb.left"], ["bulb.right", "battery_9v.left"], ["battery_9v.right", "switch.left"], ["switch.right", "bulb.left"], ["bulb.right", "battery_9v.left"]],
     topology:{type:'parallel',branches:2,mustHave:['switch','bulb']},
+    require:{work:['bulb'], minWork:0.9, topology:'parallel', branches:2, independent:true},
     timeLimit:220, baseScore:170,
     tutorial:[
       {img:'Insert_image_here',text:'ข้อดีที่แท้จริงของวงจรขนาน\n\nใส่สวิตช์ไว้ในแต่ละสาขา\nจะเปิด-ปิดแยกกันได้อิสระ\nโดยไม่กระทบสาขาอื่นเลย\n\nนี่คือเหตุผลที่บ้านเราต่อไฟแบบขนาน\nปิดไฟห้องนอน แต่ไฟห้องนั่งเล่นยังติดอยู่\n\nถ้าต่ออนุกรม ปิดสวิตช์เดียว ดับทั้งบ้าน'},
@@ -252,11 +276,13 @@ var LEVELS = [
     }
   },
   {
-    title:'ด่านที่ 13 — ขนาน 3 สาขา',
-    goal:'ขยายวงจรขนานเป็น 3 สาขา ด้วยหลอดไฟ 3 ดวง',
+    title:'ด่านที่ 13 — ไฟส่องสว่าง 3 จุดในห้องเดียว',
+    goal:'ขยายเป็น 3 จุดโดยทุกดวงต้องสว่างเท่ากันหมด แล้วลองกดเครื่องวัดดูว่าแบตต้องจ่ายกระแสรวมเพิ่มขึ้นแค่ไหน',
+    outcome:'หลอดสว่างเต็มทั้ง 3 ดวง · กระแสรวมจากแบตเป็น 3 เท่าของหลอดดวงเดียว',
     inventory:{battery_9v:1,bulb:3},
     solution:[["battery_9v.right", "bulb.left"], ["bulb.right", "battery_9v.left"], ["battery_9v.right", "bulb.left"], ["bulb.right", "battery_9v.left"], ["battery_9v.right", "bulb.left"], ["bulb.right", "battery_9v.left"]],
     topology:{type:'parallel',branches:3,mustHave:['bulb']},
+    require:{work:['bulb'], minWork:0.9, topology:'parallel', branches:3},
     timeLimit:230, baseScore:180,
     tutorial:[
       {img:'Insert_image_here',text:'ยิ่งเพิ่มสาขา ยิ่งกินกระแสมาก\n\nแรงดันที่แต่ละสาขาได้ยังเท่าเดิม (9V)\nแต่กระแสรวมที่แบตเตอรี่ต้องจ่ายเพิ่มขึ้น\nตามจำนวนสาขา\n\n1 หลอด → กระแส I\n2 หลอด → กระแส 2I\n3 หลอด → กระแส 3I\n\nความต้านทานรวมของวงจรขนานจะ "ลดลง"\nเมื่อเพิ่มสาขา ซึ่งตรงข้ามกับวงจรอนุกรม'},
@@ -272,11 +298,13 @@ var LEVELS = [
 
   /* ══════════ บทที่ 5 — อุปกรณ์เปลี่ยนพลังงาน ══════════ */
   {
-    title:'ด่านที่ 14 — มอเตอร์ไฟฟ้า',
-    goal:'ต่อมอเตอร์ให้ถูกขั้ว เพื่อเปลี่ยนพลังงานไฟฟ้าเป็นการหมุน',
+    title:'ด่านที่ 14 — พัดลมระบายอากาศ',
+    goal:'ทำพัดลมระบายอากาศที่สั่งเปิด-ปิดได้ ต่อมอเตอร์ให้ถูกขั้วเพื่อเปลี่ยนไฟฟ้าเป็นการหมุน — ถ้ากลับขั้ว มันจะหมุนกลับทาง',
+    outcome:'มอเตอร์หมุน — ยิ่งกระแสมากยิ่งหมุนเร็ว ดูได้จากเครื่องวัด',
     inventory:{battery_9v:1,switch:1,motor:1},
     solution:[["battery_9v.right", "switch.left"], ["switch.right", "motor.left"], ["motor.right", "battery_9v.left"]],
     topology:{type:'series'},
+    require:{work:['motor'], topology:'series', switchControls:true},
     timeLimit:180, baseScore:190,
     tutorial:[
       {img:'Insert_image_here',text:'มอเตอร์ = เปลี่ยนไฟฟ้าเป็นพลังงานกล\n\nหลักการ: เมื่อกระแสไหลผ่านขดลวด\nที่อยู่ในสนามแม่เหล็ก จะเกิดแรงผลักให้หมุน\n\nส่วนประกอบหลัก:\n• สเตเตอร์ (อยู่กับที่) — แม่เหล็กขั้ว N และ S\n• โรเตอร์ (หมุนได้)   — ขดลวดตรงกลาง\n• แปรงถ่าน + คอมมิวเตเตอร์ — สลับทิศกระแส\n\nมอเตอร์มีขั้ว + และ − ต่อถูกขั้วถึงจะหมุน\nต่อเสร็จแล้วกดตรวจวงจร จะเห็นโรเตอร์หมุนจริง'},
@@ -290,11 +318,13 @@ var LEVELS = [
     }
   },
   {
-    title:'ด่านที่ 15 — มอเตอร์ + ไดโอดกัน Back-EMF',
-    goal:'เพิ่มไดโอดป้องกันไฟย้อนจากมอเตอร์',
+    title:'ด่านที่ 15 — ปิดพัดลมแล้วต้องไม่มีอะไรพัง',
+    goal:'ตอนตัดไฟ ขดลวดมอเตอร์จะเหวี่ยงแรงดันย้อนกลับสูงเป็นสิบเท่าของแหล่งจ่าย ใส่ไดโอดคายพลังงานไว้ แล้วลองสับสวิตช์ OFF เทียบกับด่านที่แล้วดู',
+    outcome:'มอเตอร์หมุนตามปกติ และสับสวิตช์ปิดได้โดยไม่มีแรงดันย้อนไปทำลายอะไร',
     inventory:{battery_9v:1,switch:1,diode:1,motor:1},
     solution:[["battery_9v.right", "diode.left"], ["diode.right", "switch.left"], ["switch.right", "motor.left"], ["motor.right", "battery_9v.left"]],
     topology:{type:'series'},
+    require:{work:['motor'], topology:'series', switchControls:true, conducting:['diode']},
     timeLimit:200, baseScore:200,
     tutorial:[
       {img:'Insert_image_here',text:'Back-EMF คืออะไร?\n\nมอเตอร์ข้างในเป็นขดลวด\nเมื่อตัดไฟกะทันหัน สนามแม่เหล็กที่ยุบตัว\nจะเหนี่ยวนำให้เกิดแรงดันไฟฟ้าย้อนกลับ\nสูงได้ถึงหลายร้อยโวลต์ในชั่วพริบตา\n\nแรงดันย้อนนี้เรียกว่า Back-EMF\nทำให้ทรานซิสเตอร์หรือวงจรควบคุมพังได้'},
@@ -309,11 +339,13 @@ var LEVELS = [
     }
   },
   {
-    title:'ด่านที่ 16 — บัซเซอร์แจ้งเตือน',
-    goal:'ต่อบัซเซอร์ผ่านตัวต้านทาน เพื่อเปลี่ยนไฟฟ้าเป็นเสียง',
+    title:'ด่านที่ 16 — ทดสอบว่าออดตัวนี้ยังดังอยู่ไหม',
+    goal:'มีบัซเซอร์ตัวหนึ่งไม่แน่ใจว่าเสียหรือยัง ต่อมันเข้าวงจรอนุกรมกับตัวต้านทานคุมกระแส แล้วสับสวิตช์ดู — ถ้ามีเสียงออกมา ก็ยืนยันได้ว่ามันยังใช้ได้',
+    outcome:'สับสวิตช์ ON แล้วบัซเซอร์ดัง = ยืนยันว่าบัซเซอร์ตัวนี้ยังดีอยู่',
     inventory:{battery_aa:1,switch:1,resistor:1,buzzer:1},
     solution:[["battery_aa.right", "switch.left"], ["switch.right", "resistor.left"], ["resistor.right", "buzzer.left"], ["buzzer.right", "battery_aa.left"]],
     topology:{type:'series'},
+    require:{work:['buzzer'], topology:'series', switchControls:true, currentBelow:{buzzer:0.15}},
     timeLimit:200, baseScore:210,
     tutorial:[
       {img:'Insert_image_here',text:'บัซเซอร์ = เปลี่ยนไฟฟ้าเป็นเสียง\n\nข้างในเป็นแผ่นเซรามิกเพียโซ (Piezo)\nเมื่อจ่ายไฟ แผ่นจะบิดตัวสั่นอย่างรวดเร็ว\nดันอากาศให้เกิดคลื่นเสียง\n\nใช้เป็นสัญญาณเตือนในเครื่องใช้ไฟฟ้าทั่วไป\nเช่น ไมโครเวฟ นาฬิกาปลุก เครื่องตรวจควันไฟ\n\nบัซเซอร์มีขั้ว + และ − ต้องต่อให้ถูก'},
@@ -330,11 +362,13 @@ var LEVELS = [
 
   /* ══════════ บทที่ 6 — อิเล็กทรอนิกส์ขั้นสูง ══════════ */
   {
-    title:'ด่านที่ 17 — หม้อแปลง + ฟิวส์',
-    goal:'ใช้หม้อแปลงเป็นแหล่งจ่าย แล้วต่อฟิวส์ป้องกันก่อนเข้าสวิตช์และหลอดไฟ',
+    title:'ด่านที่ 17 — เปลี่ยนมาใช้ไฟจากอะแดปเตอร์',
+    goal:'เลิกใช้ถ่านแล้วเปลี่ยนมาจ่ายไฟจากหม้อแปลง/อะแดปเตอร์แทน ต้องมีฟิวส์คั่นใกล้แหล่งจ่ายเสมอ เพราะไฟจากผนังจ่ายกระแสได้มากกว่าถ่านมาก',
+    outcome:'หลอดติดด้วยไฟ 5V จากหม้อแปลง และมีฟิวส์คุ้มครองทั้งวงจร',
     inventory:{transformer:1,fuse:1,switch:1,bulb:1},
     solution:[["transformer.right", "fuse.left"], ["fuse.right", "switch.left"], ["switch.right", "bulb.left"], ["bulb.right", "transformer.left"]],
     topology:{type:'series'},
+    require:{work:['bulb'], topology:'series', switchControls:true, fuseProtects:true},
     timeLimit:210, baseScore:220,
     tutorial:[
       {img:'Insert_image_here',text:'หม้อแปลง (Transformer) แปลงระดับแรงดัน\n\nขดลวดปฐมภูมิ (PRIMARY, สีทอง) รับไฟเข้า\nขดลวดทุติยภูมิ (SECONDARY, สีฟ้า) จ่ายไฟออก\n\nอัตราส่วนรอบขดลวด = อัตราส่วนแรงดัน\nตัวอย่าง 1:2 → แรงดันขาออกเป็น 2 เท่าของขาเข้า\n\nหม้อแปลงทำงานกับ "ไฟสลับ (AC)" เท่านั้น\nจึงไม่มีขั้ว + และ − ตายตัวเหมือนถ่านไฟฉาย\nต่อด้านไหนก่อนก็ได้ จุดขั้วจะเป็นสีเหลืองทั้งหมด'},
@@ -349,11 +383,13 @@ var LEVELS = [
     }
   },
   {
-    title:'ด่านที่ 18 — ตัวเก็บประจุ (วงจร RC)',
-    goal:'ต่อตัวเก็บประจุกับตัวต้านทาน สร้างวงจรหน่วงเวลาให้ LED',
+    title:'ด่านที่ 18 — ไฟที่ค่อย ๆ หรี่ดับไปเอง',
+    goal:'ทำไฟหน่วงเวลาแบบไฟในรถที่ค่อย ๆ หรี่ดับหลังปิดประตู ใช้ตัวต้านทานคู่กับตัวเก็บประจุ — ตัวเก็บประจุมีขั้ว ต่อกลับด้านมันระเบิดได้',
+    outcome:'สับสวิตช์แล้ว LED สว่างวาบ จากนั้นค่อย ๆ หรี่ลงจนดับเองภายในไม่กี่วินาที',
     inventory:{battery_9v:1,switch:1,resistor:1,capacitor:1,led:1},
     solution:[["battery_9v.right", "switch.left"], ["switch.right", "resistor.left"], ["resistor.right", "capacitor.left"], ["capacitor.right", "led.left"], ["led.right", "battery_9v.left"]],
     topology:{type:'series'},
+    require:{work:['led'], topology:'series', switchControls:true, fades:true},
     timeLimit:230, baseScore:240,
     tutorial:[
       {img:'Insert_image_here',text:'ตัวเก็บประจุ (Capacitor) = ถังเก็บไฟจิ๋ว\n\nเก็บประจุไฟฟ้าไว้ แล้วค่อยปล่อยออกมา\nเปรียบเหมือนถังน้ำเล็ก ๆ ในระบบท่อ\n\nต่างจากแบตเตอรี่ตรงที่\n• เก็บได้น้อยกว่ามาก\n• แต่ชาร์จและปล่อยได้เร็วกว่ามาก\n• ใช้ซ้ำได้เป็นล้านครั้ง\n\nตัวนี้เป็นชนิดอิเล็กโทรไลต์ มีขั้ว + และ −\nสังเกตแถบสีเข้มมีเครื่องหมายลบ = ฝั่งขั้วลบ\nต่อกลับขั้วอาจทำให้ระเบิดได้'},
@@ -369,11 +405,13 @@ var LEVELS = [
     }
   },
   {
-    title:'ด่านที่ 19 — LDR + ทรานซิสเตอร์',
-    goal:'สร้างวงจรตรวจจับแสง ให้ LED ทำงานตามความสว่าง',
+    title:'ด่านที่ 19 — ไฟถนนที่ติดเองตอนค่ำ',
+    goal:'ทำไฟที่ติดเองเมื่อฟ้ามืด โดยไม่ต้องมีคนไปกดสวิตช์ ใช้ LDR อ่านความสว่าง แล้วให้ทรานซิสเตอร์ทำหน้าที่เป็นสวิตช์อิเล็กทรอนิกส์ขับ LED',
+    outcome:'LED ติดตามสัญญาณจากเซ็นเซอร์แสง โดยไม่ต้องใช้มือสับสวิตช์เลย',
     inventory:{battery_9v:1,ldr:1,transistor:1,resistor:1,led:1},
     solution:[["battery_9v.right", "ldr.left"], ["ldr.right", "transistor.left"], ["transistor.right", "led.left"], ["led.right", "resistor.left"], ["resistor.right", "battery_9v.left"]],
     topology:{type:'series'},
+    require:{work:['led'], topology:'series', currentBelow:{led:0.04}},
     timeLimit:250, baseScore:260,
     tutorial:[
       {img:'Insert_image_here',text:'LDR = ตัวต้านทานที่ไวต่อแสง\n\nชื่อเต็ม Light Dependent Resistor\nความต้านทานเปลี่ยนตามความสว่าง\n\n• ที่มืด  → ความต้านทานสูงมาก (หลายเมกะโอห์ม)\n• ที่สว่าง → ความต้านทานต่ำ (ไม่กี่ร้อยโอห์ม)\n\nใช้เป็น "เซ็นเซอร์" ตรวจจับแสง\nเช่น ไฟถนนที่ติดเองตอนค่ำ\nหรือหน้าจอมือถือที่ปรับความสว่างอัตโนมัติ'},
@@ -392,20 +430,29 @@ var LEVELS = [
 
   /* ══════════ บทที่ 7 — วงจรผสม (ด่านสุดท้าย) ══════════ */
   {
-    title:'ด่านที่ 20 — วงจรผสม (Final)',
-    goal:'รวมทุกอย่างที่เรียนมา: ป้องกัน → ควบคุม → กระจาย → โหลด 3 ชนิด',
-    inventory:{battery_9v:1,fuse:1,switch:1,breadboard:1,resistor:1,led:1,motor:1,buzzer:1},
-    solution:[["battery_9v.right", "fuse.left"], ["fuse.right", "switch.left"], ["switch.right", "breadboard.left"], ["breadboard.right", "resistor.left"], ["resistor.right", "led.left"], ["led.right", "motor.left"], ["motor.right", "buzzer.left"], ["buzzer.right", "battery_9v.left"]],
+    title:'ด่านที่ 20 — แท่นทดสอบอุปกรณ์ 3 ชิ้นรวดเดียว',
+    goal:'ประกอบแท่นทดสอบไว้ตรวจอุปกรณ์ทีเดียว 3 ชิ้น ต่อ LED · มอเตอร์ · บัซเซอร์ เรียงอนุกรมในวงเดียว โดยมีฟิวส์ป้องกันและสวิตช์คุม — วงจรอนุกรมกระแสเท่ากันทุกจุด ถ้า LED ติด ก็แปลว่ากระแสไหลผ่านครบทั้งสามตัว ยืนยันได้ทันทีว่าไม่มีตัวไหนขาดใน',
+    outcome:'LED ติด + มอเตอร์หมุน + บัซเซอร์ดัง พร้อมกัน = อุปกรณ์ทั้งสามชิ้นยังใช้งานได้ทุกตัว',
+    /* ด่านนี้ด่านเดียวที่พื้นที่ทำงานกลายเป็น "แผงเบรดบอร์ดจริง"
+       เพราะนี่คือด่านที่สอนเรื่องเบรดบอร์ด (ดู js/breadboard.js)
+       ด่าน 1-19 เป็นพื้นที่ว่างเปล่าตามเดิม วางตรงไหนก็ได้แล้วเดินสายเอง
+
+       จึงไม่ต้องมีอุปกรณ์ชื่อ "Breadboard" ให้หยิบมาวางอีก —
+       แผงทั้งผืนคือเบรดบอร์ดอยู่แล้ว วางเบรดบอร์ดบนเบรดบอร์ดไม่มีอยู่จริง */
+    board:true,
+    inventory:{battery_9v:1,fuse:1,switch:1,resistor:1,led:1,motor:1,buzzer:1},
+    solution:[["battery_9v.right", "fuse.left"], ["fuse.right", "switch.left"], ["switch.right", "resistor.left"], ["resistor.right", "led.left"], ["led.right", "motor.left"], ["motor.right", "buzzer.left"], ["buzzer.right", "battery_9v.left"]],
     topology:{type:'series'},
+    require:{work:['led','motor','buzzer'], topology:'series', switchControls:true, fuseProtects:true, currentBelow:{led:0.04}},
     timeLimit:320, baseScore:400,
     tutorial:[
-      {img:'Insert_image_here',text:'ด่านสุดท้าย — รวมทุกอย่างที่เรียนมา\n\nวงจรนี้มี 8 ชิ้น ต่อ 8 เส้น\nอย่ารีบต่อ ให้วางแผนก่อนลงมือ\n\nหลักการเรียงลำดับที่ดี:\n1. ป้องกันก่อน   → ฟิวส์\n2. ควบคุมถัดมา  → สวิตช์\n3. กระจายสาย    → Breadboard\n4. โหลดท้ายสุด   → LED, มอเตอร์, บัซเซอร์\n\nอย่าลืม: LED ต้องมีตัวต้านทานนำหน้าเสมอ'},
-      {img:'Insert_image_here',text:'Breadboard คืออะไร?\n\nแผงต่อวงจรทดลองแบบไม่ต้องบัดกรี\nแค่เสียบขาอุปกรณ์ลงในรู ก็ต่อถึงกันแล้ว\n\n• แถวบน-ล่าง (แดง + / น้ำเงิน −)\n  = รางจ่ายไฟ ต่อถึงกันตลอดแนวยาว\n• แถวกลาง = ต่อถึงกันเป็นชุดละ 5 รู แนวตั้ง\n• ร่องกลาง = แบ่งซ้าย-ขวาออกจากกัน\n\nช่างและนักเรียนใช้ทดลองวงจรก่อนผลิตจริง\nรื้อแก้ได้ไม่จำกัด ไม่ต้องบัดกรี'},
-      {img:'Insert_image_here',text:'ลำดับการต่อของด่านนี้ (8 เส้น)\n\n  แบต 9V (+) → ฟิวส์\n  ฟิวส์       → สวิตช์\n  สวิตช์      → Breadboard\n  Breadboard  → ตัวต้านทาน\n  ตัวต้านทาน  → LED (+)\n  LED (−)     → มอเตอร์ (+)\n  มอเตอร์ (−) → บัซเซอร์ (+)\n  บัซเซอร์ (−) → แบต 9V (−)\n\nอุปกรณ์มีขั้ว 3 ตัว (LED, มอเตอร์, บัซเซอร์)\nต่อเรียงกันแบบ ขั้วลบตัวหน้า → ขั้วบวกตัวถัดไป\n\nถ้าตัวไหนหันผิด กด R หมุนแก้ได้'},
+      {img:'Insert_image_here',text:'ด่านสุดท้าย — รวมทุกอย่างที่เรียนมา\n\nวงจรนี้มี 7 ชิ้น ต่อ 7 จุดเชื่อม\nอย่ารีบต่อ ให้วางแผนก่อนลงมือ\n\nหลักการเรียงลำดับที่ดี:\n1. ป้องกันก่อน   → ฟิวส์\n2. ควบคุมถัดมา  → สวิตช์\n3. จำกัดกระแส   → ตัวต้านทาน\n4. โหลดท้ายสุด   → LED, มอเตอร์, บัซเซอร์\n\nอย่าลืม: LED ต้องมีตัวต้านทานนำหน้าเสมอ'},
+      {img:'Insert_image_here',text:'แผงที่คุณกำลังต่ออยู่ คือ Breadboard\n\nแผงต่อวงจรทดลองแบบไม่ต้องบัดกรี\nแค่เสียบขาอุปกรณ์ลงในรู ก็ต่อถึงกันแล้ว\n\n• แถวบน-ล่าง (แดง + / น้ำเงิน −)\n  = รางจ่ายไฟ ต่อถึงกันตลอดแนวยาว\n• แถว A-E และ F-J = ต่อถึงกันเป็นชุดละ 5 รู แนวตั้ง\n• ร่องกลาง = แบ่งครึ่งบนกับครึ่งล่างออกจากกัน\n\nลองสังเกตดู: ถ้าเสียบขาสองขาลงรางเดียวกัน\nรางนั้นจะเรืองแสงขึ้นมา แปลว่ามันต่อถึงกันแล้ว\nโดยไม่ต้องเดินสายเลย'},
+      {img:'Insert_image_here',text:'ลำดับการต่อของด่านนี้ (7 จุดเชื่อม)\n\n  แบต 9V (+) → ฟิวส์\n  ฟิวส์       → สวิตช์\n  สวิตช์      → ตัวต้านทาน\n  ตัวต้านทาน  → LED (+)\n  LED (−)     → มอเตอร์ (+)\n  มอเตอร์ (−) → บัซเซอร์ (+)\n  บัซเซอร์ (−) → แบต 9V (−)\n\nอุปกรณ์มีขั้ว 3 ตัว (LED, มอเตอร์, บัซเซอร์)\nต่อเรียงกันแบบ ขั้วลบตัวหน้า → ขั้วบวกตัวถัดไป\n\nถ้าตัวไหนหันผิด กด R หมุนแก้ได้'},
     ],
     check:function(items,wires){
       var ids=items.map(function(i){return i.deviceId;});
-      var need=['battery_9v','fuse','switch','breadboard','resistor','led','motor','buzzer'];
+      var need=['battery_9v','fuse','switch','resistor','led','motor','buzzer'];
       for(var i=0;i<need.length;i++){
         if(ids.indexOf(need[i])<0) return {ok:false,msg:'ยังขาด: '+DEVICES[need[i]].name};
       }

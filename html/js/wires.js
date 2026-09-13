@@ -450,12 +450,17 @@ function cancelPolarityPick(){
 function addWire(fromItemId,fromPort,fx,fy,toItemId,toPort,tx,ty,forcedFromPol,forcedToPol){
   /* อนุญาตให้ 1 port ต่อได้หลายเส้น (เหมือน node ในวงจรจริง)
      กันเฉพาะการต่อสายซ้ำเป๊ะ ๆ ระหว่าง port คู่เดิม */
-  var dupExact=false;
+  var dupExact=false, dupIsStrip=false;
   G.wires.forEach(function(w){
     if((w.fromPort===fromPort&&w.toPort===toPort)||
-       (w.fromPort===toPort&&w.toPort===fromPort)) dupExact=true;
+       (w.fromPort===toPort&&w.toPort===fromPort)){ dupExact=true; if(w.virtual) dupIsStrip=true; }
   });
-  if(dupExact){showToast('สายนี้ต่ออยู่แล้ว','error');return;}
+  if(dupExact){
+    showToast(dupIsStrip
+      ? 'สองจุดนี้เสียบอยู่รางเดียวกัน ต่อถึงกันอยู่แล้ว ไม่ต้องเดินสาย'
+      : 'สายนี้ต่ออยู่แล้ว','error');
+    return;
+  }
 
   /* ปลายสายต้องยังอยู่ในหน้าจริง ๆ
      กันกรณีค้างการต่อสายไว้แล้วอุปกรณ์ต้นทางถูกลบไปก่อน
@@ -479,8 +484,18 @@ function addWire(fromItemId,fromPort,fx,fy,toItemId,toPort,tx,ty,forcedFromPol,f
   path.id=wireId;
   path.className.baseVal='wire-path';
   path.setAttribute('d',bezierPath(fc.x,fc.y,tc.x,tc.y,fc.dir,tc.dir,true,[fromItemId,toItemId]));
-  /* คลิก/แตะที่เส้น = ลบสาย (ทั้งคอมและมือถือ) ยกเว้นตอนใช้เครื่องวัด */
-  path.addEventListener('click',function(){if(!G.probeMode)removeWire(wireId);});
+  /* คลิก/แตะที่เส้น = ลบสาย · แต่ถ้าเปิดเครื่องวัดอยู่ = จิ้มวัดค่าแทน
+     รวมไว้ที่เดียวเพื่อให้สายที่ต่อทีหลังใช้เครื่องวัดได้ทันที
+     ไม่ต้องปิด-เปิดโหมดเครื่องวัดใหม่ */
+  path.addEventListener('click',function(e){
+    if(G.probeMode){
+      e.stopPropagation();
+      var w=null; G.wires.forEach(function(x){ if(x.id===wireId) w=x; });
+      if(w) probeWire(w);
+      return;
+    }
+    removeWire(wireId);
+  });
   /* คลิกขวา = ลบสาย (ใช้ได้ทุกโหมด) */
   path.addEventListener('contextmenu',function(e){
     e.preventDefault(); e.stopPropagation();
@@ -520,6 +535,12 @@ function removeWire(wireId){
   var found=null;
   G.wires.forEach(function(w){if(w.id===wireId)found=w;});
   if(!found) return;
+  /* เส้นเชื่อมภายในรางเบรดบอร์ดไม่ใช่สายที่ผู้เล่นลาก ลบตรง ๆ ไม่ได้
+     ต้องถอดขาอุปกรณ์ออกจากราง ระบบจะเอาเส้นออกให้เอง */
+  if(found.virtual){
+    showToast('นี่คือรางในตัวแผง ลบไม่ได้ — ย้ายอุปกรณ์ออกจากรางแทน','error');
+    return;
+  }
   found.pathEl.remove();
   [found.fromPort,found.toPort].forEach(function(p){
     var used=false;
@@ -665,6 +686,10 @@ function recolorWires(){
 
   /* ระบายสีจุด — จุดที่มีสายหลายสี แบ่งครึ่งซ้าย-ขวา */
   colorPortDots();
+
+  /* วงจรเปลี่ยนแล้ว — โหมดอิสระต้องอัปเดตคำพยากรณ์ว่าต่อแบบนี้จะเกิดอะไร
+     (ฟังก์ชันอยู่ใน js/sandbox.js และเช็ค G.sandbox ให้เองแล้ว) */
+  if(typeof onCircuitChanged === 'function') onCircuitChanged();
 }
 
 /* รวบรวมสีสายที่ต่อกับแต่ละ port แล้วระบายสีจุด */
@@ -712,7 +737,11 @@ function refreshWires(itemId){
   G.wires.forEach(function(w){
     var fc=getPortCenter(w.fromPort);
     var tc=getPortCenter(w.toPort);
-    var d=bezierPath(fc.x,fc.y,tc.x,tc.y,fc.dir,tc.dir,true,[w.fromItemId,w.toItemId]);
+    /* เส้นเชื่อมภายในรางเดินตรงตามรางจริง ไม่โค้งหลบอะไร
+       เพราะมันคือแผ่นโลหะที่ฝังอยู่ใต้แผง ไม่ใช่สายที่พาดข้ามอุปกรณ์ */
+    var d = w.virtual
+      ? ('M'+fc.x+','+fc.y+' L'+tc.x+','+tc.y)
+      : bezierPath(fc.x,fc.y,tc.x,tc.y,fc.dir,tc.dir,true,[w.fromItemId,w.toItemId]);
     w.pathEl.setAttribute('d',d);
     /* อัปเดตเส้นทางของจุดกระแสไฟ (ถ้ากำลังแสดงอยู่) */
     if(G.flowDots && G.flowDots.length){

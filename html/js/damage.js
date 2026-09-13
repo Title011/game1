@@ -1,43 +1,27 @@
 /* ============================================================
-   DAMAGE — ผลที่เกิดขึ้นจริงเมื่อต่อวงจรผิด
+   DAMAGE — ตัวประสานระหว่างเกมกับระบบความเสียหาย (js/hazard.js)
 
-   จำลอง 2 เหตุการณ์ที่สอนเรื่องความปลอดภัยได้ตรงที่สุด:
+   หน้าที่ของไฟล์นี้เหลือ 3 อย่าง:
+     1) ตรวจ "ลัดวงจร" จากโครงสร้างการต่อ (เป็นต้นเหตุ ไม่ใช่ผลลัพธ์)
+     2) ทำนายล่วงหน้าว่าถ้าจ่ายไฟต่อไปจะพังอะไรบ้าง เพื่อให้ผลตอนกด
+        "ตรวจวงจร" แน่นอน ไม่ขึ้นกับความเร็วเครื่องของผู้เล่น
+     3) ลงมือทำให้พังจริง + ล้างความเสียหายเมื่อเริ่มรอบใหม่
 
-   1) ลัดวงจร (Short circuit)
-      ไฟจากขั้ว + วิ่งกลับขั้ว − ได้โดยไม่ผ่านความต้านทานเลย
-      → มีฟิวส์  : ฟิวส์ขาด ตัดไฟทัน อุปกรณ์อื่นรอด (นี่คือหน้าที่ของฟิวส์)
-      → ไม่มีฟิวส์: สายไฟร้อนจนไหม้
-
-   2) กระแสเกินพิกัดอุปกรณ์ (Over-current)
-      I = V / R รวม  ถ้าเกินค่าที่อุปกรณ์ทนได้ → อุปกรณ์ตัวนั้นไหม้
-      เคสคลาสสิกคือ LED ต่อตรงเข้าแบต 9V โดยไม่มีตัวต้านทาน
-
-   ค่าพิกัดตั้งไว้ค่อนข้างใจกว้าง ให้ "ต่อถูกแล้วต้องไม่พัง" เสมอ
-   ตรวจกับเฉลยครบทั้ง 20 ด่านแล้วว่าไม่มีด่านไหนพังเอง
+   ตัวแบบจริง ๆ ทั้งหมดอยู่ใน js/hazard.js ซึ่งจำลองความร้อนสะสม
+   ตามเวลา แล้วบันทึกเหตุการณ์ไว้ครบว่า ต่อแบบนี้ → พังตรงไหน →
+   อันตรายยังไง → ป้องกันยังไง
    ============================================================ */
 
-/* กระแสสูงสุดที่อุปกรณ์แต่ละชนิดทนได้ (มิลลิแอมป์)
-   ไม่ระบุ = ไม่พังจากกระแสเกิน (สวิตช์ บอร์ด ฯลฯ) */
-var MAX_MA = {
-  led:35,        /* 9V ต่อตรงไม่มี R = 90mA -> ไหม้ | มี R 220 = 28mA -> รอด */
-  capacitor:180,
-  transistor:220,
-  ldr:150,
-  buzzer:150,
-  resistor:350,
-  diode:1000,
-  motor:700,
-  bulb:900
-};
+/* กระแสสูงสุดที่อุปกรณ์แต่ละชนิดทนได้ อยู่ในตาราง ESPEC (js/devices.js)
+   ช่อง imax — ไม่ระบุ = ไม่พังจากกระแสเกิน (สวิตช์ บอร์ด ฯลฯ) */
 
-/* แรงดันของแหล่งจ่ายแต่ละชนิด (โวลต์) */
+/* แรงดันของแหล่งจ่ายที่สูงที่สุดในวงจร (โวลต์) */
 function sourceVoltage(items){
   var v = 0;
   items.forEach(function(it){
-    if(DEVICES[it.deviceId].type !== 'source') return;
-    if(it.deviceId === 'battery_9v')      v = Math.max(v, 9);
-    else if(it.deviceId === 'battery_aa') v = Math.max(v, 1.5);
-    else                                  v = Math.max(v, 5);   /* หม้อแปลง */
+    var sp = ESPEC[it.deviceId];
+    if(!sp || sp.kind !== 'source') return;
+    v = Math.max(v, sp.volt);
   });
   return v;
 }
@@ -56,119 +40,163 @@ function findShortPath(items, wires){
   function zeroOhm(it){
     var d = DEVICES[it.deviceId];
     if(d.type === 'source') return false;   /* ไม่ทะลุแหล่งจ่าย */
+    if(it.deviceId === 'switch' && it.open)  return false;  /* สับเปิดอยู่ ไฟไม่ผ่าน */
+    if(it.deviceId === 'fuse'   && it.blown) return false;  /* ขาดแล้ว ไฟไม่ผ่าน */
     return !d.ohm;                          /* 0 หรือไม่ได้ระบุ */
   }
 
-  var pos=[], neg=[];
-  items.forEach(function(it){
-    if(!it.el || DEVICES[it.deviceId].type !== 'source') return;
-    var ps = it.el.querySelectorAll('.port');
-    for(var i=0;i<ps.length;i++){
-      if(ps[i].dataset.polarity === '+')      pos.push(ps[i]);
-      else if(ps[i].dataset.polarity === '-') neg.push(ps[i]);
+  /* ไล่ทีละแหล่งจ่าย และต้องกลับถึงขั้วลบ "ของก้อนเดียวกัน" จึงนับว่าลัดวงจร
+     ถ้าไล่รวมทุกก้อน การต่อถ่านอนุกรม (บวกก้อนหนึ่งไปลบอีกก้อน)
+     จะถูกนับเป็นลัดวงจรทั้งที่เป็นการต่อปกติ */
+  for(var s=0;s<items.length;s++){
+    var src = items[s];
+    if(!src.el || DEVICES[src.deviceId].type !== 'source') continue;
+    var sp = src.el.querySelectorAll('.port');
+    var pos = null, neg = null;
+    for(var i=0;i<sp.length;i++){
+      if(sp[i].dataset.polarity === '+')      pos = sp[i];
+      else if(sp[i].dataset.polarity === '-') neg = sp[i];
     }
-  });
-  if(!pos.length || !neg.length) return false;
+    if(!pos || !neg) continue;
 
-  var seen = [], q = pos.slice();
-  for(var s=0;s<pos.length;s++) seen.push(pos[s]);
-  while(q.length){
-    var p = q.shift();
-    if(neg.indexOf(p) >= 0) return true;    /* ถึงขั้วลบโดยไม่เจอความต้านทาน */
+    var seen = [pos], q = [pos];
+    while(q.length){
+      var p = q.shift();
+      if(p === neg) return true;    /* ถึงขั้วลบของตัวเองโดยไม่เจอความต้านทาน */
 
-    wiresAt(p).forEach(function(w){
-      var nx = (w.fromPort===p) ? w.toPort : w.fromPort;
-      if(seen.indexOf(nx) < 0){ seen.push(nx); q.push(nx); }
-    });
-    var it = itemOf(p.dataset.itemId);
-    if(it && zeroOhm(it) && it.el){
-      var ps = it.el.querySelectorAll('.port');
-      for(var i=0;i<ps.length;i++){
-        if(ps[i]!==p && seen.indexOf(ps[i])<0){ seen.push(ps[i]); q.push(ps[i]); }
+      wiresAt(p).forEach(function(w){
+        var nx = (w.fromPort===p) ? w.toPort : w.fromPort;
+        if(seen.indexOf(nx) < 0){ seen.push(nx); q.push(nx); }
+      });
+      var it = itemOf(p.dataset.itemId);
+      if(it && zeroOhm(it) && it.el){
+        var ps = it.el.querySelectorAll('.port');
+        for(var k=0;k<ps.length;k++){
+          if(ps[k]!==p && seen.indexOf(ps[k])<0){ seen.push(ps[k]); q.push(ps[k]); }
+        }
       }
     }
   }
   return false;
 }
 
-/* วิเคราะห์ความเสียหาย — คืน {ok, msg, burned:[item], blownFuse:item, burnWires:bool} */
-function analyzeCircuitFaults(items, wires){
-  var res = { ok:true, msg:'', burned:[], blownFuse:null, burnWires:false, current:0 };
-  if(!items.length || !wires.length) return res;
+/* มีวงจรปิดทางกายภาพไหม — ไล่จากขั้วบวกของแหล่งจ่าย ผ่านสายไฟ
+   และทะลุอุปกรณ์ทุกชนิด ว่ากลับไปถึงขั้วลบของตัวเองได้หรือไม่
 
-  var V = sourceVoltage(items);
-  if(!V) return res;
-
-  /* ไฟจะไหลได้ต้องเป็นวงจรปิดก่อน — วงจรที่ยังต่อไม่ครบไม่มีอันตราย */
-  if(!isClosedCircuit(items, wires).ok) return res;
-
-  /* ---------- 1) ลัดวงจร ---------- */
-  if(findShortPath(items, wires)){
-    var fuse = null;
-    items.forEach(function(it){ if(it.deviceId==='fuse' && !fuse) fuse = it; });
-    res.ok = false;
-    if(fuse){
-      res.blownFuse = fuse;
-      res.msg = 'ลัดวงจร! ไฟจากขั้ว + วิ่งกลับขั้ว − โดยไม่ผ่านอุปกรณ์ใช้ไฟเลย '
-              + 'โชคดีที่ฟิวส์ขาดตัดไฟทัน อุปกรณ์อื่นจึงปลอดภัย';
-    } else {
-      res.burnWires = true;
-      res.msg = 'ลัดวงจร! ไฟจากขั้ว + วิ่งกลับขั้ว − โดยไม่ผ่านอุปกรณ์ใช้ไฟเลย '
-              + 'กระแสพุ่งสูงจนสายไฟร้อนไหม้ — ถ้าต่อฟิวส์คั่นไว้จะตัดไฟป้องกันได้';
-    }
-    return res;
+   ต่างจาก isClosedCircuit() ตรงที่ "ไม่สนกฎการต่อของเกม" เลย
+   สำคัญมาก เพราะการต่อกลับขั้วเป็นการต่อที่อันตรายจริง ต้องรายงานอันตราย
+   ไม่ใช่แค่ตอบว่าผิดแล้วจบ — ถ้าใช้ isClosedCircuit() มากรอง วงจรกลับขั้ว
+   จะถูกปัดตกก่อนที่ระบบอันตรายจะได้ทำงาน */
+function hasClosedLoop(items, wires){
+  function wiresAt(p){
+    var o=[]; wires.forEach(function(w){ if(w.fromPort===p||w.toPort===p) o.push(w); }); return o;
+  }
+  function itemOf(id){
+    for(var i=0;i<items.length;i++) if(items[i].id===id) return items[i];
+    return null;
   }
 
-  /* ---------- 2) กระแสเกินพิกัดอุปกรณ์ ---------- */
-  var totalR = 0;
-  items.forEach(function(it){
-    var o = DEVICES[it.deviceId].ohm;
-    if(typeof o === 'number') totalR += o;
-  });
-  totalR = Math.max(1, totalR);
-  var I = V / totalR * 1000;      /* มิลลิแอมป์ */
-  res.current = I;
+  for(var s=0;s<items.length;s++){
+    var src = items[s];
+    if(!src.el || !ESPEC[src.deviceId] || ESPEC[src.deviceId].kind !== 'source') continue;
+    var ports = src.el.querySelectorAll('.port');
+    var pos=null, neg=null;
+    for(var i=0;i<ports.length;i++){
+      if(ports[i].dataset.polarity === '+')      pos = ports[i];
+      else if(ports[i].dataset.polarity === '-') neg = ports[i];
+    }
+    /* แหล่งจ่ายไม่มีขั้ว (หม้อแปลง) ใช้ขาซ้าย-ขวาแทน */
+    if(!pos || !neg){ pos = ports[0]; neg = ports[1]; }
+    if(!pos || !neg) continue;
 
-  items.forEach(function(it){
-    var lim = MAX_MA[it.deviceId];
-    if(lim && I > lim) res.burned.push(it);
-  });
+    var seen = [pos], q = [pos];
+    while(q.length){
+      var p = q.shift();
+      if(p === neg) return true;                /* กลับถึงอีกขั้วแล้ว = ครบวง */
+      wiresAt(p).forEach(function(w){
+        var nx = (w.fromPort===p) ? w.toPort : w.fromPort;
+        if(seen.indexOf(nx) < 0){ seen.push(nx); q.push(nx); }
+      });
+      var it = itemOf(p.dataset.itemId);
+      if(it && it !== src && it.el){
+        var ps = it.el.querySelectorAll('.port');
+        for(var k=0;k<ps.length;k++){
+          if(ps[k]!==p && seen.indexOf(ps[k])<0){ seen.push(ps[k]); q.push(ps[k]); }
+        }
+      }
+    }
+  }
+  return false;
+}
 
-  if(res.burned.length){
+/* เหตุการณ์ "ลัดวงจร" — ต้นเหตุที่ทำให้ทุกอย่างหลังจากนี้พัง
+   แยกออกมาเพราะมันคือ "วิธีต่อ" ไม่ใช่ผลของความร้อน */
+function shortCircuitIncident(sol){
+  var hasFuse = false;
+  G.wsItems.forEach(function(x){ if(x.deviceId === 'fuse') hasFuse = true; });
+  return {
+    id:'circuit:short', sev:'critical',
+    titleTh:'ลัดวงจร — ไฟวิ่งกลับขั้วโดยไม่ผ่านอุปกรณ์ใช้ไฟ',
+    device:'ทั้งวงจร', targets:[],
+    causeTh:'มีเส้นทางจากขั้วบวกกลับถึงขั้วลบโดยไม่มีโหลดหรือตัวต้านทานคั่นอยู่เลย',
+    mechTh:'กระแสไหลไปทางที่ต้านทานน้อยที่สุดเสมอ เมื่อไม่มีโหลดมาจำกัด เหลือแค่ความต้านทานภายในของแหล่งจ่ายกับสายไฟซึ่งต่ำมาก กระแสจึงพุ่งขึ้นเป็นหลายแอมป์ตามกฎของโอห์ม I = V ÷ R',
+    dangerTh:'พลังงานทั้งหมดกลายเป็นความร้อนที่ตัวถ่านและสายไฟภายในไม่กี่วินาที ของจริงจะเห็นสายร้อนจนจับไม่ได้ มีควัน และเกิดประกายไฟตรงจุดที่สัมผัส เป็นสาเหตุไฟไหม้ที่พบบ่อยที่สุดในงานไฟฟ้า',
+    preventTh:'ทุกเส้นทางจากขั้วบวกกลับขั้วลบต้องผ่านอุปกรณ์ใช้ไฟหรือตัวต้านทานเสมอ' +
+              (hasFuse ? ' วงจรนี้มีฟิวส์อยู่แล้ว ซึ่งช่วยตัดไฟได้ทัน' : ' และควรใส่ฟิวส์ไว้ใกล้แหล่งจ่ายที่สุด'),
+    measuredTh:'กระแสรวม ' + fmtCurrent(sol.supplyI) + ' (วงจรปกติควรอยู่ระดับมิลลิแอมป์)',
+    brokeTh:'ยังไม่มีอะไรพังในทันที แต่ความร้อนกำลังสะสมทุกจุดที่กระแสไหลผ่าน',
+    cascadeTh:'', t:0
+  };
+}
+
+/* ============================================================
+   วิเคราะห์ความเสียหาย — คืน
+     { ok, msg, incidents:[เหตุการณ์], warnings:[คำเตือน], current }
+
+   วิธีคิด: จำลองการจ่ายไฟล่วงหน้า 6 วินาที ด้วยตัวแบบความร้อนสะสม
+   แล้วดูว่าเกิดอะไรขึ้นบ้าง ตามลำดับเวลาจริง
+   (ทำบนสถานะจำลอง ไม่กระทบของจริง — ดู predictHazards ใน js/hazard.js)
+   ============================================================ */
+function analyzeCircuitFaults(items, wires){
+  var res = { ok:true, msg:'', incidents:[], warnings:[], current:0 };
+  if(!items.length || !wires.length) return res;
+  if(!sourceVoltage(items)) return res;
+
+  /* ไฟจะไหลได้ต้องครบวงก่อน — วงจรที่ยังต่อไม่ครบไม่มีอันตราย
+     ใช้เกณฑ์ทางกายภาพล้วน ๆ ไม่เอากฎการตรวจของเกมมาปน */
+  if(!hasClosedLoop(items, wires)) return res;
+
+  var sol = solveCircuit(items, wires, {});
+  if(!sol.ok) return res;
+  res.current = sol.supplyI * 1000;      /* มิลลิแอมป์ */
+
+  var pred = predictHazards(6);
+  res.incidents = pred.incidents;
+  res.warnings  = pred.warnings;
+
+  /* ลัดวงจรเป็นต้นเหตุ ใส่ไว้บนสุดของรายงานเสมอ */
+  if(findShortPath(items, wires) && res.incidents.length){
+    res.incidents.unshift(shortCircuitIncident(sol));
+  }
+
+  if(res.incidents.length){
     res.ok = false;
-    var names = res.burned.map(function(it){ return DEVICES[it.deviceId].name; }).join(', ');
-    res.msg = 'กระแสเกินพิกัด! วงจรมีกระแส ' + I.toFixed(0) + ' mA '
-            + 'ทำให้ ' + names + ' ไหม้เสียหาย '
-            + '— เพิ่มตัวต้านทานเพื่อจำกัดกระแสก่อนเข้าอุปกรณ์';
+    res.msg = incidentSummary(res.incidents);
   }
   return res;
 }
 
 /* ============================================================
-   แสดงผลความเสียหายบนหน้าจอ
+   ล้าง / ลงมือทำให้พัง
    ============================================================ */
 function clearDamage(){
-  G.wsItems.forEach(function(it){
-    if(it.el) it.el.classList.remove('burned','fuse-blown');
-  });
-  G.wires.forEach(function(w){
-    if(w.pathEl) w.pathEl.classList.remove('wire-burned');
-  });
+  resetHazards();
 }
 
 function applyDamage(fault){
-  fault.burned.forEach(function(it){
-    if(it.el) it.el.classList.add('burned');
-  });
-  if(fault.blownFuse && fault.blownFuse.el){
-    fault.blownFuse.el.classList.add('fuse-blown');
-  }
-  if(fault.burnWires){
-    G.wires.forEach(function(w){
-      if(w.pathEl) w.pathEl.classList.add('wire-burned');
-    });
-  }
-  /* ดับไฟทุกอย่าง วงจรพังแล้วไม่มีอะไรทำงาน */
-  G.wsItems.forEach(function(it){ if(it.el) it.el.classList.remove('powered'); });
+  commitHazards(fault.incidents || []);
+  /* วงจรพังแล้วไม่มีอะไรทำงานต่อ */
+  G.wsItems.forEach(function(it){ if(it.el) it.el.classList.remove('powered','lit'); });
   stopCurrentFlow();
+  applyHazardVisuals();
 }

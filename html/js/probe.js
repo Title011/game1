@@ -1,68 +1,225 @@
 /* ============================================================
-   PROBE & FLOW — แอนิเมชันกระแสไหลตามสาย + โหมดเครื่องวัด (multimeter)
-   คำนวณ I = V / R รวม แล้วไล่แรงดันตกคร่อมอุปกรณ์ทีละตัวจากขั้ว +
+   PROBE & POWER — การทำงานของวงจรตามเวลาจริง + เครื่องวัด
+
+   ทุกตัวเลขในไฟล์นี้มาจาก solveCircuit() (js/solver.js) ซึ่งแก้สมการ
+   วงจรจริง ไม่ใช่การประมาณ จึงได้พฤติกรรมเหมือนของจริง เช่น
+
+     • หลอด 2 ดวงอนุกรม → แต่ละดวงได้แรงดันครึ่งเดียว สว่างน้อยลงจริง
+     • หลอด 2 ดวงขนาน  → แต่ละดวงได้แรงดันเต็ม สว่างเท่าเดิม
+                          แต่แบตจ่ายกระแสเป็น 2 เท่า
+     • LED กับถ่าน AA 1.5V → ติดสลัวมาก เพราะแรงดันไม่ถึงเกณฑ์ของ LED
+     • วงจร RC → ตอนสับสวิตช์ไฟจะไหลแรงแล้วค่อย ๆ ลดลงจนหยุด
+                 ตามการประจุของตัวเก็บประจุ (นี่คือ "หน่วงเวลา")
+
+   PowerSim เดินสมการซ้ำทุก ~50 มิลลิวินาที พร้อมส่งค่าแรงดันคร่อม
+   ตัวเก็บประจุจากรอบก่อนเข้าไปด้วย จึงจำลองการประจุตามเวลาได้จริง
    ============================================================ */
-/* สร้างสัญลักษณ์ +/− วิ่งตามสายไฟทุกเส้น (ทิศตามการไหลของกระแส) */
+
+var PowerSim = {
+  on:false, timer:null, last:0, t:0,
+  capV:{},          /* แรงดันคร่อมตัวเก็บประจุแต่ละตัว (โวลต์) */
+  sol:null,         /* ผลการแก้วงจรรอบล่าสุด */
+  dotDur:{},        /* ระยะเวลาต่อรอบของจุดไฟในแต่ละสาย */
+  target:null       /* สิ่งที่เครื่องวัดจิ้มค้างไว้ {type,ref} */
+};
+
+/* ============================================================
+   เริ่ม/หยุดการจ่ายไฟ
+   ============================================================ */
 function startCurrentFlow(){
   stopCurrentFlow();
-  var ns='http://www.w3.org/2000/svg';
-  var svg=document.getElementById('wire-svg');
-  G.flowDots = [];
+  PowerSim.on = true;
+  PowerSim.capV = {};      /* ตัวเก็บประจุเริ่มจาก "ยังไม่มีประจุ" */
+  PowerSim.t = 0;
+  PowerSim.last = Date.now();
+  PowerSim.dotDur = {};
 
-  /* คำนวณกระแสรวมของวงจร (I = V/R) เพื่อกำหนดความเร็วจุดไหล
-     กระแสมาก = จุดวิ่งเร็ว, กระแสน้อย (ผ่านตัวต้านทาน) = ช้า */
-  var voltage = 0;
+  powerStep(0);            /* รอบแรกทันที ไม่ต้องรอ timer */
+  buildFlowDots();
+  PowerSim.timer = setInterval(function(){
+    var now = Date.now();
+    /* จำกัดก้าวเวลาไม่ให้กระโดด เผื่อผู้เล่นสลับแท็บไปแล้วกลับมา */
+    var dt = Math.min(0.2, Math.max(0.005, (now - PowerSim.last)/1000));
+    PowerSim.last = now;
+    PowerSim.t += dt;
+    powerStep(dt);
+  }, 50);
+}
+
+function stopCurrentFlow(){
+  PowerSim.on = false;
+  if(PowerSim.timer){ clearInterval(PowerSim.timer); PowerSim.timer = null; }
+  PowerSim.sol = null;
+  PowerSim.capV = {};
+  if(G.flowDots){
+    G.flowDots.forEach(function(d){ d.remove(); });
+    G.flowDots = [];
+  }
   G.wsItems.forEach(function(it){
-    var dev = DEVICES[it.deviceId];
-    if(dev.type==='source'){
-      if(it.deviceId==='battery_9v') voltage=Math.max(voltage,9);
-      else if(it.deviceId==='battery_aa') voltage=Math.max(voltage,1.5);
-      else voltage=Math.max(voltage,5);
-    }
+    if(!it.el) return;
+    it.el.style.removeProperty('--glow');
+    it.el.style.removeProperty('--spin');
+    it.el.classList.remove('lit');
   });
-  var totalR = 0;
-  G.wsItems.forEach(function(it){ var o=DEVICES[it.deviceId].ohm; if(typeof o==='number') totalR+=o; });
-  totalR = Math.max(10, totalR);
-  var currentMA = voltage / totalR * 1000;
-  /* แปลงกระแสเป็นระยะเวลาต่อรอบ: กระแสมาก→เร็ว(เวลาน้อย), น้อย→ช้า(เวลามาก)
-     ช่วง ~0.8s (แรง) ถึง ~3.5s (อ่อน) */
-  var duration = Math.max(0.8, Math.min(3.5, 120 / currentMA));
+}
 
-  G.wires.forEach(function(w){
-    var d = w.pathEl.getAttribute('d');
-    if(!d) return;
+/* หนึ่งก้าวเวลาของการจำลอง
+   ระบบความเสียหาย (js/hazard.js) เดินไปพร้อมกันในก้าวเดียวกันนี้
+   ผู้เล่นจึงเห็นอุปกรณ์ค่อย ๆ ร้อนขึ้น มีควัน แล้วพัง ตามเวลาจริง */
+function powerStep(dt){
+  var sol = solveCircuit(G.wsItems, G.wires, {dt:dt, capV:PowerSim.capV});
+  PowerSim.sol = sol;
+  if(!sol.ok) return;
+  PowerSim.capV = sol.capV;
 
-    /* ทิศไหล: กระแสไหลจากขั้ว+ ไปขั้ว− (จากใกล้+ ไปไกล+)
-       path วาดจาก fromPort→toPort
-       ถ้า fromPort ใกล้ขั้ว+ กว่า toPort → ไหลตาม path (forward)
-       ถ้า toPort ใกล้กว่า → ไหลย้อน path (reverse) */
-    var dFrom = portDistFromPlus(w.fromPort);
-    var dTo   = portDistFromPlus(w.toPort);
-    var reverse = (dFrom > dTo); /* from ไกลกว่า = ไหลย้อน */
+  if(dt > 0 && typeof hazardStep === 'function'){
+    var events = hazardStep(sol, dt);
+    applyHazardVisuals();
+    if(events.length) onLiveIncident(events);
+  }
 
-    /* สีจุด = สีสาย */
-    var dotColor = w.color || '#ffd700';
+  applySimVisuals(sol);
+  updateFlowSpeed(sol);
+  if(G.probeMode) refreshProbeReading();
+}
 
-    /* 3 จุดต่อสาย วิ่งต่อเนื่อง */
-    for(var k=0;k<3;k++){
-      var g = document.createElementNS(ns,'circle');
-      g.setAttribute('r','5');
-      g.setAttribute('fill', dotColor);
-      g.setAttribute('class','flow-dot');
-      g.style.filter = 'drop-shadow(0 0 6px '+dotColor+')';
-      g.style.offsetPath = 'path("'+d+'")';
-      g.style.offsetRotate = '0deg';
-      var animName = reverse ? 'flow-move-rev' : 'flow-move';
-      g.style.animation = animName+' '+duration+'s linear infinite';
-      g.style.animationDelay = (k*duration/3)+'s';
-      g._wireId = w.id;
-      svg.appendChild(g);
-      G.flowDots.push(g);
+/* มีอะไรพังขึ้นมาระหว่างเล่น — ค่าเริ่มต้นคือเตือนแล้วเปิดรายงานให้อ่าน
+   ระหว่างเล่นลำดับเหตุการณ์ตอนกดตรวจวงจร จะถูกปิดเสียงชั่วคราว
+   เพราะตัวลำดับเหตุการณ์จัดการรายงานเองตอนจบ */
+function onLiveIncident(events){
+  if(typeof PowerSim.onIncident === 'function'){ PowerSim.onIncident(events); return; }
+  showToast(incidentSummary(events), 'error');
+  if(typeof showIncidentModal === 'function') showIncidentModal(HAZARD.incidents);
+}
+
+/* ============================================================
+   แปลงผลการคำนวณเป็นภาพ
+   ความสว่าง/ความเร็ว/ความดัง ส่งผ่านตัวแปร CSS --glow และ --spin
+   (ดู css/circuit.css)
+   ============================================================ */
+function applySimVisuals(sol){
+  G.wsItems.forEach(function(it){
+    var el = it.el;
+    if(!el || el.classList.contains('burned')) return;
+    var r = sol.byItem[it.id];
+    var g = r ? deviceIntensity(r) : 0;
+
+    el.style.setProperty('--glow', g.toFixed(3));
+    el.classList.toggle('lit', g > 0.04);
+
+    /* มอเตอร์หมุนเร็วตามกระแสจริง — กระแสน้อยก็หมุนอืด */
+    if(r && r.spec && r.spec.inom){
+      var ratio = Math.abs(r.I) / r.spec.inom;
+      el.style.setProperty('--spin', (ratio > 0.03 ? (0.55/Math.min(2.5, ratio)) : 6) + 's');
     }
   });
 }
 
-/* หาระยะของ port จากขั้ว+ (ใช้กำหนดทิศไหล) — BFS ทะลุอุปกรณ์ */
+/* ============================================================
+   จุดไฟวิ่งตามสาย
+   ทิศ = จากขั้ว + ไปขั้ว − (ไล่ระยะจากขั้วบวก)
+   ความเร็ว = ตามกระแสจริงในสายเส้นนั้น
+   ============================================================ */
+
+/* กระแสในสายเส้นหนึ่ง — ประมาณจากอุปกรณ์ที่ปลายสายทั้งสองข้าง
+   สายเป็นตัวนำสมบูรณ์ ปลายทั้งสองจึงเป็นโหนดเดียวกันและไม่มีแรงดันตก
+   ค่าที่สื่อความหมายได้คือกระแสของอุปกรณ์ที่สายนั้นป้อนให้ */
+function wireCurrent(sol, w){
+  if(!sol || !sol.ok) return 0;
+  var a = sol.byItem[w.fromItemId], b = sol.byItem[w.toItemId];
+  var ia = a ? Math.abs(a.I) : null;
+  var ib = b ? Math.abs(b.I) : null;
+  if(ia === null && ib === null) return 0;
+  if(ia === null) return ib;
+  if(ib === null) return ia;
+  return Math.min(ia, ib);
+}
+
+/* กระแสมาก = จุดวิ่งเร็ว (เวลาต่อรอบน้อย) · คืน 0 = ไม่มีกระแส */
+function flowDuration(amp){
+  var mA = Math.abs(amp) * 1000;
+  if(mA < 0.05) return 0;
+  return Math.max(0.5, Math.min(3.5, 45/mA));
+}
+
+function buildFlowDots(){
+  var ns = 'http://www.w3.org/2000/svg';
+  var svg = document.getElementById('wire-svg');
+  G.flowDots = [];
+
+  G.wires.forEach(function(w){
+    /* รางในตัวแผงสั้นเกินกว่าจะเห็นจุดวิ่ง ใช้ไฮไลต์รางบอกแทนอยู่แล้ว */
+    if(w.virtual) return;
+    var d = w.pathEl.getAttribute('d');
+    if(!d) return;
+
+    var dur = flowDuration(wireCurrent(PowerSim.sol, w));
+    PowerSim.dotDur[w.id] = dur;
+
+    /* ทิศไหล: กระแสไหลจากขั้ว + ไปขั้ว −
+       path วาดจาก fromPort→toPort ถ้าปลาย from อยู่ไกลขั้ว + กว่า
+       แปลว่าไฟไหลย้อนทาง path */
+    var reverse = (portDistFromPlus(w.fromPort) > portDistFromPlus(w.toPort));
+    var color = w.color || '#ffd700';
+
+    for(var k=0;k<3;k++){
+      var dot = document.createElementNS(ns,'circle');
+      dot.setAttribute('r','5');
+      dot.setAttribute('fill', color);
+      dot.setAttribute('class','flow-dot');
+      dot.style.filter = 'drop-shadow(0 0 6px '+color+')';
+      dot.style.offsetPath = 'path("'+d+'")';
+      dot.style.offsetRotate = '0deg';
+      dot._wireId = w.id;
+      dot._slot = k;
+      applyDotAnim(dot, dur, reverse, k);
+      svg.appendChild(dot);
+      G.flowDots.push(dot);
+    }
+  });
+}
+
+function applyDotAnim(dot, dur, reverse, slot){
+  if(!dur){
+    dot.style.animation = 'none';
+    dot.style.opacity = '0';
+    return;
+  }
+  dot.style.opacity = '';
+  dot.style.animation = (reverse ? 'flow-move-rev' : 'flow-move') + ' ' + dur + 's linear infinite';
+  dot.style.animationDelay = (slot * dur / 3) + 's';
+  dot._rev = reverse;
+}
+
+/* ปรับความเร็วจุดไฟตามกระแสที่เปลี่ยนไป (เช่นระหว่างประจุตัวเก็บประจุ)
+   เปลี่ยนเฉพาะตอนค่าต่างจากเดิมพอสมควร เพราะการตั้ง animation ใหม่
+   จะรีสตาร์ตรอบวิ่ง ถ้าปรับทุกเฟรมจุดจะกระตุกอยู่กับที่ */
+function updateFlowSpeed(sol){
+  if(!G.flowDots || !G.flowDots.length) return;
+  var newDur = {};
+  G.wires.forEach(function(w){
+    if(w.virtual) return;
+    newDur[w.id] = flowDuration(wireCurrent(sol, w));
+  });
+
+  var changed = {};
+  for(var id in newDur){
+    var oldD = PowerSim.dotDur[id];
+    var nd = newDur[id];
+    if(oldD === undefined){ changed[id] = nd; continue; }
+    if((oldD === 0) !== (nd === 0)){ changed[id] = nd; continue; }
+    if(oldD && Math.abs(nd - oldD)/oldD > 0.3) changed[id] = nd;
+  }
+  if(!Object.keys(changed).length) return;
+
+  G.flowDots.forEach(function(dot){
+    if(!(dot._wireId in changed)) return;
+    applyDotAnim(dot, changed[dot._wireId], !!dot._rev, dot._slot || 0);
+  });
+  for(var id2 in changed) PowerSim.dotDur[id2] = changed[id2];
+}
+
+/* หาระยะของ port จากขั้ว + (ใช้กำหนดทิศไหล) — BFS ทะลุอุปกรณ์ */
 function portDistFromPlus(port){
   function wiresAt(p){var o=[];G.wires.forEach(function(x){if(x.fromPort===p||x.toPort===p)o.push(x);});return o;}
   function itemOf(id){var r=null;G.wsItems.forEach(function(x){if(x.id===id)r=x;});return r;}
@@ -90,170 +247,185 @@ function portDistFromPlus(port){
   return pd.has(port)?pd.get(port):9999;
 }
 
-function stopCurrentFlow(){
-  if(G.flowDots){
-    G.flowDots.forEach(function(d){ d.remove(); });
-    G.flowDots=[];
-  }
-}
-
-/* ===== เครื่องวัด (Multimeter Probe) ===== */
+/* ============================================================
+   เครื่องวัด (Multimeter Probe)
+   จิ้มสายไฟ = วัดแรงดันที่จุดนั้นเทียบขั้วลบ + กระแสในสาย
+   จิ้มอุปกรณ์ = วัดแรงดันตกคร่อมตัวมัน + กระแสที่ไหลผ่าน + กำลังไฟ
+   ============================================================ */
 function toggleProbeMode(){
   G.probeMode = !G.probeMode;
-  var btn = document.getElementById('btn-probe');
+  var btn  = document.getElementById('btn-probe');
   var disp = document.getElementById('probe-display');
-  var svg = document.getElementById('wire-svg');
+  var svg  = document.getElementById('wire-svg');
+  var ws   = document.getElementById('workspace');
 
-  /* ปิดโหมดต่อสายถ้าเปิดอยู่ (กันชนกัน) */
-  if(G.probeMode) cancelTapConnect();
+  if(G.probeMode) cancelTapConnect();   /* กันชนกับโหมดต่อสาย */
 
   btn.classList.toggle('active', G.probeMode);
   disp.style.display = G.probeMode ? 'block' : 'none';
   svg.classList.toggle('probing', G.probeMode);
+  document.body.classList.toggle('probe-mode', G.probeMode);
 
   if(G.probeMode){
-    /* ผูก event จิ้มสายไฟทุกเส้น */
-    attachProbeHandlers();
-    showToast('โหมดเครื่องวัด: จิ้มที่สายไฟเพื่อดูค่ากระแส','success');
+    if(ws) ws.addEventListener('click', onProbeItemClick, true);
+    showToast('โหมดเครื่องวัด: จิ้มที่สายไฟหรือตัวอุปกรณ์เพื่ออ่านค่า','success');
   } else {
-    /* เคลียร์ค่าและ highlight */
+    if(ws) ws.removeEventListener('click', onProbeItemClick, true);
     clearProbeReading();
     showToast('ปิดเครื่องวัด','');
   }
 }
 
-function attachProbeHandlers(){
-  G.wires.forEach(function(w){
-    /* ตั้ง pointer-events ให้จิ้มได้ + ผูก handler */
-    w.pathEl.style.pointerEvents = 'stroke';
-    w.pathEl.onclick = function(e){
-      e.stopPropagation();
-      if(G.probeMode) probeWire(w);
-    };
-  });
+function onProbeItemClick(e){
+  if(!G.probeMode) return;
+  var el = e.target;
+  while(el && el !== document.body && !el.classList.contains('ws-item')) el = el.parentElement;
+  if(!el || !el.classList || !el.classList.contains('ws-item')) return;
+  e.stopPropagation();
+  e.preventDefault();
+  probeItem(el.id);
 }
 
-/* จิ้มสายไฟ → คำนวณ + แสดงค่า */
+/* ผลการวัดใช้สถานะล่าสุดของการจำลอง ถ้าไม่ได้จ่ายไฟอยู่ก็แก้สมการสด ๆ
+   (แบบคงตัว — ตัวเก็บประจุประจุเต็มแล้ว จึงกั้นไฟตรง) */
+function currentSolution(){
+  if(PowerSim.on && PowerSim.sol && PowerSim.sol.ok) return PowerSim.sol;
+  return solveCircuit(G.wsItems, G.wires, {});
+}
+
 function probeWire(w){
-  /* ลบ highlight เก่า */
+  PowerSim.target = {type:'wire', ref:w};
+  refreshProbeReading();
+}
+function probeItem(itemId){
+  var item = null;
+  G.wsItems.forEach(function(it){ if(it.id === itemId) item = it; });
+  if(!item) return;
+  PowerSim.target = {type:'item', ref:item};
+  refreshProbeReading();
+}
+
+function refreshProbeReading(){
+  var t = PowerSim.target;
+  if(!t) return;
+  var sol = currentSolution();
+  var closed = isClosedCircuit(G.wsItems, G.wires).ok;
+
   G.wires.forEach(function(x){ x.pathEl.classList.remove('probe-target'); });
-  w.pathEl.classList.add('probe-target');
+  G.wsItems.forEach(function(x){ if(x.el) x.el.classList.remove('probe-target'); });
 
-  /* หาแรงดันจากแหล่งจ่ายในวงจร */
-  var voltage = 0;
-  G.wsItems.forEach(function(it){
+  var V = 0, I = 0, P = 0, label = '—', note = '', noteOk = true;
+
+  if(t.type === 'wire'){
+    var w = t.ref;
+    if(!w.pathEl || !document.body.contains(w.pathEl)){ PowerSim.target = null; return; }
+    w.pathEl.classList.add('probe-target');
+    var v = nodeVoltageAt(sol, w.fromPort);
+    V = (v === null) ? 0 : v;
+    I = wireCurrent(sol, w);
+    P = 0;
+    label = 'สายไฟ · ' + (w.color === '#ff4444' ? 'ฝั่งขั้วบวก'
+                        : w.color === '#00aaff' ? 'ฝั่งขั้วลบ' : 'กลางวงจร');
+    note = closed ? 'แรงดันที่จุดนี้ เทียบกับขั้วลบของแหล่งจ่าย'
+                  : 'วงจรยังไม่ปิด — ไม่มีกระแสไหล';
+    noteOk = closed;
+  } else {
+    var it = t.ref;
+    if(!it.el || !document.body.contains(it.el)){ PowerSim.target = null; return; }
+    it.el.classList.add('probe-target');
+    var r = sol.byItem[it.id];
     var dev = DEVICES[it.deviceId];
-    if(dev.type === 'source'){
-      if(it.deviceId === 'battery_9v') voltage = Math.max(voltage, 9);
-      else if(it.deviceId === 'battery_aa') voltage = Math.max(voltage, 1.5);
-      else voltage = Math.max(voltage, 5); /* หม้อแปลง */
+    label = dev.name;
+    if(r){
+      V = r.V; I = r.I; P = r.P;
+      var sp = r.spec;
+      if(sp.kind === 'source'){
+        note = 'แรงดันที่ขั้ว (ต่ำกว่า EMF ' + sp.volt + 'V เพราะความต้านทานภายใน)';
+      } else if(sp.kind === 'diode' && Math.abs(I) < 1e-5){
+        note = 'ยังไม่นำกระแส — แรงดันคร่อมยังไม่ถึงเกณฑ์ประมาณ ' + sp.vf + 'V';
+        noteOk = false;
+      } else if(sp.imax && Math.abs(I) > sp.imax*0.85){
+        note = 'กระแสใกล้พิกัดสูงสุด (' + fmtCurrent(sp.imax) + ') — เสี่ยงไหม้';
+        noteOk = false;
+      } else if(sp.kind === 'cap'){
+        note = 'ประจุอยู่ ' + fmtVolt(V) + ' — ยิ่งประจุเต็ม กระแสยิ่งลดลง';
+      } else {
+        note = 'แรงดันตกคร่อมตัวมัน และกระแสที่ไหลผ่าน';
+      }
+    } else {
+      note = 'อุปกรณ์นี้เป็นตัวนำล้วน (ไม่มีแรงดันตกคร่อม)';
     }
-  });
+  }
 
-  /* ตรวจว่าวงจรปิดครบไหม (ถ้าไม่ปิด กระแส = 0) */
-  var circuit = isClosedCircuit(G.wsItems, G.wires);
-  var closed = circuit.ok;
-
-  /* R รวมทั้งวงจร = ผลรวม ohm ของอุปกรณ์ทุกตัว (ตัวต้านทานทำให้ R สูง กระแสต่ำ) */
-  var totalR = 0;
-  G.wsItems.forEach(function(it){
-    var o = DEVICES[it.deviceId].ohm;
-    if(typeof o === 'number') totalR += o;
-  });
-  totalR = Math.max(10, totalR); /* กันหารศูนย์ */
-
-  /* กระแสในวงจรอนุกรม = เท่ากันทุกจุด (I = V/R_รวม)
-     → วงจรมีตัวต้านทาน กระแสจะน้อยกว่าวงจรไม่มี (เห็นความต่างชัด) */
-  var current = closed ? (voltage / totalR * 1000) : 0; /* mA */
-
-  /* แรงดัน ณ จุดที่จิ้ม = V − (แรงดันตกคร่อมของอุปกรณ์ที่ไฟผ่านมาก่อนถึงจุดนี้)
-     ไฟไหลจากขั้ว+ → ผ่านอุปกรณ์ทีละตัว แรงดันลดลงเรื่อยๆ ตาม R แต่ละตัว */
-  var vHere = closed ? voltageAtWire(w, voltage, current) : 0;
-
-  /* หาขั้วของสายนี้ */
-  var polText = '—';
-  if(w.color === '#ff4444') polText = 'บวก (+)';
-  else if(w.color === '#00aaff') polText = 'ลบ (−)';
-  else polText = 'กลาง';
-
-  /* แสดงผล */
-  document.getElementById('probe-voltage').textContent = vHere.toFixed(2) + ' V';
-  document.getElementById('probe-current').textContent = current.toFixed(1) + ' mA';
-  document.getElementById('probe-polarity').textContent = polText;
+  document.getElementById('probe-target').textContent  = label;
+  document.getElementById('probe-voltage').textContent = fmtVolt(V);
+  document.getElementById('probe-current').textContent = fmtCurrent(I);
+  document.getElementById('probe-power').textContent   = fmtPower(P);
 
   var hint = document.getElementById('probe-hint');
-  if(!closed){
-    hint.textContent = '⚠ วงจรยังไม่ปิด — ไม่มีกระแส';
-    hint.style.color = '#f80';
-  } else {
-    hint.textContent = '✓ V ที่จุดนี้ (แรงดันลดหลังตัวต้านทาน)';
-    hint.style.color = '#0a6';
-  }
-}
-
-/* คำนวณแรงดัน ณ สายที่จิ้ม — วัดจากขั้ว+ ไล่ผ่านอุปกรณ์
-   แรงดันตกคร่อมอุปกรณ์แต่ละตัว = I × R_ตัวนั้น
-   สายก่อนอุปกรณ์ตัวแรก = V เต็ม, ยิ่งผ่านอุปกรณ์ (โดยเฉพาะตัวต้านทาน) ยิ่งลด */
-function voltageAtWire(targetWire, Vsource, currentMA){
-  var I = currentMA / 1000; /* A */
-  /* BFS จากขั้ว+ วัดแรงดันตกสะสมถึงแต่ละสาย
-     ผ่านอุปกรณ์ → แรงดันลด I×R, ผ่านสาย → แรงดันเท่าเดิม */
-  function wiresAt(p){var o=[];G.wires.forEach(function(x){if(x.fromPort===p||x.toPort===p)o.push(x);});return o;}
-  function itemOf(id){var r=null;G.wsItems.forEach(function(x){if(x.id===id)r=x;});return r;}
-
-  /* หาขั้ว+ ของแหล่งจ่าย */
-  var startPorts=[];
-  G.wsItems.forEach(function(it){
-    if(!it.el || DEVICES[it.deviceId].type!=='source') return;
-    var ps=it.el.querySelectorAll('.port');
-    for(var i=0;i<ps.length;i++) if(ps[i].dataset.polarity==='+') startPorts.push(ps[i]);
-  });
-  if(!startPorts.length) return Vsource;
-
-  /* Dijkstra-ish: แรงดันตกสะสม (drop) จากขั้ว+ ถึงแต่ละ port
-     ต่ำสุด = ใกล้ขั้ว+ สุด */
-  var portDrop=new Map(), q=[];
-  startPorts.forEach(function(p){ portDrop.set(p,0); q.push(p); });
-  var wireDrop={}; /* wireId → แรงดันตกที่ต้นสาย */
-
-  while(q.length){
-    var p=q.shift(), drop=portDrop.get(p);
-    /* ผ่านสาย: แรงดันไม่ตก (สายไม่มี R) — สายรับค่า drop ของ port ต้นทาง */
-    wiresAt(p).forEach(function(x){
-      if(wireDrop[x.id]===undefined || drop<wireDrop[x.id]) wireDrop[x.id]=drop;
-      var nx=(x.fromPort===p)?x.toPort:x.fromPort;
-      if(!portDrop.has(nx)||portDrop.get(nx)>drop){ portDrop.set(nx,drop); q.push(nx); }
-    });
-    /* ทะลุอุปกรณ์: แรงดันตก I×R ของอุปกรณ์นั้น */
-    var it=itemOf(p.dataset.itemId);
-    if(it && DEVICES[it.deviceId].type!=='source' && it.el){
-      var o=DEVICES[it.deviceId].ohm||0;
-      var vDropDev=I*o; /* แรงดันตกคร่อมอุปกรณ์นี้ */
-      var ps=it.el.querySelectorAll('.port');
-      for(var i=0;i<ps.length;i++){
-        if(ps[i]!==p){
-          var nd=drop+vDropDev;
-          if(!portDrop.has(ps[i])||portDrop.get(ps[i])>nd){ portDrop.set(ps[i],nd); q.push(ps[i]); }
-        }
-      }
-    }
-  }
-  var d = wireDrop[targetWire.id];
-  if(d===undefined) d=0;
-  return Math.max(0, Vsource - d);
+  hint.textContent = (noteOk ? '✓ ' : '⚠ ') + note;
+  hint.style.color = noteOk ? '#0a6' : '#f80';
 }
 
 function clearProbeReading(){
+  PowerSim.target = null;
   G.wires.forEach(function(w){
-    w.pathEl.classList.remove('probe-target');
-    /* คืน pointer-events ให้ระบบลบสาย (คลิกลบ) ทำงานปกติ */
-    w.pathEl.style.pointerEvents = '';
-    w.pathEl.onclick = function(){ if(!G.probeMode) removeWire(w.id); };
+    if(w.pathEl) w.pathEl.classList.remove('probe-target');
   });
+  G.wsItems.forEach(function(it){ if(it.el) it.el.classList.remove('probe-target'); });
+  document.getElementById('probe-target').textContent  = 'ยังไม่ได้เลือก';
   document.getElementById('probe-voltage').textContent = '-- V';
   document.getElementById('probe-current').textContent = '-- mA';
-  document.getElementById('probe-polarity').textContent = '--';
+  document.getElementById('probe-power').textContent   = '-- mW';
   var hint = document.getElementById('probe-hint');
-  hint.textContent = 'จิ้มที่สายไฟเพื่อวัด';
+  hint.textContent = 'จิ้มที่สายไฟหรือตัวอุปกรณ์เพื่อวัด';
   hint.style.color = '';
+}
+
+/* ============================================================
+   รายงานค่าไฟฟ้าของทั้งวงจร — ใช้แสดงตอนผ่านด่าน
+   ให้ผู้เรียนได้เห็นตัวเลขจริงของวงจรที่ตัวเองต่อ
+   ============================================================ */
+function buildCircuitReport(){
+  /* ใช้ผลล่าสุดของการจำลองที่กำลังเดินอยู่ ตัวเลขในรายงานจะได้ตรงกับ
+     สิ่งที่เห็นบนจอตอนนั้นเป๊ะ (สำคัญกับวงจร RC ที่ค่าเปลี่ยนตามเวลา) */
+  var sol = currentSolution();
+  if(!sol.ok) return '';
+
+  var rows = '';
+  G.wsItems.forEach(function(it){
+    var r = sol.byItem[it.id];
+    if(!r) return;
+    var dev = DEVICES[it.deviceId];
+    var extra = '';
+    if(r.spec.pnom || r.spec.inom){
+      var pct = Math.round(deviceIntensity(r) * 100);
+      extra = '<span class="rep-bar"><i style="width:' + pct + '%"></i></span>';
+    }
+    rows += '<tr><td>' + dev.name + '</td>'
+          + '<td>' + fmtVolt(r.V) + '</td>'
+          + '<td>' + fmtCurrent(r.I) + '</td>'
+          + '<td>' + fmtPower(r.P) + '</td>'
+          + '<td>' + extra + '</td></tr>';
+  });
+  if(!rows) return '';
+
+  /* วงจรที่มีตัวเก็บประจุ ค่าจะเปลี่ยนไปเรื่อย ๆ ระหว่างประจุ
+     ต้องบอกไว้ ไม่งั้นผู้เรียนจะงงว่าทำไมเลขในตารางไม่ตรงกับที่เห็นทีหลัง */
+  var hasCap = false;
+  G.wsItems.forEach(function(it){ if(it.deviceId === 'capacitor') hasCap = true; });
+  var capNote = hasCap
+    ? '<div class="report-sum">วงจรนี้มีตัวเก็บประจุ — กระแสจะค่อย ๆ ลดลงจนหยุดเมื่อประจุเต็ม '
+      + 'นี่คือ "การหน่วงเวลา" ของวงจร RC</div>'
+    : '';
+
+  return '<div class="report-box">'
+       + '<div class="report-title">ค่าที่วัดได้จริงจากวงจรนี้</div>'
+       + '<table class="report-tbl">'
+       + '<tr><th>อุปกรณ์</th><th>แรงดัน</th><th>กระแส</th><th>กำลังไฟ</th><th>กำลัง/พิกัด</th></tr>'
+       + rows + '</table>'
+       + '<div class="report-sum">แหล่งจ่ายจ่ายกระแสรวม <b>' + fmtCurrent(sol.supplyI)
+       + '</b> · กำลังไฟรวม <b>' + fmtPower(sol.supplyP) + '</b></div>'
+       + capNote
+       + '</div>';
 }

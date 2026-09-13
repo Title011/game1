@@ -31,22 +31,36 @@
   /* level bar จุดเล็กลง */
   .level-dot{width:24px;height:24px;font-size:.65rem;}
 
-  /* ws-item ใหญ่ขึ้นสำหรับนิ้วกด — จุดขั้วเกาะขอบไอคอนทั้ง 4 ทิศ (อิงสคีมใหม่) */
-  .ws-item{min-width:64px;padding:8px;}
+  /* ws-item ใหญ่ขึ้นสำหรับนิ้วกด — ยังต้องเป็นจัตุรัสและจุดขั้วอยู่ห่าง
+     ขอบกล่องเท่ากันทุกทิศ ไม่งั้นขาจะลงรูเบรดบอร์ดไม่ตรง
+     (ระยะห่างรูวัดจากอุปกรณ์จริงตอนเริ่มเกม จึงปรับตามอัตโนมัติ) */
+  .ws-item{width:68px;height:68px;padding:5px;}
   .port{width:16px;height:16px;}
-  .port.port-left  {left:-11px;   top:50%;}
-  .port.port-right {right:-11px;  top:50%;}
-  .port.port-top   {top:-11px;}
-  .port.port-bottom{top:auto;bottom:-11px;}
-  .port.port-pos,.port.port-neg{width:19px;height:19px;}
+  .port.port-left  {left:-10px;    top:50%;}
+  .port.port-right {right:-10px;   top:50%;}
+  .port.port-top   {top:-10px;}
+  .port.port-bottom{top:auto;bottom:-10px;}
+  /* เลขคู่เหมือนกัน เพื่อให้กึ่งกลางวงกลมตกที่พิกเซลเต็ม
+     กล่อง 20 → ในกรอบ 16 → เครื่องหมาย 12 → แท่งหนา 4 → (12−4)/2 = 4 ลงตัว */
+  .port.port-pos,.port.port-neg{width:20px;height:20px;}
+  .port.port-pos::after,.port.port-neg::after{width:12px;height:12px;}
+  .port.port-neg::after{background-size:12px 4px;}
+  .port.port-pos::after{background-size:12px 4px, 4px 12px;}
   /* นิ้วต้องการเป้าใหญ่กว่าเมาส์ — ขยายพื้นที่รับสัมผัสตอนต่อสาย */
   .port::before{width:38px;height:38px;}
+
+  /* จุดขั้วบนมือถือใหญ่กว่า (16-19px) ป้ายชื่อจึงต้องหลบลงไปอีก
+     ไม่งั้นขาที่อยู่ก้นอุปกรณ์จะทับชื่อ (ดู .has-port-bottom ใน css/components.css) */
+  .ws-item.has-port-bottom .ws-item-name{top:calc(100% + 26px);}
 
   /* mobile toolbar แสดงปุ่มหมุน/ลบ ใต้ item ที่เลือก */
   .ws-item.selected::after{bottom:-44px;font-size:.62rem;padding:2px 8px;}
 
-  /* modal เต็มจอ */
-  .modal-box{max-width:100%!important;border-radius:14px 14px 0 0;position:fixed;bottom:0;left:0;right:0;margin:0;}
+  /* modal เป็นแผ่นเลื่อนขึ้นจากขอบล่าง
+     เพดานความสูงต้องต่ำกว่าจอ ไม่ใช่เต็มจอ — เว้นขอบบนไว้ให้เห็นว่า
+     ยังมีหน้าเกมอยู่ข้างหลัง และกันไม่ให้หัวกล่องมุดใต้แถบที่อยู่ของเบราว์เซอร์
+     (ตัวเลื่อนเนื้อหาอยู่ที่ .modal-body ใน css/modals.css แล้ว) */
+  .modal-box{max-width:100%!important;border-radius:14px 14px 0 0;position:fixed;bottom:0;left:0;right:0;margin:0;max-height:90vh;max-height:90dvh;}
   .modal-overlay{align-items:flex-end;padding:0;}
 }
 
