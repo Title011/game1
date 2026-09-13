@@ -225,7 +225,7 @@ function resetHazards(){
   HAZARD.t = 0;
   G.wsItems.forEach(function(it){
     it.heat = 0; it.failed = false; it.failMode = null;
-    it.scorch = false; it.blown = false;
+    it.blown = false;
     it.stress = 0;
     if(it.el){
       it.el.classList.remove('heat-warn','heat-hot','failed','burst','burned','fuse-blown');
@@ -306,8 +306,6 @@ function hazardStep(sol, dt){
 
     if(st.stress > 1){
       it.heat = (it.heat || 0) + dt * (Math.min(st.stress, HAZARD.CAP) - 1) / tb;
-      it.lastMode = st.mode;
-      if(it.heat >= 0.5) it.scorch = true;
       if(it.heat >= 1){
         it.heat = 1;
         it.failed = true;

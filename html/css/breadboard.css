@@ -74,7 +74,6 @@ body.has-breadboard #workspace-hint > span{
   cursor:default;
   filter:none;
 }
-.wire-path.wire-strip:hover{stroke-width:5!important;}
 
 /* กล่องอุปกรณ์บนแผงสีครีม ต้องมีเงาให้ลอยขึ้นมาจากพื้น */
 body.has-breadboard .ws-item{
