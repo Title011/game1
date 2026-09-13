@@ -17,6 +17,28 @@
          saturate(calc(1 + var(--heat,0) * .6));
 }
 
+/* ---------- เสี่ยง แต่ยังไม่พัง ----------
+   เช่นต่อ LED โดยไม่มีตัวต้านทานคั่น บนถ่านที่แรงดันยังไม่พอจะเผามัน
+   ยังไม่เกิดความเสียหาย จึงไม่ใช้สีไหม้ แต่ต้องสะดุดตาพอให้รู้ว่าระบบเห็นแล้ว
+   กะพริบอยู่ 6 วินาทีหลังกดตรวจวงจร แล้วหายไปเอง */
+.ws-item.risk-warn{
+  border-color:#ffc107!important;
+  box-shadow:0 0 0 2px rgba(255,193,7,.45), 0 0 22px rgba(255,193,7,.6)!important;
+  animation:risk-blink .9s ease-in-out infinite;
+}
+.ws-item.risk-warn::after{
+  content:'เสี่ยง';
+  position:absolute;top:-11px;left:50%;transform:translateX(-50%);
+  background:#ffc107;color:#2a2000;
+  font-size:.55rem;font-weight:800;padding:1px 7px;border-radius:6px;
+  white-space:nowrap;pointer-events:none;z-index:6;
+}
+.ws-item.has-port-top.risk-warn::after{top:-24px;}
+@keyframes risk-blink{
+  0%,100%{box-shadow:0 0 0 2px rgba(255,193,7,.30), 0 0 14px rgba(255,193,7,.40)}
+  50%    {box-shadow:0 0 0 3px rgba(255,193,7,.70), 0 0 26px rgba(255,193,7,.85)}
+}
+
 /* ---------- ร้อนจัด มีควันแล้ว ---------- */
 .ws-item.heat-hot{
   border-color:#ff4a1a!important;

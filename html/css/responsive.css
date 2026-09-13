@@ -55,6 +55,7 @@
 
   /* mobile toolbar แสดงปุ่มหมุน/ลบ ใต้ item ที่เลือก */
   .ws-item.selected::after{bottom:-44px;font-size:.62rem;padding:2px 8px;}
+  .ws-item.has-port-bottom.selected::after{bottom:-62px;}
 
   /* modal เป็นแผ่นเลื่อนขึ้นจากขอบล่าง
      เพดานความสูงต้องต่ำกว่าจอ ไม่ใช่เต็มจอ — เว้นขอบบนไว้ให้เห็นว่า

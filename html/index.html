@@ -215,7 +215,10 @@
   <div class="modal-box" style="max-width:480px">
     <div class="modal-header">
       <h3>จบรัน &#x2014; โหมดวัดความเร็ว</h3>
-      <button class="modal-close" onclick="closeModal('modal-endless-over')">&#x2715;</button>
+      <!-- ปิดกล่องนี้ต้องพากลับเข้าด่านด้วย ไม่ใช่แค่ปิดกล่องเฉย ๆ
+           ไม่งั้นวงจรของรอบที่เพิ่งจบยังค้างอยู่บนจอ แต่เกมกลับไปเป็นโหมดด่านแล้ว
+           กด "ตรวจวงจร" ทีเดียวเสียชีวิตจริงของด่านนั้นทันที -->
+      <button class="modal-close" onclick="quitEndlessToLevels()">&#x2715;</button>
     </div>
     <div class="modal-body">
       <div class="eo-reason" id="eo-reason">&#x2014;</div>
@@ -303,7 +306,7 @@
      SCRIPTS — เรียงตามลำดับการพึ่งพา ห้ามสลับ
        device-symbols  ฉีดไลบรารีรูปอุปกรณ์ (SVG) เข้า DOM
        icons           ไอคอน UI + หัวใจ
-       devices         นิยามอุปกรณ์ + ชื่อจุด
+       devices         นิยามอุปกรณ์ + ชื่อจุด 
        levels          ข้อมูล 20 ด่าน
        analyze         ระบบวิเคราะห์วงจร (อ่านเป็นโครงข่ายจริง)
        outcome         ตัดสินจาก "ผลที่ออกมา" โดยจ่ายไฟจำลองแล้ววัดจริง

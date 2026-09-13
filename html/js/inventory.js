@@ -38,13 +38,9 @@ function makeInvTouchHandler(deviceId){
       var t=ev.changedTouches[0];
       var r=document.getElementById('workspace').getBoundingClientRect();
       if(t.clientX>=r.left&&t.clientX<=r.right&&t.clientY>=r.top&&t.clientY<=r.bottom){
-        if(!invUnlimited() && (G.invCounts[deviceId]||0)<=0){showToast('อุปกรณ์หมด!','error');return;}
+        if(invSoldOut(deviceId)) return;
         addWsItem(deviceId, Math.max(0,t.clientX-r.left-36), Math.max(0,t.clientY-r.top-36));
-        if(!invUnlimited()){
-          G.invCounts[deviceId]=(G.invCounts[deviceId]||0)-1;
-          updateInvCount(deviceId);
-        }
-        document.getElementById('workspace-hint').style.display='none';
+        consumeInvItem(deviceId);
       }
     }
     document.addEventListener('touchmove',tmove,{passive:false});
@@ -54,6 +50,24 @@ function makeInvTouchHandler(deviceId){
 
 /* โหมดอิสระใช้อุปกรณ์ได้ไม่จำกัด — ไม่หักและไม่คืนจำนวน แสดงเป็น ∞ */
 function invUnlimited(){ return !!G.sandbox; }
+
+/* ของชิ้นนี้หมดแล้วหรือยัง — เตือนให้ด้วยเลย ผู้เรียกแค่ return เมื่อได้ true */
+function invSoldOut(deviceId){
+  if(!invUnlimited() && (G.invCounts[deviceId]||0)<=0){
+    showToast('อุปกรณ์หมด!','error');
+    return true;
+  }
+  return false;
+}
+
+/* หักของออกจากคลังหลังวางลงพื้นที่ทำงานสำเร็จ (ทั้งลากด้วยเมาส์และแตะบนมือถือ) */
+function consumeInvItem(deviceId){
+  if(!invUnlimited()){
+    G.invCounts[deviceId]=(G.invCounts[deviceId]||0)-1;
+    updateInvCount(deviceId);
+  }
+  document.getElementById('workspace-hint').style.display='none';
+}
 
 function renderInventory(){
   var inv=document.getElementById('inventory');
@@ -134,13 +148,8 @@ function onWsDrop(e){
   document.getElementById('workspace').classList.remove('drag-over');
   var deviceId=e.dataTransfer.getData('text/plain');
   if(!deviceId) return;
-  if(!invUnlimited() && (G.invCounts[deviceId]||0)<=0){showToast('อุปกรณ์หมด!','error');return;}
-  var ws=document.getElementById('workspace');
-  var r=ws.getBoundingClientRect();
+  if(invSoldOut(deviceId)) return;
+  var r=document.getElementById('workspace').getBoundingClientRect();
   addWsItem(deviceId,Math.max(0,e.clientX-r.left-36),Math.max(0,e.clientY-r.top-36));
-  if(!invUnlimited()){
-    G.invCounts[deviceId]=(G.invCounts[deviceId]||0)-1;
-    updateInvCount(deviceId);
-  }
-  document.getElementById('workspace-hint').style.display='none';
+  consumeInvItem(deviceId);
 }

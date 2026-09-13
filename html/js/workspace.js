@@ -136,6 +136,14 @@ function removeWsItem(itemId){
      (จะขึ้นข้อความเตือนโดยไม่จำเป็น) ปล่อยให้ bbRefresh() ด้านล่างจัดการ */
   G.wires.filter(function(w){return !w.virtual && (w.fromItemId===itemId||w.toItemId===itemId);})
          .forEach(function(w){removeWire(w.id);});
+  /* อุปกรณ์ที่กำลังถูกเลือกอยู่หายไป = ต้องเลิกเลือกและเก็บปุ่มลอยด้วย
+     ไม่งั้นแถบ หมุน/ลบ บนมือถือยังลอยอยู่ ชี้ไปอุปกรณ์ที่ไม่มีแล้ว
+     กดแล้วไม่เกิดอะไรขึ้น หรือไปโดนตัวอื่นที่ id ซ้ำกันภายหลัง */
+  if(G.selectedItemId === itemId){
+    G.selectedItemId = null;
+    hideMobileToolbar();
+  }
+
   item.el.remove();
   G.wsItems.splice(idx,1);
   pruneOrphanWires();   /* กันสายที่หลุดอ้างอิงเหลือค้างอยู่ */
@@ -150,6 +158,11 @@ function clearWorkspace(silent){
     G.wsItems.forEach(function(item){G.invCounts[item.deviceId]=(G.invCounts[item.deviceId]||0)+1;});
   }
   cancelTapConnect();   /* ล้างการต่อสายที่ค้าง ไม่ให้ชี้ไป DOM ที่กำลังจะถูกลบ */
+  /* สถานะความเสียหายต้องล้างด้วย ไม่งั้นแถบเตือน ("สายไฟไหม้" ฯลฯ) ค้างอยู่
+     เหนือพื้นที่ว่างเปล่า และธงความร้อนเก่ายังนับต่อในด่านใหม่ */
+  if(typeof resetHazards === 'function') resetHazards();
+  if(typeof setHazardBar === 'function') setHazardBar('');
+  hideMobileToolbar();   /* ปุ่มลอยของอุปกรณ์ที่กำลังจะหายไป ต้องหายตาม */
   G.wsItems=[]; G.wires=[]; G.wsCounter=0; G.wireCounter=0;
   G.selectedItemId=null;
   var ws=document.getElementById('workspace');
@@ -166,6 +179,20 @@ function clearWorkspace(silent){
   document.getElementById('workspace-hint').style.display='';
   bbRefresh();   /* ล้างไฮไลต์รางที่ค้างอยู่บนแผงด้วย */
   if(!silent) renderInventory();
+}
+
+/* เก็บกวาดของค้างทั้งหมดก่อนเริ่มโจทย์ใหม่ (ใช้ร่วมกันในโหมดวัดความเร็ว/โหมดอิสระ)
+
+   ถ้าไม่ล้างให้ครบ ผู้เล่นจะเจอ: ฉากความเสียหายของรอบก่อนมาหักชีวิตในรอบใหม่,
+   กล่องผลลัพธ์ของรอบก่อนบังจออยู่, และโหมดเครื่องวัดค้างจนต่อสายไม่ได้ */
+function resetPlayfield(){
+  if(typeof cancelHazardSequence === 'function') cancelHazardSequence();
+  closeModal('modal-result');
+  cancelTapConnect();
+  if(G.probeMode) toggleProbeMode();
+  stopCurrentFlow();
+  deselectAll();
+  clearWorkspace(true);
 }
 
 /* drag-to-move ws items */
@@ -189,7 +216,20 @@ function makeDraggable(el){
     var inv=document.getElementById('inventory');
     var overInv=false;
 
+    /* จำว่านิ้วไหนเป็นคนเริ่มลาก
+       ไม่งั้นถ้ามีนิ้วที่สองแตะแล้วปล่อย (เช่นเผลอเอามือแตะขอบจอ)
+       touchend ของนิ้วนั้นจะวิ่งเข้า dragOnUp แล้วใช้พิกัดของนิ้วที่สอง
+       ซึ่งมักอยู่นอกพื้นที่ทำงาน = อุปกรณ์ที่กำลังลากอยู่ถูกลบทิ้งทันที */
+    var touchId = (e.touches && e.touches.length) ? e.touches[0].identifier : null;
+    function ownTouch(list){
+      if(touchId === null) return true;          /* เมาส์ ไม่ต้องเช็ค */
+      if(!list) return false;
+      for(var i=0;i<list.length;i++){ if(list[i].identifier === touchId) return true; }
+      return false;
+    }
+
     function dragOnMove(ev){
+      if(ev.touches && !ownTouch(ev.touches)) return;
       if(ev.cancelable) ev.preventDefault();
       var p=getXY(ev);
       el.style.left=(startL+p.x-p0.x)+'px';
@@ -200,6 +240,7 @@ function makeDraggable(el){
       if(now!==overInv){ overInv=now; inv.classList.toggle('return-hover',now); }
     }
     function dragOnUp(ev){
+      if(ev.changedTouches && !ownTouch(ev.changedTouches)) return;
       inv.classList.remove('return-hover');
       var p=getUpXY(ev);
       var r=inv.getBoundingClientRect();
@@ -255,7 +296,7 @@ function toggleSwitchItem(itemId){
   /* ตัดไฟขดลวดกะทันหัน = จังหวะที่เกิดแรงดันย้อนกลับ (Back-EMF)
      ต้องตรวจ "ก่อน" สับออก เพราะต้องรู้ว่ากระแสกำลังไหลอยู่เท่าไร */
   var emf = null;
-  if(!item.open && typeof checkBackEMF === 'function') emf = checkBackEMF();
+  if(!item.open && typeof checkBackEMF === 'function') emf = checkBackEMF(item);
 
   item.open = !item.open;
   var badge = item.el.querySelector('.ws-switch-state');
@@ -322,14 +363,24 @@ function deselectAll(){
 function showMobileToolbar(itemEl){
   var tb=document.getElementById('mobile-toolbar');
   if(!tb) return;
-  var wsRect=document.getElementById('workspace').getBoundingClientRect();
+  var ws=document.getElementById('workspace');
+  var wsRect=ws.getBoundingClientRect();
   var elRect=itemEl.getBoundingClientRect();
   /* +30 เผื่อชื่ออุปกรณ์ + จุด port-bottom ที่ลอยใต้กล่อง (absolute) */
   var top=(elRect.bottom - wsRect.top + 30);
   var left=Math.max(0, elRect.left - wsRect.left);
+
+  /* ต้องดึงกลับให้อยู่ในกรอบ #workspace ซึ่งเป็น overflow:hidden
+     อุปกรณ์ที่อยู่ริมขวาหรือริมล่างจะทำให้แถบปุ่มถูกตัดหายไปทั้งแถบ
+     ผู้เล่นบนมือถือจึงหมุน/ลบอุปกรณ์ตัวนั้นไม่ได้เลย */
+  tb.style.display='flex';
+  tb.style.left='0px'; tb.style.top='0px';
+  var tw=tb.offsetWidth || 120, th=tb.offsetHeight || 34;
+  left = Math.min(left, Math.max(0, ws.clientWidth  - tw - 4));
+  top  = Math.min(top,  Math.max(0, ws.clientHeight - th - 4));
+
   tb.style.top=top+'px';
   tb.style.left=left+'px';
-  tb.style.display='flex';
 }
 function hideMobileToolbar(){
   var tb=document.getElementById('mobile-toolbar');

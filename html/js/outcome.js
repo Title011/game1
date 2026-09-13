@@ -219,19 +219,46 @@ function checkOutcome(items, wires, req, inventory){
         stillOn ? (who + ' ยังทำงานอยู่ทั้งที่สับสวิตช์ออกแล้ว — สวิตช์ไม่ได้อยู่ในทางเดินของไฟ') : '');
   }
 
+  /* ต้องลองสับ "ทุกตัว" ไม่ใช่แค่ตัวแรก
+     ถ้าลองแค่ตัวแรก ผู้เล่นเอาสวิตช์สองตัวไปวางซ้อนกันในสาขาเดียวก็ผ่านได้
+     (ปิดตัวแรก → สาขานั้นดับ อีกสาขายังติด → ดูเหมือนถูก ทั้งที่สวิตช์ตัวที่สอง
+      ไม่ได้คุมอะไรเลย) จึงต้องเช็คด้วยว่าแต่ละตัวดับ "คนละชุด" กันจริง */
   if(req.independent && switches.length >= 2){
-    var offA = withTemp(switches[0], 'open', true, function(){
-      return simAt(items, wires, 0.15);
-    });
-    var stopped = 0, running = 0;
-    (req.work || []).forEach(function(devId){
-      itemsOfType(items, devId).forEach(function(it){
-        if(workOf(it, offA) >= WORK_MIN) running++; else stopped++;
+    var trials = switches.map(function(sw){
+      var off = withTemp(sw, 'open', true, function(){
+        return simAt(items, wires, 0.15);
       });
+      var stopped = [], running = [];
+      (req.work || []).forEach(function(devId){
+        itemsOfType(items, devId).forEach(function(it){
+          if(workOf(it, off) >= WORK_MIN) running.push(it.id); else stopped.push(it.id);
+        });
+      });
+      return { stopped: stopped.sort().join(','), nStop: stopped.length, nRun: running.length };
     });
-    add('ปิดสาขาหนึ่ง อีกสาขายังทำงานอยู่', stopped >= 1 && running >= 1,
-        (running === 0) ? 'ปิดสวิตช์ตัวเดียวแล้วดับหมดทั้งวง — แปลว่ายังต่ออนุกรมอยู่'
-                        : (stopped === 0 ? 'ปิดสวิตช์แล้วไม่มีอะไรดับเลย — สวิตช์ยังไม่ได้คุมสาขาของตัวเอง' : ''));
+
+    var eachSplits = true, worst = null;
+    trials.forEach(function(t){
+      if(!(t.nStop >= 1 && t.nRun >= 1)){ eachSplits = false; if(!worst) worst = t; }
+    });
+
+    /* สองตัวที่ดับของชุดเดียวกัน = อยู่สาขาเดียวกัน */
+    var distinct = true;
+    for(var ti=0; ti<trials.length && distinct; ti++){
+      for(var tj=ti+1; tj<trials.length; tj++){
+        if(trials[ti].stopped === trials[tj].stopped){ distinct = false; break; }
+      }
+    }
+
+    var indMsg = '';
+    if(!eachSplits){
+      indMsg = (worst && worst.nRun === 0)
+        ? 'ปิดสวิตช์ตัวเดียวแล้วดับหมดทั้งวง — แปลว่ายังต่ออนุกรมอยู่'
+        : 'มีสวิตช์ที่ปิดแล้วไม่มีอะไรดับเลย — สวิตช์ตัวนั้นยังไม่ได้คุมสาขาของตัวเอง';
+    } else if(!distinct){
+      indMsg = 'สวิตช์สองตัวดับของชุดเดียวกัน — แปลว่าอยู่สาขาเดียวกัน ต้องแยกไปคุมคนละสาขา';
+    }
+    add('สวิตช์แต่ละตัวคุมสาขาของตัวเองแยกกัน', eachSplits && distinct, indMsg);
   }
 
   /* ---------- 6) ฟิวส์ต้องคุมกระแสทั้งวงจรจริง ---------- */

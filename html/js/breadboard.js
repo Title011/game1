@@ -39,37 +39,26 @@ var BB = {
 /* ผังแถวของบอร์ด เลือกแบบที่สูงพอดีกับพื้นที่ทำงาน
    'gap' = แถวว่าง ไม่มีรู (ช่องไฟ / ร่องกลาง)
    ยึดระยะห่างเท่ากันทุกแถว อุปกรณ์ที่หมุนตั้งจึงคร่อมร่องลงรูได้พอดี */
+var BB_TOP_RAILS = [{t:'rail',pol:'+',id:'railT+'}, {t:'rail',pol:'-',id:'railT-'}, {t:'gap'}];
+var BB_BOT_RAILS = [{t:'gap'}, {t:'rail',pol:'-',id:'railB-'}, {t:'rail',pol:'+',id:'railB+'}];
+var BB_CHANNEL   = [{t:'gap',channel:true}, {t:'gap',channel:true}];
+
+/* แถวหลักครึ่งบน (U) — ร่องกลาง — แถวหลักครึ่งล่าง (L)
+   แถวเหล่านี้ถูกอ่านอย่างเดียว จึงใช้ object ชุดเดียวกันข้ามผังได้ */
+function bbMainRows(half, labels){
+  return labels.split('').map(function(l){ return {t:'main',half:half,label:l}; });
+}
+function bbCore(upper, lower){
+  return bbMainRows('U',upper).concat(BB_CHANNEL, bbMainRows('L',lower));
+}
+
 var BB_PRESETS = [
-  { name:'full', rows:[
-    {t:'rail',pol:'+',id:'railT+'}, {t:'rail',pol:'-',id:'railT-'}, {t:'gap'},
-    {t:'main',half:'U',label:'A'}, {t:'main',half:'U',label:'B'}, {t:'main',half:'U',label:'C'},
-    {t:'main',half:'U',label:'D'}, {t:'main',half:'U',label:'E'},
-    {t:'gap',channel:true}, {t:'gap',channel:true},
-    {t:'main',half:'L',label:'F'}, {t:'main',half:'L',label:'G'}, {t:'main',half:'L',label:'H'},
-    {t:'main',half:'L',label:'I'}, {t:'main',half:'L',label:'J'},
-    {t:'gap'}, {t:'rail',pol:'-',id:'railB-'}, {t:'rail',pol:'+',id:'railB+'}
-  ]},
-  { name:'noBottomRail', rows:[
-    {t:'rail',pol:'+',id:'railT+'}, {t:'rail',pol:'-',id:'railT-'}, {t:'gap'},
-    {t:'main',half:'U',label:'A'}, {t:'main',half:'U',label:'B'}, {t:'main',half:'U',label:'C'},
-    {t:'main',half:'U',label:'D'}, {t:'main',half:'U',label:'E'},
-    {t:'gap',channel:true}, {t:'gap',channel:true},
-    {t:'main',half:'L',label:'F'}, {t:'main',half:'L',label:'G'}, {t:'main',half:'L',label:'H'},
-    {t:'main',half:'L',label:'I'}, {t:'main',half:'L',label:'J'}
-  ]},
-  { name:'compact', rows:[
-    {t:'rail',pol:'+',id:'railT+'}, {t:'rail',pol:'-',id:'railT-'}, {t:'gap'},
-    {t:'main',half:'U',label:'A'}, {t:'main',half:'U',label:'B'}, {t:'main',half:'U',label:'C'},
-    {t:'gap',channel:true}, {t:'gap',channel:true},
-    {t:'main',half:'L',label:'F'}, {t:'main',half:'L',label:'G'}, {t:'main',half:'L',label:'H'}
-  ]},
+  { name:'full',         rows: BB_TOP_RAILS.concat(bbCore('ABCDE','FGHIJ'), BB_BOT_RAILS) },
+  { name:'noBottomRail', rows: BB_TOP_RAILS.concat(bbCore('ABCDE','FGHIJ')) },
+  { name:'compact',      rows: BB_TOP_RAILS.concat(bbCore('ABC','FGH')) },
   /* เตี้ยมาก (จอมือถือแนวนอน) — ตัดรางจ่ายไฟทิ้ง เหลือเฉพาะแถวหลัก
      ร่องกลางยังกว้าง 2 แถวเท่าเดิม อุปกรณ์ที่หมุนตั้งจึงยังคร่อมร่องได้ */
-  { name:'tiny', rows:[
-    {t:'main',half:'U',label:'A'}, {t:'main',half:'U',label:'B'}, {t:'main',half:'U',label:'C'},
-    {t:'gap',channel:true}, {t:'gap',channel:true},
-    {t:'main',half:'L',label:'F'}, {t:'main',half:'L',label:'G'}, {t:'main',half:'L',label:'H'}
-  ]}
+  { name:'tiny',         rows: bbCore('ABC','FGH') }
 ];
 
 /* ============================================================
@@ -137,7 +126,13 @@ function buildBreadboard(){
   /* 63 ช่อง = แผงขนาดเต็มมาตรฐานที่ขายทั่วไป ใช้เป็นเพดาน
      จอกว้างกว่านั้นจะเหลือขอบไว้เฉย ๆ ไม่ยืดแผงจนผิดสัดส่วนของจริง */
   var cols = Math.floor((W - padX*2) / P);
-  if(!preset || cols < 6){ bbDestroy(); BB.on = false; return; }
+  if(!preset || cols < 6){
+    /* ต้องใช้ bbTurnOff() ไม่ใช่แค่ลบภาพแผงทิ้ง
+       ของเดิมทิ้ง "เส้นเชื่อมในราง" (virtual wire) ค้างไว้ใน G.wires
+       วงจรจึงยังต่อถึงกันผ่านรางที่ไม่มีอยู่บนจอแล้ว — มองไม่เห็น แก้ไม่ได้ */
+    bbTurnOff();
+    return;
+  }
   cols = Math.min(cols, 63);
 
   var boardW = (cols - 1) * P + padX*2;
@@ -186,12 +181,7 @@ function bbTurnOff(){
   bbDestroy();
   BB.on = false;
   BB.liveG = null;
-  BB.portStrip = new Map();
-  BB.portHole  = new Map();
-  document.querySelectorAll('#workspace .port').forEach(function(p){
-    p.classList.remove('plugged');
-    p.title = bbPortBaseTitle(p);
-  });
+  bbResetPlugs();
   if(typeof refreshWires === 'function') refreshWires();
   if(typeof recolorWires === 'function') recolorWires();
 }
@@ -375,6 +365,15 @@ function bbSnapItem(item){
   var ax = pos.x + anchor.dx, ay = pos.y + anchor.dy;
   var c0 = Math.round((ax - BB.x0) / P), r0 = Math.round((ay - BB.y0) / P);
 
+  /* ผู้เล่นเล็งมาที่ "รางจ่ายไฟ" จริง ๆ หรือเปล่า
+     รางหนึ่งเส้นคือจุดเดียวกันตลอดแนวยาว เสียบขาสองข้างลงรางเดียวกัน
+     = ลัดวงจรทันที ซึ่งเป็นความผิดพลาดคลาสสิกบนเบรดบอร์ดจริง
+     และเป็นบทเรียนที่เกมนี้ต้องให้ผู้เล่นได้ลองทำเอง
+     ถ้าเล็งมาที่รางเอง ก็ปล่อยให้ลัดไปเลย อย่าดีดหนีให้
+     (แต่ถ้าเผลอไปโดนรางตอนวางแถวหลัก ยังดีดหนีเหมือนเดิม) */
+  var aimRow = BB.rows[r0];
+  var aimedAtRail = !!(aimRow && aimRow.def && aimRow.def.t === 'rail');
+
   /* ค้นหาตำแหน่งที่ดีที่สุดในรัศมีที่กำหนด
      คืน dup มาด้วย เพื่อให้รู้ว่าตำแหน่งที่ได้ยังทำให้ขาสองข้าง
      ของอุปกรณ์ตัวเดียวกันตกรางเดียวกันอยู่หรือไม่ (= ลัดวงจรตัวเอง) */
@@ -388,12 +387,15 @@ function bbSnapItem(item){
         if(nx < 0 || ny < 0 || nx > maxX || ny > maxY) continue;
 
         var cost = Math.hypot(nx - pos.x, ny - pos.y);
-        var strips = {}, dup = false, missing = 0, hitTaken = false;
+        var strips = {}, dup = false, dupRail = false, missing = 0, hitTaken = false;
         for(var i=0;i<offs.length;i++){
           var px = nx + offs[i].dx, py = ny + offs[i].dy;
           var ph = bbHoleNear(px, py, P*0.3);
           if(!ph){ missing++; continue; }
-          if(strips[ph.strip]) dup = true;
+          if(strips[ph.strip]){
+            dup = true;
+            if(ph.strip.indexOf('rail') === 0) dupRail = true;
+          }
           strips[ph.strip] = true;
           if(taken[ph.strip]){
             /* ค่าปรับต้องสูงกว่าระยะที่ยอมขยับไปหาที่ว่าง (สูงสุดราว 10 แถว)
@@ -403,10 +405,15 @@ function bbSnapItem(item){
           }
         }
         cost += missing * P * 12;
-        if(dup) cost += P * 400;
+        /* ขาสองข้างลงรางเดียวกัน = ลัดวงจรตัวเอง ปกติต้องหลบ
+           ยกเว้นผู้เล่นเล็งมาที่รางจ่ายไฟเอง — กรณีนั้นปล่อยให้ทำได้จริง */
+        var allowedDup = dup && dupRail && aimedAtRail;
+        if(dup && !allowedDup) cost += P * 400;
 
         if(cost < bestCost){
-          bestCost = cost; best = {x:nx, y:ny}; bestDup = dup; bestTaken = hitTaken;
+          bestCost = cost; best = {x:nx, y:ny};
+          bestDup = dup && !allowedDup;   /* ลัดที่ "ไม่ได้ตั้งใจ" เท่านั้นที่ต้องหลบ */
+          bestTaken = hitTaken;
         }
       }
     }
@@ -451,13 +458,19 @@ function bbPortBaseTitle(p){
   return (pol === '+') ? 'ขั้วบวก (+)' : (pol === '-') ? 'ขั้วลบ (−)' : '';
 }
 
-function bbUpdatePlugs(){
+/* ล้างตารางว่าขาไหนเสียบรูไหน พร้อมธง .plugged และคำบรรยายบนขา
+   (ทั้ง bbTurnOff() และ bbUpdatePlugs() เริ่มจากสถานะว่างเปล่านี้เหมือนกัน) */
+function bbResetPlugs(){
   BB.portStrip = new Map();
   BB.portHole  = new Map();
   document.querySelectorAll('#workspace .port').forEach(function(p){
     p.classList.remove('plugged');
     p.title = bbPortBaseTitle(p);
   });
+}
+
+function bbUpdatePlugs(){
+  bbResetPlugs();
   if(!BB.on) return;
 
   G.wsItems.forEach(function(it){
@@ -535,12 +548,26 @@ function bbPaintStrips(){
   if(!BB.on || !BB.liveG) return;
   var P = BB.pitch, r = P*0.42;
 
-  var count = {};
+  var count = {}, owners = {};
   BB.portHole.forEach(function(hole, port){
     (count[hole.strip] = count[hole.strip] || []).push(hole);
+    (owners[hole.strip] = owners[hole.strip] || []).push(port);
   });
 
-  var s = '';
+  /* รางนี้กำลังลัดวงจรอยู่ไหม = มีขาสองข้างของอุปกรณ์ "ตัวเดียวกัน" ลงรางเดียวกัน
+     เช่นเสียบขาบวกกับขาลบของถ่านลงรางจ่ายไฟเส้นเดียวกัน
+     ทั้งรางเป็นจุดเดียวกัน ไฟจึงวิ่งกลับขั้วตัวเองโดยไม่ผ่านอะไรเลย */
+  function shortedStrip(strip){
+    var ps = owners[strip] || [], seen = {};
+    for(var i=0;i<ps.length;i++){
+      var id = ps[i].dataset.itemId;
+      if(seen[id]) return true;
+      seen[id] = 1;
+    }
+    return false;
+  }
+
+  var s = '', shortedNow = [];
   for(var strip in count){
     var hs = count[strip];
     if(hs.length < 2) continue;
@@ -549,10 +576,30 @@ function bbPaintStrips(){
       x1=Math.min(x1,h.x); x2=Math.max(x2,h.x);
       y1=Math.min(y1,h.y); y2=Math.max(y2,h.y);
     });
-    s += '<rect class="bb-strip-live" x="'+(x1-r)+'" y="'+(y1-r)+'" '
+    var bad = shortedStrip(strip);
+    if(bad) shortedNow.push(strip);
+    s += '<rect class="' + (bad ? 'bb-strip-short' : 'bb-strip-live') + '" '
+       + 'x="'+(x1-r)+'" y="'+(y1-r)+'" '
        + 'width="'+(x2-x1+r*2)+'" height="'+(y2-y1+r*2)+'" rx="'+r+'"/>';
   }
   BB.liveG.innerHTML = s;
+
+  /* เตือนทันทีที่เพิ่งเกิดขึ้น ไม่ต้องรอผู้เล่นกดตรวจวงจร
+     เตือนครั้งเดียวต่อราง ไม่งั้นจะเด้งรัว ๆ ทุกครั้งที่ขยับอุปกรณ์ */
+  BB.shortedStrips = BB.shortedStrips || {};
+  shortedNow.forEach(function(strip){
+    if(BB.shortedStrips[strip]) return;
+    BB.shortedStrips[strip] = 1;
+    var hole = (count[strip] || [])[0];
+    if(typeof showToast === 'function'){
+      showToast('ขาสองข้างของอุปกรณ์ตัวเดียวกันอยู่ใน' +
+                (hole ? bbStripName(hole) : 'รางเดียวกัน') +
+                ' — ทั้งรางเป็นจุดเดียวกัน ไฟจะลัดผ่านไปเลย', 'error');
+    }
+  });
+  for(var k in BB.shortedStrips){
+    if(shortedNow.indexOf(k) < 0) delete BB.shortedStrips[k];
+  }
 }
 
 /* ============================================================
