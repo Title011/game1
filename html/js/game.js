@@ -911,6 +911,20 @@ document.addEventListener('keydown',function(e){
   /* ทุกคีย์ลัดเทียบผ่าน isKey/isNamedKey (js/ui.js)
      ซึ่งดู e.code + e.keyCode ก่อน e.key จึงใช้ได้ทุกภาษาแป้นพิมพ์ */
 
+  /* Ctrl/Cmd + ตัวอักษร = คีย์ลัดคัดลอก-วาง ต้องแยกออกมาก่อนคีย์ลัดตัวเปล่า
+     ไม่งั้น Ctrl+C จะไปเข้าเงื่อนไข "C = ตรวจวงจร" ด้านล่าง
+     (จบด้วย return ทุกทาง คีย์ลัดตัวเปล่าจึงไม่ทำงานซ้อนแน่นอน) */
+  if(e.ctrlKey || e.metaKey){
+    if(isKey(e,'c')){ e.preventDefault(); copyItem(G.selectedItemId); return; }
+    if(isKey(e,'v')){ e.preventDefault(); pasteItem(); return; }
+    if(isKey(e,'d')){ e.preventDefault();                 /* Ctrl+D = คัดลอก+วางทันที */
+      if(G.selectedItemId) duplicateItem(G.selectedItemId);
+      else showToast('คลิกเลือกอุปกรณ์ก่อน','error');
+      return;
+    }
+    return;   /* Ctrl ค้างอยู่ = ไม่ใช่คีย์ลัดของเกม ปล่อยให้เบราว์เซอร์จัดการ */
+  }
+
   /* R = หมุนอุปกรณ์ที่เลือกอยู่ 90° */
   if(isKey(e,'r')){
     if(G.selectedItemId){

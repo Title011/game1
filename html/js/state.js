@@ -28,6 +28,11 @@ var G = {
   probeMode:false,  /* โหมดเครื่องวัดกระแส */
   tapFromForcedPol:null, tapToForcedPol:null,  /* ขั้วที่เลือกตอนต่อสาย */
   pendingPickPort:null, pendingPickRole:null, dragPending:null,  /* popup เลือกขั้ว */
+  /* คลิปบอร์ดคัดลอก-วางอุปกรณ์ (Ctrl+C / Ctrl+V และปุ่ม ⧉ บนตัวอุปกรณ์)
+     dx,dy = ระยะห่างที่ "เรียนรู้" จากการที่ผู้เล่นลากชิ้นที่วางล่าสุดไปเอง
+     วางครั้งถัดไปจะใช้ระยะเดิมซ้ำ = เรียงของเป็นแถวได้ในไม่กี่คลิก
+     (ดู duplicateItem / pasteItem ใน js/workspace.js) */
+  clip:null,
   tutPages:[], tutIdx:0,
 };
 

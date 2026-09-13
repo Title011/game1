@@ -86,10 +86,14 @@ var DEVICE_SYMBOLS_SVG = `
   <circle cx="51" cy="20" r="2" fill="#666"/>
   <!-- middle guides -->
   <rect x="26" y="18" width="12" height="4" rx="2" fill="#0d1b2a" stroke="#2d4a70" stroke-width="1"/>
-  <!-- lever (open) — class switch-lever = animated when powered -->
-  <line x1="13" y1="20" x2="38" y2="7" stroke="#ffd700" stroke-width="4" stroke-linecap="round" class="switch-lever"/>
-  <circle cx="38" cy="7" r="5" fill="#ffd700" stroke="#b8960a" stroke-width="1.5" class="switch-lever"/>
-  <circle cx="38" cy="7" r="2" fill="#b8960a" class="switch-lever"/>
+  <!-- ใบมีด (ท่าที่วาด = ON/ปิดวงจร) — นอนราบทาบขั้วทั้งสองข้าง
+       ปลายใบมีดจึงแตะขั้วขวาพอดี และตัวใบมีดนอนลงในรางกลางที่ y 18-22
+       ตอน OFF ให้ CSS กระดกขึ้น -30° รอบขั้วซ้าย (ดู .switch-lever ใน css/circuit.css)
+       วาดท่า ON ไว้เป็นค่าตั้งต้น เพราะสวิตช์ที่วางใหม่เริ่มที่ ON เสมอ
+       ถ้า CSS โหลดไม่ทัน รูปก็ยังตรงกับสถานะจริง -->
+  <line x1="13" y1="20" x2="43" y2="20" stroke="#ffd700" stroke-width="4" stroke-linecap="round" class="switch-lever"/>
+  <circle cx="43" cy="20" r="4.5" fill="#ffd700" stroke="#b8960a" stroke-width="1.5" class="switch-lever"/>
+  <circle cx="43" cy="20" r="2" fill="#b8960a" class="switch-lever"/>
   <!-- screw bolt heads -->
   <circle cx="27" cy="16" r="2.5" fill="#444" stroke="#222" stroke-width=".5"/>
   <line x1="26" y1="16" x2="28" y2="16" stroke="#222" stroke-width="1"/>
@@ -119,7 +123,7 @@ var DEVICE_SYMBOLS_SVG = `
   <rect x="13" y="12" width="3" height="16" rx="2" fill="rgba(255,255,255,0.12)"/>
   <!-- fuse element (thin wire) -->
   <path d="M14,20 Q18,14 22,20 Q26,26 30,20 Q34,14 38,20 Q42,26 46,20 Q49,14 50,20"
-        fill="none" stroke="#e0a830" stroke-width="1.3" stroke-linecap="round"/>
+        fill="none" stroke="#e0a830" stroke-width="1.3" stroke-linecap="round" class="fuse-element"/>
   <!-- rating band -->
   <line x1="20" y1="12" x2="20" y2="28" stroke="rgba(200,100,0,0.5)" stroke-width="1.5"/>
   <line x1="44" y1="12" x2="44" y2="28" stroke="rgba(200,100,0,0.5)" stroke-width="1.5"/>
@@ -133,19 +137,37 @@ var DEVICE_SYMBOLS_SVG = `
   <!-- leads -->
   <line x1="0"  y1="20" x2="12" y2="20" stroke="#ccc" stroke-width="2.5"/>
   <line x1="52" y1="20" x2="64" y2="20" stroke="#ccc" stroke-width="2.5"/>
+  <!-- ตัวถังสูงขึ้นจาก 14 เป็น 20 หน่วย เพื่อให้แถบรหัสสีสูงตามไปด้วย
+       ของเดิมแถบกว้าง 4 หน่วย = 3.2px ตอนเรนเดอร์ที่ 52px แยกสีแทบไม่ออก
+       ยังคงกึ่งกลางที่ y=20 เท่าเดิม ขาสองข้างจึงยังต่อตรงเข้าตัวถังพอดี -->
   <!-- body shadow -->
-  <rect x="13" y="14" width="38" height="14" rx="5" fill="#7a4a10" opacity=".4"/>
+  <rect x="13" y="12" width="38" height="20" rx="6" fill="#7a4a10" opacity=".4"/>
   <!-- body -->
-  <rect x="12" y="12" width="38" height="14" rx="5" fill="#d4a04a" stroke="#a06820" stroke-width="1.5"/>
-  <!-- highlight gloss -->
-  <rect x="14" y="13" width="14" height="5" rx="3" fill="rgba(255,255,255,0.25)"/>
-  <!-- color bands: Brown Black Red Gold = 1kΩ -->
-  <rect x="20" y="12" width="4" height="14" rx="1" fill="#8b4513"/>
-  <rect x="26" y="12" width="4" height="14" rx="1" fill="#111"/>
-  <rect x="32" y="12" width="4" height="14" rx="1" fill="#c0392b"/>
-  <rect x="42" y="12" width="3" height="14" rx="1" fill="#f1c40f"/>
+  <rect x="12" y="10" width="38" height="20" rx="6" fill="#d4a04a" stroke="#a06820" stroke-width="1.5" class="res-body"/>
+  <!-- highlight gloss — หลบไปอยู่ซ้ายสุดก่อนแถบแรก ไม่ให้ไปลดความสดของสี -->
+  <rect x="14.5" y="12" width="2.5" height="6" rx="1.2" fill="rgba(255,255,255,0.28)"/>
+  <!-- แถบรหัสสี — เปลี่ยนตามค่าความต้านทานของชิ้นนั้นจริง
+       applyResistorBands() ใน js/workspace.js เขียนสีทับให้ทุกครั้งที่ค่าเปลี่ยน
+       (ตารางสีมาตรฐาน IEC 60062 อยู่ที่ OHM_BAND_COLORS ใน js/devices.js)
+
+       ค่าที่วาดไว้ = แดง แดง น้ำตาล ทอง = 22 × 10 = 220Ω ±5%
+       ตรงกับ ESPEC.resistor.r ซึ่งเป็นค่าตั้งต้นของอุปกรณ์ชิ้นใหม่
+       (ของเดิมวาด น้ำตาล-ดำ-แดง = 1kΩ ตรึงไว้ ไม่ตรงกับที่ระบบคำนวณเลย)
+
+       แถบกว้าง 6 หน่วย (เดิม 4) เว้นช่อง 2 หน่วย และสูง 17 หน่วย
+       เพราะแถบจริงพันรอบตัวถังทรงกระบอก มองด้านข้างจึงเห็นเกือบเต็มความสูง
+       ไม่สูงเต็ม 20 พอดี เพราะมุมตัวถังโค้ง rx=6 ถ้าสูงถึงขอบ แถบริม ๆ
+       จะยื่นพ้นเงาตัวถังออกไปลอยอยู่กลางอากาศ
+       ขอบเส้นดำจาง ๆ ช่วยแยกแถบสีเข้ม (ดำ/น้ำตาล/ม่วง) ออกจากตัวถังสีน้ำตาลอ่อน -->
+  <rect x="17.5" y="11.5" width="6" height="17" fill="#c0392b" stroke="rgba(0,0,0,.4)" stroke-width=".5" class="res-band1"/>
+  <rect x="25.5" y="11.5" width="6" height="17" fill="#c0392b" stroke="rgba(0,0,0,.4)" stroke-width=".5" class="res-band2"/>
+  <rect x="33.5" y="11.5" width="6" height="17" fill="#8b4513" stroke="rgba(0,0,0,.4)" stroke-width=".5" class="res-band3"/>
+  <!-- แถบที่ 4 = ค่าความคลาดเคลื่อน ทอง = ±5% คงที่ ไม่เปลี่ยนตามค่า
+       เว้นช่องห่าง 4 หน่วย = สองเท่าของช่องระหว่างสามแถบแรก
+       ตามของจริงที่แยกแถบความคลาดเคลื่อนไว้ท้ายตัวถัง เพื่อบอกว่าอ่านจากฝั่งไหน -->
+  <rect x="43.5" y="11.5" width="4" height="17" fill="#f1c40f" stroke="rgba(0,0,0,.4)" stroke-width=".5"/>
   <!-- ohm label -->
-  <text x="32" y="34" text-anchor="middle" fill="#6e88a8" font-size="6">1kΩ  RESISTOR</text>
+  <text x="32" y="38" text-anchor="middle" fill="#6e88a8" font-size="6" class="res-label">220Ω</text>
 </symbol>
 
   <!-- LED -->
@@ -164,25 +186,25 @@ var DEVICE_SYMBOLS_SVG = `
   <!-- lead flat (cathode marker on lens base) -->
   <line x1="36" y1="35" x2="36" y2="38" stroke="#009944" stroke-width="3"/>
   <!-- light rays -->
-  <line x1="47" y1="16" x2="55" y2="9"  stroke="#00ff88" stroke-width="2"   stroke-linecap="round" class="led-bulb"/>
-  <line x1="50" y1="23" x2="60" y2="20" stroke="#00ff88" stroke-width="2"   stroke-linecap="round" class="led-bulb"/>
-  <line x1="47" y1="33" x2="55" y2="40" stroke="#00ff88" stroke-width="1.5" stroke-linecap="round" class="led-bulb"/>
+  <line x1="47" y1="16" x2="55" y2="9"  stroke="#00ff88" stroke-width="2"   stroke-linecap="round" class="led-ray"/>
+  <line x1="50" y1="23" x2="60" y2="20" stroke="#00ff88" stroke-width="2"   stroke-linecap="round" class="led-ray"/>
+  <line x1="47" y1="33" x2="55" y2="40" stroke="#00ff88" stroke-width="1.5" stroke-linecap="round" class="led-ray"/>
   <!-- ray arrowheads -->
-  <polygon points="55,9 50,11 52,14" fill="#00ff88" class="led-bulb"/>
-  <polygon points="60,20 55,20 56,24" fill="#00ff88" class="led-bulb"/>
+  <polygon points="55,9 50,11 52,14" fill="#00ff88" class="led-ray"/>
+  <polygon points="60,20 55,20 56,24" fill="#00ff88" class="led-ray"/>
   <text x="28" y="50" text-anchor="middle" fill="#6e88a8" font-size="6.5">LED</text>
 </symbol>
 
   <!-- หลอดไฟ -->
 <symbol id="dev-bulb" viewBox="0 0 52 60">
   <!-- outer glow ring (powered) -->
-  <circle cx="26" cy="20" r="18" fill="rgba(255,200,0,0.06)" class="bulb-glass"/>
+  <circle cx="26" cy="20" r="18" fill="rgba(255,200,0,0.06)" class="bulb-glass bulb-halo"/>
   <!-- glass globe -->
   <circle cx="26" cy="20" r="15" fill="#fffde7" stroke="#ddc060" stroke-width="1.5" class="bulb-glass"/>
   <!-- glass tint -->
   <circle cx="26" cy="20" r="14" fill="rgba(255,245,150,0.3)" class="bulb-glass"/>
   <!-- inner glow when powered -->
-  <circle cx="26" cy="20" r="10" fill="rgba(255,180,0,0.0)" class="bulb-glass"/>
+  <circle cx="26" cy="20" r="10" fill="rgba(255,180,0,0.0)" class="bulb-glass bulb-core"/>
   <!-- shine spots -->
   <ellipse cx="19" cy="12" rx="5" ry="3.5" fill="rgba(255,255,255,0.45)" class="bulb-glass"/>
   <ellipse cx="32" cy="25" rx="2" ry="3"   fill="rgba(255,255,255,0.2)"  class="bulb-glass"/>
@@ -193,7 +215,7 @@ var DEVICE_SYMBOLS_SVG = `
   <line x1="21" y1="27" x2="31" y2="27" stroke="#aaa" stroke-width=".8"/>
   <!-- tungsten filament coil -->
   <path d="M21,25 Q23,19 26,25 Q29,19 31,25" fill="none" stroke="#ff8800" stroke-width="2.2"
-        stroke-linecap="round" class="bulb-glass"/>
+        stroke-linecap="round" class="bulb-glass bulb-filament"/>
   <!-- glass neck -->
   <path d="M19,34 Q18,36 18,38 L34,38 Q34,36 33,34 Z" fill="#e8d880" stroke="#c8b850" stroke-width=".8"/>
   <!-- brass base sections -->
@@ -306,11 +328,11 @@ var DEVICE_SYMBOLS_SVG = `
   <line x1="0"  y1="20" x2="14" y2="20" stroke="#ccc" stroke-width="2.5"/>
   <line x1="50" y1="20" x2="64" y2="20" stroke="#ccc" stroke-width="2.5"/>
   <!-- housing cylinder -->
-  <rect x="14" y="12" width="36" height="16" rx="8" fill="#1a1a1a" stroke="#444" stroke-width="1.5"/>
+  <rect x="14" y="12" width="36" height="16" rx="8" fill="#1a1a1a" stroke="#444" stroke-width="1.5" class="diode-body"/>
   <!-- cathode band -->
   <rect x="42" y="12" width="7" height="16" rx="4" fill="#c8c8c8" stroke="#999" stroke-width=".8"/>
   <!-- schematic symbol inside -->
-  <polygon points="20,14 20,26 34,20" fill="#444" opacity=".9"/>
+  <polygon points="20,14 20,26 34,20" fill="#444" opacity=".9" class="diode-arrow"/>
   <line x1="34" y1="14" x2="34" y2="26" stroke="#888" stroke-width="2"/>
   <!-- glass highlight -->
   <ellipse cx="25" cy="15" rx="6" ry="2" fill="rgba(255,255,255,0.15)"/>
@@ -370,7 +392,7 @@ var DEVICE_SYMBOLS_SVG = `
   <!-- เงาใต้ตัวถัง -->
   <path d="M13,25 L13,17 A13,13 0 0,1 39,17 L39,25 Z" fill="#000" opacity=".45"/>
   <!-- ตัวถังพลาสติก: ด้านบนโค้งครึ่งวงกลม ด้านหน้าตัดแบน (เอกลักษณ์ TO-92) -->
-  <path d="M12,24 L12,16 A14,14 0 0,1 40,16 L40,24 Z" fill="#232323" stroke="#414141" stroke-width="1.4"/>
+  <path d="M12,24 L12,16 A14,14 0 0,1 40,16 L40,24 Z" fill="#232323" stroke="#414141" stroke-width="1.4" class="tr-body"/>
   <!-- ไล่เฉดครึ่งซ้ายให้ดูเป็นทรงกระบอก -->
   <path d="M12,24 L12,16 A14,14 0 0,1 26,2 L26,24 Z" fill="#2f2f2f"/>
   <!-- แสงสะท้อนบนผิวพลาสติก -->
@@ -395,10 +417,10 @@ var DEVICE_SYMBOLS_SVG = `
   <!-- body shadow -->
   <rect x="13" y="17" width="36" height="20" rx="5" fill="#7a5a10" opacity=".3"/>
   <!-- photocell circle -->
-  <circle cx="30" cy="26" r="8" fill="#7a5000" stroke="#a07818" stroke-width="1"/>
+  <circle cx="30" cy="26" r="8" fill="#7a5000" stroke="#a07818" stroke-width="1" class="ldr-cell"/>
   <!-- serpentine CdS trace -->
   <path d="M23,26 Q25,20 27,26 Q29,32 31,26 Q33,20 35,26 Q37,32 37,26"
-        fill="none" stroke="#f0c040" stroke-width="1.5" stroke-linecap="round"/>
+        fill="none" stroke="#f0c040" stroke-width="1.5" stroke-linecap="round" class="ldr-trace"/>
   <!-- eye reflection -->
   <circle cx="28" cy="23" r="1.5" fill="rgba(255,255,200,0.5)"/>
   <!-- body highlight -->
@@ -497,22 +519,22 @@ var DEVICE_SYMBOLS_SVG = `
   <rect x="14" y="2"  width="36" height="5" rx="2" fill="#333" stroke="#222" stroke-width="1"/>
   <rect x="14" y="49" width="36" height="5" rx="2" fill="#333" stroke="#222" stroke-width="1"/>
   <!-- primary coil (gold, left) 4 turns -->
-  <path d="M12,11 Q18,11 18,16 Q18,21 12,21" fill="none" stroke="#ffd700" stroke-width="2.2"/>
-  <path d="M12,21 Q18,21 18,26 Q18,31 12,31" fill="none" stroke="#ffd700" stroke-width="2.2"/>
-  <path d="M12,31 Q18,31 18,36 Q18,41 12,41" fill="none" stroke="#ffd700" stroke-width="2.2"/>
-  <path d="M12,41 Q18,41 18,46 Q18,51 12,51" fill="none" stroke="#ffd700" stroke-width="2.2"/>
+  <path d="M12,11 Q18,11 18,16 Q18,21 12,21" fill="none" stroke="#ffd700" stroke-width="2.2" class="tf-coil"/>
+  <path d="M12,21 Q18,21 18,26 Q18,31 12,31" fill="none" stroke="#ffd700" stroke-width="2.2" class="tf-coil"/>
+  <path d="M12,31 Q18,31 18,36 Q18,41 12,41" fill="none" stroke="#ffd700" stroke-width="2.2" class="tf-coil"/>
+  <path d="M12,41 Q18,41 18,46 Q18,51 12,51" fill="none" stroke="#ffd700" stroke-width="2.2" class="tf-coil"/>
   <!-- primary leads -->
   <line x1="0"  y1="14" x2="12" y2="14" stroke="#ffd700" stroke-width="1.8"/>
   <line x1="0"  y1="48" x2="12" y2="48" stroke="#ffd700" stroke-width="1.8"/>
   <!-- primary label -->
   <text x="3" y="33" text-anchor="middle" fill="#ffd700" font-size="5" transform="rotate(-90,3,33)">PRIMARY</text>
   <!-- secondary coil (cyan, right) 8 turns -->
-  <path d="M52,11 Q46,11 46,14 Q46,17 52,17" fill="none" stroke="#00d4ff" stroke-width="2.2"/>
-  <path d="M52,17 Q46,17 46,20 Q46,23 52,23" fill="none" stroke="#00d4ff" stroke-width="2.2"/>
-  <path d="M52,23 Q46,23 46,26 Q46,29 52,29" fill="none" stroke="#00d4ff" stroke-width="2.2"/>
-  <path d="M52,29 Q46,29 46,32 Q46,35 52,35" fill="none" stroke="#00d4ff" stroke-width="2.2"/>
-  <path d="M52,35 Q46,35 46,38 Q46,41 52,41" fill="none" stroke="#00d4ff" stroke-width="2.2"/>
-  <path d="M52,41 Q46,41 46,44 Q46,47 52,47" fill="none" stroke="#00d4ff" stroke-width="2.2"/>
+  <path d="M52,11 Q46,11 46,14 Q46,17 52,17" fill="none" stroke="#00d4ff" stroke-width="2.2" class="tf-coil"/>
+  <path d="M52,17 Q46,17 46,20 Q46,23 52,23" fill="none" stroke="#00d4ff" stroke-width="2.2" class="tf-coil"/>
+  <path d="M52,23 Q46,23 46,26 Q46,29 52,29" fill="none" stroke="#00d4ff" stroke-width="2.2" class="tf-coil"/>
+  <path d="M52,29 Q46,29 46,32 Q46,35 52,35" fill="none" stroke="#00d4ff" stroke-width="2.2" class="tf-coil"/>
+  <path d="M52,35 Q46,35 46,38 Q46,41 52,41" fill="none" stroke="#00d4ff" stroke-width="2.2" class="tf-coil"/>
+  <path d="M52,41 Q46,41 46,44 Q46,47 52,47" fill="none" stroke="#00d4ff" stroke-width="2.2" class="tf-coil"/>
   <!-- secondary leads -->
   <line x1="52" y1="13" x2="64" y2="13" stroke="#00d4ff" stroke-width="1.8"/>
   <line x1="52" y1="45" x2="64" y2="45" stroke="#00d4ff" stroke-width="1.8"/>
@@ -525,69 +547,6 @@ var DEVICE_SYMBOLS_SVG = `
   <text x="32" y="57" text-anchor="middle" fill="#6e88a8" font-size="6">1:2  TRANSFORMER</text>
 </symbol>
 
-  <!-- มัลติมิเตอร์ -->
-<symbol id="dev-multimeter" viewBox="0 0 52 72">
-  <!-- body -->
-  <rect x="2"  y="1"  width="48" height="68" rx="7" fill="#111" stroke="#333" stroke-width="1.8"/>
-  <rect x="4"  y="3"  width="44" height="66" rx="6" fill="#1a1a1a"/>
-  <!-- rubber grip strips -->
-  <rect x="2"  y="20" width="3" height="30" rx="1.5" fill="#222" stroke="#333" stroke-width=".5"/>
-  <rect x="47" y="20" width="3" height="30" rx="1.5" fill="#222" stroke="#333" stroke-width=".5"/>
-  <!-- display LCD bezel -->
-  <rect x="7"  y="5"  width="38" height="22" rx="4" fill="#003300" stroke="#1a4a1a" stroke-width="1.2"/>
-  <!-- LCD background -->
-  <rect x="8"  y="6"  width="36" height="20" rx="3" fill="#004400"/>
-  <!-- LCD digits -->
-  <text x="27" y="20" text-anchor="middle" fill="#00ff44" font-size="12"
-        font-weight="bold" font-family="monospace">12.5</text>
-  <!-- DC mode indicator -->
-  <text x="10" y="11" fill="#00aa22" font-size="4.5">DC</text>
-  <text x="10" y="15.5" fill="#00aa22" font-size="5.5" font-weight="bold">V</text>
-  <!-- bargraph -->
-  <rect x="10" y="21" width="32" height="3" rx="1" fill="#003300"/>
-  <rect x="10" y="21" width="20" height="3" rx="1" fill="#00aa22"/>
-  <!-- dial assembly -->
-  <circle cx="26" cy="42" r="13" fill="#1a1a1a" stroke="#444" stroke-width="1.5"/>
-  <circle cx="26" cy="42" r="10" fill="#222"/>
-  <!-- dial sector markings -->
-  <path d="M16,34 A13,13 0 0,1 36,34" fill="none" stroke="#c0392b" stroke-width="2.5" stroke-linecap="round"/>
-  <path d="M36,34 A13,13 0 0,1 39,42" fill="none" stroke="#ffd700" stroke-width="2.5" stroke-linecap="round"/>
-  <path d="M39,42 A13,13 0 0,1 36,50" fill="none" stroke="#00d4ff" stroke-width="2.5" stroke-linecap="round"/>
-  <path d="M16,50 A13,13 0 0,1 13,42" fill="none" stroke="#00ff88" stroke-width="2.5" stroke-linecap="round"/>
-  <!-- dial tick marks -->
-  <line x1="26" y1="29" x2="26" y2="32" stroke="#777" stroke-width="1"/>
-  <line x1="35" y1="32" x2="33" y2="34" stroke="#777" stroke-width="1"/>
-  <line x1="39" y1="42" x2="36" y2="42" stroke="#777" stroke-width="1"/>
-  <line x1="17" y1="42" x2="20" y2="42" stroke="#777" stroke-width="1"/>
-  <!-- mode labels -->
-  <text x="26" y="31.5" text-anchor="middle" fill="#c0392b" font-size="3.5">V~</text>
-  <text x="37" y="35"   text-anchor="middle" fill="#ffd700" font-size="3.5">V=</text>
-  <text x="38.5" y="44" text-anchor="middle" fill="#00d4ff" font-size="3.5">A</text>
-  <text x="13.5" y="44" text-anchor="middle" fill="#00ff88" font-size="3.5">Ω</text>
-  <!-- center knob -->
-  <circle cx="26" cy="42" r="5.5" fill="#1a1a1a" stroke="#555" stroke-width="1.2"/>
-  <circle cx="26" cy="42" r="3"   fill="#2a2a2a"/>
-  <!-- pointer line -->
-  <line x1="26" y1="42" x2="26" y2="33" stroke="#ffd700" stroke-width="2" stroke-linecap="round"/>
-  <circle cx="26" cy="42" r="1.5" fill="#888"/>
-  <!-- hold & range buttons -->
-  <rect x="8"  y="56" width="10" height="5" rx="1.5" fill="#222" stroke="#444" stroke-width=".8"/>
-  <rect x="22" y="56" width="10" height="5" rx="1.5" fill="#c0392b" stroke="#900" stroke-width=".8"/>
-  <rect x="36" y="56" width="10" height="5" rx="1.5" fill="#222" stroke="#444" stroke-width=".8"/>
-  <text x="13" y="59.5" text-anchor="middle" fill="#777" font-size="3.5">HOLD</text>
-  <text x="27" y="59.5" text-anchor="middle" fill="#fff" font-size="3.5">RANGE</text>
-  <text x="41" y="59.5" text-anchor="middle" fill="#777" font-size="3.5">REL</text>
-  <!-- probe input sockets -->
-  <circle cx="15" cy="66" r="3.5" fill="#c0392b" stroke="#900" stroke-width="1"/>
-  <circle cx="15" cy="66" r="1.5" fill="#900"/>
-  <circle cx="26" cy="66" r="3.5" fill="#111" stroke="#555" stroke-width="1"/>
-  <circle cx="26" cy="66" r="1.5" fill="#333"/>
-  <circle cx="37" cy="66" r="3.5" fill="#2980b9" stroke="#0044aa" stroke-width="1"/>
-  <circle cx="37" cy="66" r="1.5" fill="#0044aa"/>
-  <text x="15" y="71" text-anchor="middle" fill="#c0392b" font-size="3.5">VΩ</text>
-  <text x="26" y="71" text-anchor="middle" fill="#777"    font-size="3.5">COM</text>
-  <text x="37" y="71" text-anchor="middle" fill="#2980b9" font-size="3.5">mA</text>
-</symbol>
 
   <!-- สายไฟ -->
 <symbol id="dev-wire" viewBox="0 0 64 40">

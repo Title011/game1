@@ -275,6 +275,23 @@
   </div>
 </div>
 
+<!-- MODAL OHM — เลือกค่าตัวต้านทานในโหมดอิสระ
+     ค่าที่ให้เลือกมาจาก RESISTOR_OHMS (อนุกรม E12) ใน js/devices.js
+     เรียกผ่าน openOhmPicker(itemId) ใน js/workspace.js -->
+<div id="modal-ohm" class="modal-overlay">
+  <div class="modal-box modal-ohm-box">
+    <div class="modal-header">
+      <h3>เลือกค่าตัวต้านทาน</h3>
+      <button class="modal-close" onclick="closeModal('modal-ohm')">&#x2715;</button>
+    </div>
+    <div class="modal-body">
+      <div class="ohm-note" id="ohm-note"></div>
+      <div class="ohm-grid" id="ohm-grid"></div>
+      <div class="ohm-foot">ทุกค่าเป็นค่ามาตรฐานอนุกรม E12 ที่มีขายจริง</div>
+    </div>
+  </div>
+</div>
+
 <!-- MODAL RESULT -->
 <div id="modal-result" class="modal-overlay">
   <div class="modal-box">

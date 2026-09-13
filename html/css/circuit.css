@@ -136,43 +136,104 @@ body.probe-mode .ws-item{cursor:crosshair;}
 
      --glow  0..1  ความสว่าง/ความแรง เทียบกับพิกัดของอุปกรณ์ตัวนั้น
      --spin  เวลา  วินาทีต่อรอบของมอเตอร์ (กระแสมาก = หมุนเร็ว)
+     --buzz  เวลา  คาบการสั่นของบัซเซอร์ (กระแสมาก = คาบสั้น = สั่นถี่)
 
    จึงเห็นความต่างได้จริง เช่น หลอดอนุกรม 2 ดวงหรี่กว่าดวงเดียว
    แต่หลอดขนาน 2 ดวงสว่างเท่ากับดวงเดียว
+
+   *** ข้อควรรู้ก่อนแก้: กฎในหมวดนี้เลือก "ชิ้นส่วนข้างในรูป SVG"
+   ซึ่งทำได้เพราะ js/workspace.js ฝังชิ้นส่วนเป็นโหนดจริงด้วย
+   makeSvgIconInline() หากเปลี่ยนกลับไปใช้ <use href="#dev-xxx">
+   เนื้อหาจะไปอยู่ใน shadow tree และกฎทั้งหมดในหมวดนี้จะตายเงียบ
+   ไม่ฟ้อง error ใด ๆ แค่ไม่มีอนิเมชัน (เคยเป็นอย่างนั้นมาก่อน)
    ============================================================ */
 
 /* .lit = มีกระแสไหลผ่านจริง (ต่างจาก .powered ที่แปลว่าจ่ายไฟให้วงจรแล้ว) */
 .ws-item.lit{box-shadow:0 0 calc(var(--glow,0) * 24px) rgba(0,255,136,.4);}
 
-/* มอเตอร์: ใบพัดบนเพลาหมุนเร็วตามกระแส
-   transform-box:fill-box + origin:center = หมุนรอบจุดกึ่งกลางของตัวมันเอง
-   ทนต่อการแก้รูป ไม่ต้องมาไล่แก้พิกัดใน SVG ให้ตรงกับ CSS อีก
-   (ของเดิมตรึงไว้ที่ 26px 26px ซึ่งไม่ใช่จุดศูนย์กลางจริง ใบพัดจึงส่ายแทนที่จะหมุน) */
+/* มอเตอร์: โรเตอร์บนเพลาหมุนเร็วตามกระแส
+
+   จุดหมุนต้องเป็น "เพลา" ของรูปวาด = (32,32) ในกรอบ viewBox 0 0 64 64
+   ของ dev-motor (js/device-symbols.js) ซึ่งเป็นที่ที่วงกลมเพลา r=3 ตั้งอยู่
+
+   เคยลองมาสองแบบแล้วเพี้ยนทั้งคู่:
+     origin:26px 26px          ผิดชัด ๆ (เลขของกรอบ 52 หน่วย ไม่ใช่ 64)
+     fill-box + origin:center  เกือบถูกแต่ไม่ถูก — fill-box คือกรอบของ
+       "ทุกชิ้นในกลุ่ม .motor-rotor รวมกัน" ซึ่งไม่สมมาตรรอบเพลา:
+       ขอบล่างมาจากจานโรเตอร์ (y ถึง 46) แต่ขอบบนมาจากหัวขั้วบน (y เริ่ม 15)
+       กรอบจึงเป็น y 15–46 จุดกึ่งกลาง y = 30.5 ไม่ใช่ 32
+       โรเตอร์เลยส่ายเป็นวงรัศมี 1.5 หน่วย (~1.2px) ขณะหมุน
+       เห็นชัดเพราะวงกลมเพลาวาดอยู่นอกกลุ่ม ไม่หมุนตาม จึงอยู่นิ่งให้เทียบ
+
+   ระบุพิกัดเพลาตรง ๆ บน view-box จึงตรงเป๊ะและไม่ขึ้นกับรูปร่างของกลุ่ม
+   *** ถ้าแก้รูปมอเตอร์แล้วย้ายเพลา ต้องมาแก้เลขคู่นี้ด้วย *** */
 @keyframes cg-spin{from{transform:rotate(0deg)}to{transform:rotate(360deg)}}
-.motor-rotor{transform-box:fill-box;transform-origin:center;}
+.motor-rotor{transform-box:view-box;transform-origin:32px 32px;}
 .ws-item.lit .motor-rotor{animation:cg-spin var(--spin,.6s) linear infinite;}
 
-/* LED: สว่างตามกระแสที่ไหลผ่านจริง */
+/* LED: ตัวเลนส์เรืองขึ้นตามกระแส ส่วน "ลำแสง" ที่พุ่งออกมา
+   ซ่อนสนิทตอนไม่มีไฟ แล้วค่อยโผล่ตามความสว่าง
+   (แยก .led-ray ออกจาก .led-bulb เพราะถ้าหรี่ทั้งตัว
+    LED ที่ยังไม่ติดจะดูโปร่งใสเหมือนไม่มีตัวอุปกรณ์อยู่) */
+.led-ray{opacity:0;}
 .ws-item.powered .led-bulb{
-  opacity:calc(.28 + var(--glow,0) * .72);
-  filter:drop-shadow(0 0 calc(var(--glow,0) * 13px) #00ff88);
+  filter:drop-shadow(0 0 calc(var(--glow,0) * 13px) #00ff88)
+         brightness(calc(1 + var(--glow,0) * .55));
+  transition:filter .3s ease;
+}
+.ws-item.powered .led-ray{
+  opacity:calc(var(--glow,0) * var(--glow,0));
+  filter:drop-shadow(0 0 calc(var(--glow,0) * 6px) #00ff88);
   transition:opacity .3s ease, filter .3s ease;
 }
 
-/* หลอดไฟ: สว่างตามกำลังไฟที่ได้รับจริง */
+/* หลอดไฟ: ไส้ร้อนก่อน แล้วแสงจึงกระจายออกมาเป็นวง
+   ไล่ 3 ชั้นตามลำดับที่หลอดจริงสว่าง เพื่อให้เห็นความต่างของ "แรงพลังงาน"
+   ไส้ (bulb-filament) ส้ม→ขาวร้อน · แก้ว (bulb-core) เรืองข้างใน · วงแสง (bulb-halo) ฟุ้งออกนอก */
 .ws-item.powered .bulb-glass{
-  filter:drop-shadow(0 0 calc(var(--glow,0) * 18px) #ffd700)
-         brightness(calc(1 + var(--glow,0) * .9));
+  filter:drop-shadow(0 0 calc(var(--glow,0) * 14px) #ffd700)
+         brightness(calc(1 + var(--glow,0) * .55));
   transition:filter .3s ease;
 }
+/* ไส้หลอดวาดไว้เป็นสีส้ม #ff8800 — เพิ่มความสว่างพร้อมลดความอิ่มสี
+   จึงไล่จาก "ส้มแดง" ไปเป็น "ขาวร้อน" ตามกำลังไฟ เหมือนทังสเตนจริง
+   (ทำด้วย brightness/saturate ไม่ใช่ calc ในช่อง R,G,B ของ rgb()
+    เพื่อให้รองรับเบราว์เซอร์ได้กว้างกว่า) */
+.ws-item.powered .bulb-filament{
+  stroke-width:calc(2.2px + var(--glow,0) * .9px);
+  filter:drop-shadow(0 0 calc(var(--glow,0) * 10px) #ffcf50)
+         brightness(calc(1 + var(--glow,0) * 1.35))
+         saturate(calc(1 - var(--glow,0) * .65));
+  transition:stroke-width .3s ease, filter .3s ease;
+}
+.ws-item.powered .bulb-core{
+  fill:rgba(255,190,20,calc(var(--glow,0) * .8));
+  transition:fill .3s ease;
+}
+.ws-item.powered .bulb-halo{
+  fill:rgba(255,205,40,calc(.06 + var(--glow,0) * .26));
+  transition:fill .3s ease;
+}
 
-/* บัซเซอร์: สั่นเมื่อมีกระแสพอ */
-@keyframes cg-buzz-shake{0%,100%{transform:translateX(0)}25%{transform:translateX(-2px)}75%{transform:translateX(2px)}}
-.ws-item.lit .buzzer-body{animation:cg-buzz-shake .12s linear infinite;}
+/* บัซเซอร์: สั่นแรงและถี่ขึ้นตามกระแส
+   --buzz มาจาก js/probe.js (กระแสมาก = คาบสั้น = สั่นถี่) */
+@keyframes cg-buzz-shake{
+  0%,100%{transform:translateX(0)}
+  25%{transform:translateX(calc(var(--glow,0) * -2.6px))}
+  75%{transform:translateX(calc(var(--glow,0) *  2.6px))}
+}
+.ws-item.lit .buzzer-body{animation:cg-buzz-shake var(--buzz,.12s) linear infinite;}
 
-/* แบตเตอรี่: วงแสงรอบตัวขณะจ่ายไฟ */
-@keyframes cg-batt-glow { 0%,100%{stroke:rgba(255,215,0,0);stroke-width:2} 50%{stroke:rgba(255,215,0,0.6);stroke-width:3} }
-.ws-item.powered .batt-glow { animation: cg-batt-glow 1.5s ease-in-out infinite; }
+/* แบตเตอรี่: วงแสงรอบตัว แรงตามกระแสที่จ่ายออกไปจริง
+   จ่ายเบา ๆ = เรืองจาง · จ่ายหนัก/ใกล้ลัดวงจร = เรืองจัดและเต้นถี่ */
+@keyframes cg-batt-glow{
+  0%,100%{ stroke:rgba(255,215,0,calc(var(--glow,0) * .25)); }
+  50%    { stroke:rgba(255,215,0,calc(var(--glow,0) * .85)); }
+}
+.ws-item.lit .batt-glow{
+  stroke-width:calc(2px + var(--glow,0) * 2px);
+  animation:cg-batt-glow calc(1.9s - var(--glow,0) * 1.1s) ease-in-out infinite;
+}
 
 /* ตัวเก็บประจุ: เรืองแสงตามปริมาณประจุที่เก็บอยู่จริง */
 .ws-item.powered .cap-glow{
@@ -181,22 +242,171 @@ body.probe-mode .ws-item{cursor:crosshair;}
   transition:stroke .3s ease;
 }
 
-/* สวิตช์: คันโยกบอกสถานะจริงของสวิตช์ ไม่ใช่บอกว่ามีไฟหรือไม่ */
-.switch-lever{transform-origin:13px 20px;transition:transform .25s ease;}
-.ws-item .switch-lever{transform:rotate(35deg);}              /* ON  = ปิดวงจร */
-.ws-item.switch-open .switch-lever{transform:rotate(0deg);}   /* OFF = เปิดวงจร */
+/* ตัวต้านทาน: ไม่เปล่งแสง แต่ "ร้อน" ตามกำลังที่ทิ้งไปเป็นความร้อนจริง
+   ยิ่งกินกำลังมาก = ส้มจัดขึ้นและหายใจถี่ขึ้น (P = I²R ทั้งหมดกลายเป็นความร้อน) */
+@keyframes cg-res-heat{
+  0%,100%{ filter:drop-shadow(0 0 calc(var(--glow,0) * 5px) rgba(255,130,30,.7))
+                  brightness(calc(1 + var(--glow,0) * .30)); }
+  50%    { filter:drop-shadow(0 0 calc(var(--glow,0) * 11px) rgba(255,110,20,.9))
+                  brightness(calc(1 + var(--glow,0) * .55)); }
+}
+.ws-item.lit .res-body{
+  animation:cg-res-heat calc(2.2s - var(--glow,0) * 1.4s) ease-in-out infinite;
+}
 
-/* ป้ายสับสวิตช์ ON/OFF บนตัวอุปกรณ์ */
+/* ฟิวส์: ไส้ฟิวส์เรืองขึ้นเมื่อกระแสเข้าใกล้พิกัด และ "กระพริบ" ถี่ขึ้นก่อนขาด
+   หนาขึ้นเล็กน้อยด้วย เพื่อให้เห็นไส้ที่กำลังร้อนได้ชัดในขนาด 52px */
+@keyframes cg-fuse-heat{
+  0%,100%{ opacity:calc(.55 + var(--glow,0) * .25); }
+  50%    { opacity:1; }
+}
+.ws-item.lit .fuse-element{
+  stroke-width:calc(1.3px + var(--glow,0) * 1.1px);
+  filter:drop-shadow(0 0 calc(var(--glow,0) * 8px) #ffb040)
+         brightness(calc(1 + var(--glow,0) * .8));
+  animation:cg-fuse-heat calc(1.4s - var(--glow,0) * 1.15s) ease-in-out infinite;
+}
+
+/* ไดโอด: ลูกศรสว่างเฉพาะตอน "นำกระแสไปข้างหน้า" จริง
+   กระแสย้อนกลับ = deviceIntensity ต่ำ = แทบไม่ติด จึงใช้ดูทิศทางได้ */
+.ws-item.lit .diode-arrow{
+  fill:#ff8a3c;
+  opacity:calc(.45 + var(--glow,0) * .55);
+  filter:drop-shadow(0 0 calc(var(--glow,0) * 7px) #ff8a3c);
+  transition:opacity .25s ease, filter .25s ease;
+}
+.ws-item.lit .diode-body{
+  filter:drop-shadow(0 0 calc(var(--glow,0) * 6px) rgba(255,140,60,.55));
+  transition:filter .3s ease;
+}
+
+/* ทรานซิสเตอร์: ตัวถังพลาสติกอุ่นขึ้นตามกำลังที่ผ่านตัวมัน
+   ของจริงไม่มีแสงออกมา จึงทำแค่ขอบอุ่น ๆ บาง ๆ ไม่ให้แย่งสายตาจากหลอด/LED */
+@keyframes cg-tr-warm{
+  0%,100%{ filter:drop-shadow(0 0 calc(var(--glow,0) * 4px) rgba(255,120,40,.45)); }
+  50%    { filter:drop-shadow(0 0 calc(var(--glow,0) * 9px) rgba(255,100,30,.7)); }
+}
+.ws-item.lit .tr-body{
+  animation:cg-tr-warm calc(2.6s - var(--glow,0) * 1.5s) ease-in-out infinite;
+}
+
+/* LDR: เซลล์รับแสงและลายซิกแซกบนตัวมันเรืองตามกระแสที่ผ่าน
+   (ในเกมคือ "ตัวต้านทานที่เปลี่ยนค่าได้" จึงเรืองแบบตัวต้านทานแต่อมเหลือง) */
+.ws-item.lit .ldr-cell{
+  filter:drop-shadow(0 0 calc(var(--glow,0) * 9px) rgba(255,200,60,.8))
+         brightness(calc(1 + var(--glow,0) * .5));
+  transition:filter .3s ease;
+}
+@keyframes cg-ldr-trace{
+  0%,100%{ opacity:calc(.6 + var(--glow,0) * .2); }
+  50%    { opacity:1; }
+}
+.ws-item.lit .ldr-trace{
+  filter:drop-shadow(0 0 calc(var(--glow,0) * 6px) #ffd24a);
+  animation:cg-ldr-trace calc(2s - var(--glow,0) * 1.2s) ease-in-out infinite;
+}
+
+/* หม้อแปลง: ขดลวดทั้งสองฝั่งเรืองตามกำลังที่ส่งผ่าน
+   ขดที่ 2 ได้ --glow ของตัวมันเอง จึงหรี่กว่าถ้าโหลดฝั่งออกเบา */
+@keyframes cg-tf-coil{
+  0%,100%{ opacity:calc(.65 + var(--glow,0) * .15); }
+  50%    { opacity:1; }
+}
+.ws-item.lit .tf-coil{
+  stroke-width:calc(2.2px + var(--glow,0) * .9px);
+  animation:cg-tf-coil calc(1.1s - var(--glow,0) * .75s) ease-in-out infinite;
+}
+/* เลือกจากสีเส้นในรูป SVG ตรง ๆ เพื่อให้แสงรอบขดตรงกับสีขดนั้น
+   (ขดปฐมภูมิทอง / ขดทุติยภูมิฟ้า) โดยไม่ต้องเพิ่มคลาสในไฟล์รูป */
+.ws-item.lit .tf-coil[stroke="#ffd700"]{
+  filter:drop-shadow(0 0 calc(var(--glow,0) * 7px) rgba(255,215,0,.85));
+}
+.ws-item.lit .tf-coil[stroke="#00d4ff"]{
+  filter:drop-shadow(0 0 calc(var(--glow,0) * 7px) rgba(0,212,255,.85));
+}
+
+/* สวิตช์: คันโยกบอกสถานะจริงของสวิตช์ ไม่ใช่บอกว่ามีไฟหรือไม่
+
+   หมุนรอบขั้วซ้าย (13,20) ซึ่งเป็นบานพับจริงของใบมีด
+   ในไฟล์รูปวาดใบมีดไว้ท่า ON = นอนราบอยู่แล้ว ตรงนี้จึงเป็น 0°
+   (ของเดิมรูปวาดเอียงขึ้น 27.5° แล้วหมุนทับอีก 35° ผลลัพธ์คือเอียงลง 7.5°
+    ใบมีดจึงไม่เคยนอนตรงเลยทั้งสองสถานะ) */
+/* view-box ระบุไว้ชัด ๆ เหมือน .motor-rotor — 13px 20px คือขั้วซ้ายในกรอบ
+   viewBox 0 0 64 40 ของ dev-switch ไม่ใช่พิกัดในกรอบของตัวใบมีดเอง */
+.switch-lever{transform-box:view-box;transform-origin:13px 20px;transition:transform .25s ease;}
+.ws-item .switch-lever{transform:rotate(0deg);}                /* ON  = ปิดวงจร ใบมีดนอนราบ */
+.ws-item.switch-open .switch-lever{transform:rotate(-30deg);}  /* OFF = เปิดวงจร ใบมีดกระดกขึ้น */
+
+/* ============================================================
+   ป้ายเล็กบนตัวอุปกรณ์ — สับสวิตช์ ON/OFF · ค่าตัวต้านทาน · คัดลอก
+
+   ทุกป้ายมี ::before เป็น "เป้ารับสัมผัส" ใสที่กว้างกว่าตัวป้ายเอง
+   ป้ายจริงเล็กเพราะต้องไม่บังรูปอุปกรณ์ แต่ปลายนิ้วกว้างกว่านั้นมาก
+   ถ้าไม่ขยายเป้า บนมือถือจะกดไม่ค่อยโดน (ตัวจัดการแตะอยู่ที่ bindBadgeTap
+   ใน js/workspace.js ซึ่งแยก touchend ออกจาก click ไม่ให้ทำงานซ้อนกัน)
+   ============================================================ */
+.ws-switch-state,.ws-ohm-state,.ws-item-dup{
+  position:absolute;z-index:6;cursor:pointer;
+  font-weight:900;letter-spacing:.6px;line-height:1.5;
+  border-radius:6px;box-shadow:0 1px 4px rgba(0,0,0,.5);
+  /* touch-action:none เหมือนตัวอุปกรณ์ — เบราว์เซอร์จะไม่ยึดการแตะไปทำ
+     เลื่อนจอ/ซูมสองครั้ง touchend จึงยัง cancelable และ preventDefault ได้จริง
+     (ถ้า preventDefault ไม่ทำงาน click สังเคราะห์จะตามมาสั่งซ้ำอีกรอบ) */
+  user-select:none;-webkit-user-select:none;touch-action:none;
+}
+.ws-switch-state::before,.ws-ohm-state::before,.ws-item-dup::before{
+  content:'';position:absolute;inset:-9px;border-radius:14px;
+}
+
+/* ป้ายสับสวิตช์ ON/OFF */
 .ws-switch-state{
-  position:absolute;top:-9px;left:-9px;z-index:6;cursor:pointer;
-  font-size:.5rem;font-weight:900;letter-spacing:.6px;
-  padding:1px 5px;border-radius:6px;line-height:1.5;
+  top:-9px;left:-9px;font-size:.5rem;padding:1px 5px;
   background:var(--accent3);color:#04231a;border:1px solid #0a5;
-  box-shadow:0 1px 4px rgba(0,0,0,.5);
 }
 .ws-item.switch-open .ws-switch-state{
   background:#4b5563;color:#e5eaf2;border-color:#374151;
 }
+
+/* ค่าความต้านทานของตัวต้านทานชิ้นนั้น — โหมดอิสระเท่านั้น
+   โหมดด่านค่า 220Ω เป็นส่วนหนึ่งของโจทย์ จึงต้องซ่อนไม่ให้แก้ */
+/* ปุ่มเปลี่ยนค่าความต้านทาน — มุมซ้ายบน (ตัวต้านทานไม่มีป้าย ON/OFF จึงว่าง)
+
+   เป็นปุ่มสัญลักษณ์ Ω จัตุรัสขนาดเท่าปุ่มคัดลอก ไม่ใส่ตัวเลขลงไป
+   เพราะตัวเลขกับแถบรหัสสีอยู่บนตัวโมเดลแล้ว และป้ายที่มีตัวเลข ("4.7kΩ")
+   จะกว้างราว 34px ซึ่งบนกล่อง 65px จะยื่นไปติดปุ่มคัดลอกที่กึ่งกลางขอบบนพอดี
+   ค่าตัวเลขยังอ่านได้จาก title ตอนเอาเมาส์ชี้ */
+.ws-ohm-state{
+  display:none;top:-9px;left:-9px;
+  width:18px;height:18px;padding:0;font-size:.7rem;font-weight:700;
+  align-items:center;justify-content:center;line-height:1;
+  background:#3a2a08;color:var(--accent2);border:1px solid #7a5c10;
+}
+body.sandbox-mode .ws-ohm-state{display:flex;}
+.ws-ohm-state:hover{background:#4a360a;border-color:var(--accent2);}
+
+/* ปุ่มคัดลอกอุปกรณ์ — โผล่ตอนชี้เมาส์หรือตอนเลือกอยู่ (มือถือไม่มี hover) */
+.ws-item-dup{
+  width:18px;height:18px;padding:0;font-size:.72rem;font-weight:400;
+  display:flex;align-items:center;justify-content:center;
+  background:var(--accent);color:#04222b;border:1px solid #0a7;
+  opacity:0;pointer-events:none;transition:opacity .15s;
+}
+.ws-item:hover .ws-item-dup,
+.ws-item.selected .ws-item-dup{opacity:1;pointer-events:auto;}
+
+/* ตำแหน่งปุ่ม = กึ่งกลางขอบด้านที่ไม่มีขาของอุปกรณ์ตัวนั้น
+   คลาส dup-* ใส่โดย layoutPorts() ใน js/devices.js ซึ่งรู้ตำแหน่งขาจริง
+   หลังหมุนแล้ว ปุ่มจึงย้ายตามเองเวลาหมุนอุปกรณ์ ไม่ไปยืนทับขั้วหรือสาย */
+/* ตั้งครบทั้ง 4 ด้านทุกกฎ (ด้านที่ไม่ใช้ = auto) เพราะคลาสถูกสลับตอนหมุน
+   ถ้าปล่อยค่าเดิมค้างไว้ จะมีทั้ง top และ bottom พร้อมกันแล้วตำแหน่งเพี้ยน */
+.ws-item-dup{top:-9px;right:auto;bottom:auto;left:50%;transform:translateX(-50%);}
+.ws-item.dup-top    .ws-item-dup{top:-9px;   right:auto;  bottom:auto;  left:50%;  transform:translateX(-50%);}
+.ws-item.dup-bottom .ws-item-dup{top:auto;   right:auto;  bottom:-9px;  left:50%;  transform:translateX(-50%);}
+.ws-item.dup-left   .ws-item-dup{top:50%;    right:auto;  bottom:auto;  left:-9px; transform:translateY(-50%);}
+.ws-item.dup-right  .ws-item-dup{top:50%;    right:-9px;  bottom:auto;  left:auto; transform:translateY(-50%);}
+
+/* ปุ่มลบต้องกดได้บนมือถือด้วย — ที่นั่นไม่มี hover จึงต้องอิงการเลือก */
+.ws-item.selected .ws-item-delete{opacity:1;pointer-events:auto;}
 
 /* ============================================================
    รายงานค่าไฟฟ้าหลังผ่านด่าน (ดู buildCircuitReport ใน js/probe.js)

@@ -170,7 +170,9 @@ function solveCircuit(items, wires, opts){
   var nNodes = nb.count;
   var branches = [];
   items.forEach(function(it){
-    var sp = ESPEC[it.deviceId];
+    /* itemSpec() ไม่ใช่ ESPEC ตรง ๆ — ตัวต้านทานที่ผู้เล่นตั้งค่าเองในโหมดอิสระ
+       ต้องใช้ค่าความต้านทานของชิ้นนั้น (ดู itemSpec ใน js/devices.js) */
+    var sp = itemSpec(it);
     if(!sp || sp.kind === 'bus') return;
     var ports = nb.portsOf.get(it.id);
     var tm = deviceTerminals(it, ports);
@@ -364,9 +366,21 @@ function solveCircuit(items, wires, opts){
 function deviceIntensity(r){
   if(!r) return 0;
   var sp = r.spec;
+  if(!sp) return 0;
   var x = 0;
-  if(sp.pnom)      x = r.P / sp.pnom;
-  else if(sp.inom) x = Math.abs(r.I) / sp.inom;
+  /* ไล่ตามลำดับ "ค่าที่สื่อความหมายที่สุด" ของอุปกรณ์ชนิดนั้น
+     เดิมมีแค่ 2 ทางแรก อุปกรณ์อีก 10 ชนิดจึงคืน 0 = ไม่มีไฟเข้าเลยในสายตา CSS
+     ทั้งที่จริงมีกระแสไหลผ่านและร้อนขึ้นจริง */
+  /* ตัวเก็บประจุคิดจาก "ประจุที่เก็บอยู่" ไม่ใช่กระแส:
+     กระแสประจุแรงสุดตอนเริ่มชาร์จแล้วลดเหลือศูนย์เมื่อเต็ม
+     ถ้าคิดจากกระแสจะเรืองจัดตอนยังว่างและดับตอนเต็ม = กลับหัวกับความจริง */
+  if(sp.kind === 'cap')  x = Math.abs(r.V) / (sp.vmax || 16);
+  else if(sp.pnom)       x = r.P / sp.pnom;               /* โหลดที่มีพิกัด "เต็มที่" (หลอด/LED) */
+  else if(sp.inom)       x = Math.abs(r.I) / sp.inom;     /* คิดจากกระแสพิกัด (มอเตอร์/บัซเซอร์/ไดโอด) */
+  else if(sp.irate)      x = Math.abs(r.I) / sp.irate;    /* ฟิวส์ — เทียบพิกัดตัด */
+  else if(sp.pmax)       x = r.P / sp.pmax;               /* ตัวต้านทาน/LDR/ทรานซิสเตอร์ — ร้อนตามกำลังไฟ */
+  else if(sp.imax)       x = Math.abs(r.I) / sp.imax;     /* แหล่งจ่าย — จ่ายกระแสหนักแค่ไหนเทียบพิกัดตัวเอง */
+  else if(sp.ron != null) x = Math.abs(r.I) / 0.5;        /* สวิตช์ ไม่มีพิกัดใด ๆ อ้างกระแสหยาบ ๆ */
   else return 0;
   if(x <= 0) return 0;
   return Math.max(0, Math.min(1, Math.pow(x, 0.4)));
