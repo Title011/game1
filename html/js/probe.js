@@ -65,7 +65,12 @@ function stopCurrentFlow(){
     if(!it.el) return;
     it.el.style.removeProperty('--glow');
     it.el.style.removeProperty('--spin');
+    it.el.style.removeProperty('--buzz');
     it.el.classList.remove('lit');
+    /* ล้างค่าที่จำไว้ด้วย ไม่งั้นรอบจ่ายไฟถัดไปที่ได้ค่าเท่าเดิมพอดี
+       จะถูกมองว่า "ไม่เปลี่ยน" แล้วไม่เขียนกลับลงไป = อุปกรณ์ไม่ติดเลย */
+    it._lastGlow = null;
+    it._lastSpin = null;
   });
 }
 
@@ -100,23 +105,52 @@ function onLiveIncident(events){
 
 /* ============================================================
    แปลงผลการคำนวณเป็นภาพ
-   ความสว่าง/ความเร็ว/ความดัง ส่งผ่านตัวแปร CSS --glow และ --spin
-   (ดู css/circuit.css)
+   ความสว่าง/ความเร็ว/ความดัง ส่งผ่านตัวแปร CSS --glow, --spin, --buzz
+   ตั้งไว้ที่กล่อง .ws-item แล้วชิ้นส่วนในรูป SVG สืบทอดค่าลงไปใช้
+   (ดู css/circuit.css หมวด DEVICE ANIMATIONS)
    ============================================================ */
 function applySimVisuals(sol){
   G.wsItems.forEach(function(it){
     var el = it.el;
-    if(!el || el.classList.contains('burned')) return;
+    if(!el) return;
+
+    /* อุปกรณ์ที่พังแล้วต้อง "ดับสนิท" ไม่ใช่ค้างค่าสุดท้ายไว้
+       ของเดิม return ทิ้งเฉย ๆ --glow กับ .lit จึงค้างอยู่ที่ค่าก่อนพัง
+       หลอดที่ไส้ขาดแล้วก็ยังเรืองแสงอยู่ต่อ */
+    if(el.classList.contains('burned') || el.classList.contains('failed')){
+      if(it._lastGlow !== '0.000'){
+        it._lastGlow = '0.000';
+        el.style.setProperty('--glow', '0');
+        el.classList.remove('lit');
+      }
+      return;
+    }
+
     var r = sol.byItem[it.id];
     var g = r ? deviceIntensity(r) : 0;
+    var gs = g.toFixed(3);
 
-    el.style.setProperty('--glow', g.toFixed(3));
-    el.classList.toggle('lit', g > 0.04);
+    /* เขียนเฉพาะตอนค่าเปลี่ยนจริง — ลูปนี้เดิน 20 ครั้งต่อวินาที
+       และ --glow ไปคุมทั้ง filter กับ animation-duration ของชิ้นส่วนข้างในรูป
+       ถ้าเขียนทับค่าเดิมทุกรอบ เบราว์เซอร์จะคำนวณสไตล์ใหม่ทั้งก้อนฟรี ๆ
+       และอนิเมชันที่คาบขึ้นกับ --glow จะสะดุดเพราะถูกตั้งคาบใหม่ตลอด */
+    if(it._lastGlow !== gs){
+      it._lastGlow = gs;
+      el.style.setProperty('--glow', gs);
+      el.classList.toggle('lit', g > 0.04);
+    }
 
-    /* มอเตอร์หมุนเร็วตามกระแสจริง — กระแสน้อยก็หมุนอืด */
+    /* มอเตอร์หมุนเร็วตามกระแสจริง — กระแสน้อยก็หมุนอืด
+       บัซเซอร์ใช้ค่าเดียวกันคนละทาง: กระแสมาก = คาบสั้น = สั่นถี่และดังขึ้น */
     if(r && r.spec && r.spec.inom){
       var ratio = Math.abs(r.I) / r.spec.inom;
-      el.style.setProperty('--spin', (ratio > 0.03 ? (0.55/Math.min(2.5, ratio)) : 6) + 's');
+      var spin = (ratio > 0.03 ? (0.55/Math.min(2.5, ratio)) : 6).toFixed(3) + 's';
+      var buzz = (ratio > 0.03 ? (0.22/Math.min(3, ratio)) : 0.4).toFixed(3) + 's';
+      if(it._lastSpin !== spin){
+        it._lastSpin = spin;
+        el.style.setProperty('--spin', spin);
+        el.style.setProperty('--buzz', buzz);
+      }
     }
   });
 }
@@ -347,6 +381,9 @@ function refreshProbeReading(){
     var r = sol.byItem[it.id];
     var dev = DEVICES[it.deviceId];
     label = dev.name;
+    /* ตัวต้านทานตั้งค่าเองได้ในโหมดอิสระ ต้องบอกด้วยว่าที่วัดอยู่คือค่าไหน
+       ไม่งั้นวางหลายชิ้นคนละค่าแล้วอ่านตัวเลขไม่รู้ว่าของชิ้นไหน */
+    if(it.ohms != null) label += ' ' + fmtOhm(it.ohms);
     if(r){
       V = r.V; I = r.I; P = r.P;
       var sp = r.spec;
@@ -413,7 +450,7 @@ function buildCircuitReport(){
       var pct = Math.round(deviceIntensity(r) * 100);
       extra = '<span class="rep-bar"><i style="width:' + pct + '%"></i></span>';
     }
-    rows += '<tr><td>' + dev.name + '</td>'
+    rows += '<tr><td>' + dev.name + (it.ohms != null ? ' ' + fmtOhm(it.ohms) : '') + '</td>'
           + '<td>' + fmtVolt(r.V) + '</td>'
           + '<td>' + fmtCurrent(r.I) + '</td>'
           + '<td>' + fmtPower(r.P) + '</td>'

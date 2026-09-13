@@ -17,8 +17,7 @@ var SANDBOX_INVENTORY = {
   battery_aa:4, battery_9v:4, transformer:2,
   switch:4, fuse:4,
   resistor:4, ldr:2, diode:4, led:4, capacitor:4, transistor:2,
-  bulb:4, motor:3, buzzer:3,
-  multimeter:1
+  bulb:4, motor:3, buzzer:3
 };
 
 /* สลับเข้า/ออกโหมดอิสระ (ปุ่มบน header) */
@@ -48,7 +47,9 @@ function enterSandbox(){
   document.getElementById('goal-title').textContent = 'โหมดอิสระ (Sandbox)';
   document.getElementById('goal-desc').textContent =
     'ไม่มีโจทย์ ไม่มีถูก-ผิด — แถบด้านบนจะบอกตลอดว่าถ้าจ่ายไฟตอนนี้จะเกิดอะไร ' +
-    'ทั้งค่าที่จะได้และอันตรายที่จะตามมา กด "ตรวจวงจร" เมื่อพร้อมจ่ายไฟจริง';
+    'ทั้งค่าที่จะได้และอันตรายที่จะตามมา กด "ตรวจวงจร" เมื่อพร้อมจ่ายไฟจริง · ' +
+    'แตะป้ายค่าโอห์มมุมซ้ายบนของตัวต้านทานเพื่อเปลี่ยนค่า · ' +
+    'ปุ่ม ⧉ บนตัวอุปกรณ์ (หรือ Ctrl+C/Ctrl+V) คัดลอกของซ้ำ ๆ ได้';
   setGoalOutcome('');   /* โหมดอิสระไม่มีเป้าหมายตายตัว */
 
   var t = document.getElementById('timer-display');

@@ -92,6 +92,39 @@
 }
 .btn-confirm-ok.danger:hover{box-shadow:0 8px 22px rgba(255,68,68,.55);}
 
+/* ============================================================
+   OHM PICKER — เลือกค่าตัวต้านทานในโหมดอิสระ
+   ตารางปุ่มค่าอนุกรม E12 (ดู RESISTOR_OHMS ใน js/devices.js)
+   ปุ่มสูง 44px ตามขนาดเป้าสัมผัสขั้นต่ำที่นิ้วกดได้แม่นบนมือถือ
+   ============================================================ */
+.modal-ohm-box{max-width:380px;}
+#modal-ohm .modal-body{gap:12px;padding:16px 18px 18px;}
+.ohm-note{
+  font-size:.76rem;color:var(--text-dim);line-height:1.7;text-align:center;
+}
+.ohm-note b{color:var(--accent2);font-weight:800;}
+.ohm-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;}
+.ohm-opt{
+  padding:0;height:48px;border-radius:9px;cursor:pointer;
+  display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;
+  font-size:.78rem;font-weight:700;font-variant-numeric:tabular-nums;
+  background:var(--bg-card);border:1px solid var(--border2);color:var(--text);
+  transition:border-color .15s,color .15s,background .15s;
+}
+/* แถบรหัสสีย่อ 3 แถบ = เลขหลักแรก · เลขหลักสอง · ตัวคูณ
+   เรียงซ้ายไปขวาเหมือนบนตัวถังจริง (ดู ohmBands ใน js/devices.js) */
+.ohm-bands{display:flex;gap:2px;}
+.ohm-bands i{
+  width:4px;height:10px;border-radius:1px;
+  border:1px solid rgba(0,0,0,.5);box-shadow:0 0 0 1px rgba(255,255,255,.08);
+}
+.ohm-opt:hover{border-color:var(--accent);color:var(--accent);}
+.ohm-opt.active{
+  background:rgba(255,215,0,.12);border-color:var(--accent2);color:var(--accent2);
+  box-shadow:0 0 0 1px var(--accent2) inset;
+}
+.ohm-foot{font-size:.68rem;color:var(--text-dim);text-align:center;opacity:.8;}
+
 /* RESULT — ผลการตรวจวงจร */
 /* กล่องผลการตรวจเป็นกล่องที่เนื้อหายาวที่สุดในเกม
    บีบระยะหัวกล่องลงหน่อย จะได้เห็นเนื้อหาจริงได้มากขึ้นก่อนต้องเลื่อน */

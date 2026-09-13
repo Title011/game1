@@ -30,8 +30,9 @@ var DEVICES = {
   /* breadboard ยังนิยามไว้เพื่อไม่ให้ของเก่าพัง แต่ไม่ได้แจกให้หยิบใช้แล้ว
      (พื้นที่ทำงานทั้งผืนคือเบรดบอร์ดจริงอยู่แล้ว — ดู js/breadboard.js)
      ถ้าอยากเอากลับมาใช้ ใส่ 'breadboard' กลับเข้าคลังใน js/inventory.js */
-  breadboard:  { name:'Breadboard',    svgId:'dev-breadboard',  type:'tool', ohm:0,    ports:['left','right','top','bottom'] },
-  multimeter:  { name:'มัลติมิเตอร์',  svgId:'dev-multimeter',  type:'tool', ohm:1e7,  ports:['left','right'] },
+  breadboard:  { name:'Breadboard',    svgId:'dev-breadboard',  type:'tool', ohm:0,    ports:['left','right','top','bottom'] }
+  /* ไม่มี 'multimeter' แล้ว — การวัดค่าใช้ "โหมดเครื่องวัด" (ปุ่ม M) ซึ่งจิ้มอ่าน
+     ค่าได้ทุกจุดโดยไม่ต้องเสียขาต่อสายสองขาไปกับตัวเครื่อง และไม่กินที่บนแผง */
 };
 
 /* ============================================================
@@ -81,9 +82,7 @@ var PORT_ANCHORS = {
   /* leads สองเส้นออกจากก้นกระป๋อง */
   capacitor  : { left:{x:-0.5, y: 2, face:'bottom'}, right:{x:0.5, y: 2, face:'bottom'} },
   /* pin legs สองขาออกจากก้น พร้อมหัวต่อ +/− */
-  buzzer     : { left:{x:-0.5, y: 2, face:'bottom'}, right:{x:0.5, y: 2, face:'bottom'} },
-  /* รูเสียบสายวัด VΩ · COM · mA อยู่ที่ขอบล่างของเครื่อง */
-  multimeter : { left:{x:-0.5, y: 2, face:'bottom'}, right:{x:0.5, y: 2, face:'bottom'} }
+  buzzer     : { left:{x:-0.5, y: 2, face:'bottom'}, right:{x:0.5, y: 2, face:'bottom'} }
 };
 
 /* ขนาดหนึ่งช่อง (px) — วัดจากอุปกรณ์จริงโดย bbMeasurePitch()
@@ -121,7 +120,7 @@ function layoutPorts(item){
   var W = item.el.offsetWidth  || 65;
   var H = item.el.offsetHeight || 65;
   var deg = item.rotation || 0;
-  var hasTop = false, hasBottom = false;
+  var occ = {top:false, bottom:false, left:false, right:false};
   item.el.querySelectorAll('.port').forEach(function(p, idx){
     var name = p.dataset.origPos || dev.ports[idx];
     var v = rotatePortAnchor(portAnchor(item.deviceId, name), deg);
@@ -132,15 +131,34 @@ function layoutPorts(item){
     p.style.top    = (H/2 + v.y*U) + 'px';
     p.style.right  = 'auto';
     p.style.bottom = 'auto';
-    if(v.y >  1.5) hasBottom = true;
-    if(v.y < -1.5) hasTop    = true;
+    /* ขอบนี้ "มีขาอยู่" — เกณฑ์ 1.5 ช่องคือขาที่ออกมาถึงริมกล่องจริง
+       ไม่นับขาที่เยื้องจากกลางเล็กน้อยอย่างขาก้นหลอดไฟ (x = ±0.5) */
+    if(v.y >  1.5) occ.bottom = true;
+    if(v.y < -1.5) occ.top    = true;
+    if(v.x >  1.5) occ.right  = true;
+    if(v.x < -1.5) occ.left   = true;
   });
 
   /* ขาที่ลงมาอยู่ใต้กล่อง ไปทับที่ของป้ายชื่ออุปกรณ์พอดี
      ขาที่อยู่เหนือกล่อง ไปทับที่ของป้ายสถานะ ("เสียหาย" / "ฟิวส์ขาด")
      บอก CSS ไว้ให้เลื่อนป้ายหลบ (ดู css/components.css) */
-  item.el.classList.toggle('has-port-bottom', hasBottom);
-  item.el.classList.toggle('has-port-top',    hasTop);
+  item.el.classList.toggle('has-port-bottom', occ.bottom);
+  item.el.classList.toggle('has-port-top',    occ.top);
+
+  /* ปุ่มคัดลอกไปอยู่ "กึ่งกลางขอบด้านที่ไม่มีขา" ของอุปกรณ์ตัวนั้น
+     เพราะขอบที่มีขาคือที่ที่สายไฟวิ่งเข้าออก ปุ่มไปตั้งตรงนั้นก็บังขั้วบังสาย
+     (แบตเตอรี่ 9V มีขั้วทั้งคู่อยู่ขอบบน ปุ่มที่เคยตั้งกลางขอบบนจึงทับขั้วบวกพอดี)
+
+     ไล่ตามลำดับ บน → ขวา → ซ้าย → ล่าง  จงใจให้ "ล่าง" เป็นทางสุดท้าย
+     เพราะใต้กล่องมีป้ายชื่ออุปกรณ์กับป้ายใบ้ "R หมุน" ซ้อนกันอยู่แล้ว
+     ด้วยลำดับนี้ไม่มีอุปกรณ์ชนิดไหนในเกมตกไปอยู่ขอบล่างเลย */
+  var free = 'top';
+  ['top','right','left','bottom'].some(function(f){
+    if(occ[f]) return false;
+    free = f; return true;
+  });
+  item.el.classList.remove('dup-top','dup-right','dup-left','dup-bottom');
+  item.el.classList.add('dup-' + free);
 }
 
 /* วางจุดขั้วใหม่ทั้งกระดาน — เรียกเมื่อขนาดกล่อง/ขนาดช่องเปลี่ยน (ย่อ-ขยายจอ) */
@@ -216,9 +234,84 @@ var ESPEC = {
   buzzer     : {kind:'res', r:90,  inom:0.05, imax:0.15, pmax:0.60, tburn:4},
 
   wire       : {kind:'bus'},
-  breadboard : {kind:'bus'},
-  multimeter : {kind:'meter', r:1e7}
+  breadboard : {kind:'bus'}
+  /* kind:'meter' ยังรองรับอยู่ในตัวแก้สมการ (js/solver.js) เผื่ออุปกรณ์วัดในอนาคต
+     แต่ตอนนี้ไม่มีอุปกรณ์ชนิดไหนใช้แล้ว */
 };
+
+/* ============================================================
+   ค่าตัวต้านทานที่เลือกได้ในโหมดอิสระ
+
+   ทุกค่าอยู่ในอนุกรม E12 ซึ่งเป็นค่ามาตรฐานของตัวต้านทาน 10% ที่ผลิตขายจริง
+   (E12 = 10·12·15·18·22·27·33·39·47·56·68·82 คูณกำลังของสิบ)
+   จึงไม่มีค่ามั่ว ๆ อย่าง 200Ω หรือ 500Ω ที่หาซื้อไม่ได้จริง
+
+   เลือกมาเฉพาะช่วงที่มีผลกับวงจรในเกม (แหล่งจ่าย 1.5–9V):
+     ต่ำกว่า 10Ω  แทบไม่ต่างจากต่อตรง และทำให้อุปกรณ์พังทันที
+     สูงกว่า 10kΩ กระแสเหลือหลักไมโครแอมป์ ไม่มีอะไรทำงานให้เห็น
+   ============================================================ */
+var RESISTOR_OHMS = [10, 22, 47, 68, 100, 150, 220, 330, 470, 680,
+                     1000, 1500, 2200, 3300, 4700, 10000];
+
+/* รหัสสีตัวต้านทาน ตามมาตรฐาน IEC 60062
+   ตำแหน่งใน array = ตัวเลขที่แถบสีนั้นแทน ใช้ได้ทั้งกับแถบเลขนัยสำคัญ
+   สองแถบแรก และแถบตัวคูณ (ซึ่งแทนเลขชี้กำลังของสิบ) */
+var OHM_BAND_COLORS = [
+  '#1a1a1a',  /* 0 ดำ     */
+  '#8b4513',  /* 1 น้ำตาล */
+  '#c0392b',  /* 2 แดง    */
+  '#e67e22',  /* 3 ส้ม     */
+  '#f1c40f',  /* 4 เหลือง */
+  '#27ae60',  /* 5 เขียว   */
+  '#2980b9',  /* 6 น้ำเงิน */
+  '#8e44ad',  /* 7 ม่วง    */
+  '#95a5a6',  /* 8 เทา    */
+  '#ecf0f1'   /* 9 ขาว    */
+];
+
+/* ค่าความต้านทาน → สี 3 แถบ [เลขหลักแรก, เลขหลักสอง, ตัวคูณ]
+
+   ทุกค่าใน RESISTOR_OHMS เป็นเลขนัยสำคัญ 2 หลักคูณกำลังของสิบ
+   จึงหารสิบไปเรื่อย ๆ จนเหลือสองหลัก แล้วจำนวนครั้งที่หาร = เลขของแถบตัวคูณ
+   ตัวอย่าง 4700 → 470 → 47 (หาร 2 ครั้ง) = เหลือง ม่วง แดง  (47 × 10² = 4700) */
+function ohmBands(v){
+  var m = v, exp = 0;
+  while(m >= 100){ m /= 10; exp++; }
+  var d1 = Math.floor(m / 10);
+  var d2 = Math.round(m - d1 * 10);
+  return [OHM_BAND_COLORS[d1] || OHM_BAND_COLORS[0],
+          OHM_BAND_COLORS[d2] || OHM_BAND_COLORS[0],
+          OHM_BAND_COLORS[Math.min(9, exp)]];
+}
+
+/* 220 → "220Ω" · 4700 → "4.7kΩ" (ตัดศูนย์ท้ายทิ้ง ไม่เขียน 4.70k) */
+function fmtOhm(v){
+  if(v >= 1000){
+    var k = v / 1000;
+    return (k === Math.round(k) ? k : k.toFixed(1)) + 'kΩ';
+  }
+  return v + 'Ω';
+}
+
+/* ค่าทางไฟฟ้าของ "ชิ้นนี้" ไม่ใช่ของชนิดนี้
+
+   ตัวต้านทานในโหมดอิสระเลือกค่าความต้านทานเองได้ (it.ohms) ค่าที่เลือก
+   จึงต้องไปแทน r ใน ESPEC เฉพาะชิ้นนั้น โดยไม่แตะค่ากลางของทั้งเกม
+   พิกัดอื่น (pmax/imax/tburn) ไม่เปลี่ยน เพราะตัวต้านทาน 1/4W ก็คือ 1/4W
+   ทุกค่าความต้านทาน — ค่ามากขึ้นกระแสน้อยลงเอง กำลังจึงลดตามธรรมชาติ
+
+   เก็บผลโคลนไว้บนตัวชิ้นงาน เพราะ solveCircuit() ถูกเรียก 20 ครั้ง/วินาที
+   และระบบทำนายความเสียหายเรียกซ้ำอีกหลายรอบต่อการตรวจหนึ่งครั้ง */
+function itemSpec(it){
+  var sp = ESPEC[it && it.deviceId];
+  if(!sp || !it) return sp;
+  if(it.ohms == null || sp.r == null || it.ohms === sp.r) return sp;
+  if(it._specOhms !== it.ohms){
+    it._specOhms = it.ohms;
+    it._spec = Object.assign({}, sp, {r: it.ohms});
+  }
+  return it._spec;
+}
 
 /* สายไฟ/รางบนแผง — พิกัดกระแสและเวลาที่ทนได้ก่อนฉนวนละลาย */
 var WIRE_IMAX  = 2.0;

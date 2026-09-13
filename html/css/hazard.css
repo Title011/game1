@@ -62,7 +62,12 @@
 /* ---------- พังแล้ว ---------- */
 /* ใช้สไตล์ .burned เดิมจาก css/circuit.css เป็นฐาน แล้วเติมรอยไหม้ */
 .ws-item.failed{ animation:none!important; }
-.ws-item.failed .ws-item-svg{ animation:none!important; }
+/* ต้องครอบชิ้นส่วนข้างในรูปด้วย ไม่ใช่แค่กล่องรูป:
+   ตอนนี้รูปอุปกรณ์ถูกฝังเป็นโหนดจริง (ดู makeSvgIconInline ใน js/ui.js)
+   ไส้หลอด/ใบพัด/ขดลวด จึงมีอนิเมชันของตัวเองที่ต้องหยุดตามไปด้วย */
+.ws-item.failed .ws-item-svg,
+.ws-item.failed .ws-item-svg *,
+.ws-item.burned .ws-item-svg *{ animation:none!important; }
 .ws-item.failed::after{
   content:'เสียหาย';
   position:absolute;top:-11px;left:50%;transform:translateX(-50%);

@@ -21,6 +21,43 @@ function clampWsItem(item){
   item.x=nx; item.y=ny;
 }
 
+/* ============================================================
+   ผูกการ "แตะ" ให้ป้ายเล็ก ๆ บนตัวอุปกรณ์ (สับสวิตช์ / เลือกค่า R / คัดลอก)
+
+   ของเดิมผูกทั้ง click และ touchstart ไว้ด้วยกัน บนมือถือจึงทำงานสองรอบ:
+   touchstart สับสวิตช์ไปหนึ่งที แล้ว click สังเคราะห์ที่เบราว์เซอร์ยิงตามมา
+   สับกลับอีกที ผลรวมเป็นศูนย์ = "กดไม่ติดเลย" ทั้งที่โค้ดทำงานครบสองครั้ง
+
+   ตัวนี้จึงแยกทางเดินให้ชัด: นิ้วใช้ touchend (เช็คว่าไม่ได้เลื่อนนิ้ว = เป็นการแตะ
+   จริง) แล้ว preventDefault ปิดปาก click สังเคราะห์ · เมาส์ใช้ click ตามปกติ
+   ============================================================ */
+function bindBadgeTap(el, fn){
+  var t0 = null, handled = false;
+  el.addEventListener('mousedown', function(e){ e.stopPropagation(); });
+  el.addEventListener('touchstart', function(e){
+    e.stopPropagation();
+    var t = e.touches[0];
+    t0 = {x:t.clientX, y:t.clientY};
+  }, {passive:true});
+  el.addEventListener('touchend', function(e){
+    e.stopPropagation();
+    if(!t0) return;
+    var t = e.changedTouches[0];
+    var moved = Math.abs(t.clientX - t0.x) + Math.abs(t.clientY - t0.y);
+    t0 = null;
+    if(moved > 16) return;                 /* เลื่อนนิ้ว = ไม่ใช่การแตะ */
+    if(e.cancelable) e.preventDefault();   /* กัน click สังเคราะห์ทำซ้ำ */
+    handled = true;                        /* เผื่อเบราว์เซอร์ยิง click มาอยู่ดี */
+    setTimeout(function(){ handled = false; }, 400);
+    fn();
+  }, {passive:false});
+  el.addEventListener('click', function(e){
+    e.stopPropagation();
+    if(handled) return;
+    fn();
+  });
+}
+
 function addWsItem(deviceId,x,y){
   var dev=DEVICES[deviceId];
   var itemId='ws-'+(++G.wsCounter);
@@ -40,7 +77,9 @@ function addWsItem(deviceId,x,y){
 
   var iconWrap=document.createElement('div');
   iconWrap.className='ws-item-svg';
-  iconWrap.appendChild(makeSvgIcon(dev.svgId,52,52));
+  /* ฝังชิ้นส่วนจริง ไม่ใช่ <use> — ไม่งั้น CSS เลือกชิ้นส่วนข้างในไม่ได้
+     แล้วอุปกรณ์จะไม่มีอนิเมชันตามค่าไฟฟ้าเลย (ดู makeSvgIconInline) */
+  iconWrap.appendChild(makeSvgIconInline(dev.svgId,52,52));
 
   var name=document.createElement('span');
   name.className='ws-item-name'; name.textContent=dev.name;
@@ -73,6 +112,16 @@ function addWsItem(deviceId,x,y){
     el.appendChild(port);
   });
 
+  /* ปุ่มคัดลอก — วางชิ้นใหม่ที่เหมือนกันทันที
+     บนคอมใช้ Ctrl+C/Ctrl+V ก็ได้ แต่บนมือถือไม่มีแป้นพิมพ์ จึงต้องมีปุ่มจริง
+     กดซ้ำ ๆ ได้เรื่อย ๆ ระยะห่างจะเท่ากันทุกชิ้น (ดู pasteItem) */
+  var dup=document.createElement('span');
+  dup.className='ws-item-dup';
+  dup.innerHTML='&#x29C9;';                 /* ⧉ สองสี่เหลี่ยมซ้อน = คัดลอก */
+  dup.title='คัดลอกอุปกรณ์ชิ้นนี้ (Ctrl+C แล้ว Ctrl+V)';
+  bindBadgeTap(dup,function(){ duplicateItem(itemId); });
+  el.appendChild(dup);
+
   /* สวิตช์ของจริงต้องสับเปิด-ปิดได้ ไม่ใช่ต่อแล้วไฟติดตลอด
      ป้าย ON/OFF เป็นตัวสับ แตะแล้ววงจรเปิด/ปิดจริง (ดู toggleSwitchItem) */
   if(deviceId==='switch'){
@@ -80,22 +129,41 @@ function addWsItem(deviceId,x,y){
     sw.className='ws-switch-state';
     sw.textContent='ON';
     sw.title='แตะเพื่อสับสวิตช์ — เปิด/ปิดวงจร';
-    sw.addEventListener('click',function(e){e.stopPropagation();toggleSwitchItem(itemId);});
-    sw.addEventListener('mousedown',function(e){e.stopPropagation();});
-    sw.addEventListener('touchstart',function(e){e.stopPropagation();toggleSwitchItem(itemId);},{passive:true});
+    bindBadgeTap(sw,function(){ toggleSwitchItem(itemId); });
     el.appendChild(sw);
+  }
+
+  /* ตัวต้านทาน: เลือกค่าความต้านทานได้เองในโหมดอิสระ
+     โหมดด่านไม่ให้เปลี่ยน เพราะค่า 220Ω เป็นส่วนหนึ่งของโจทย์
+     (ด่าน 4/5/7 ใช้เพดานความสว่างพิสูจน์ว่าตัวจำกัดกระแสทำงาน
+      ถ้าเปลี่ยนค่าได้ เกณฑ์ผ่านจะเลื่อนตามจนโจทย์หมดความหมาย) */
+  if(deviceId==='resistor'){
+    var oh=document.createElement('span');
+    oh.className='ws-ohm-state';
+    /* ป้ายนี้แสดงแค่สัญลักษณ์ Ω ตัวเดียว ไม่ใส่ตัวเลข
+       เพราะค่าจริงไปโชว์บนตัวโมเดลแล้ว (แถบสี + ตัวเลขบนตัวถัง)
+       และถ้าใส่ตัวเลข ป้ายจะกว้างจนไปติดปุ่มคัดลอกที่อยู่กึ่งกลางขอบบน
+       (กล่องอุปกรณ์กว้างแค่ 65px บนคอม / 68px บนมือถือ) */
+    oh.textContent='Ω';
+    oh.title='ค่าความต้านทาน '+fmtOhm(ESPEC.resistor.r)+' — แตะเพื่อเปลี่ยน';
+    bindBadgeTap(oh,function(){ openOhmPicker(itemId); });
+    el.appendChild(oh);
   }
 
   makeDraggable(el);
   document.getElementById('workspace').appendChild(el);
   var item={id:itemId,deviceId:deviceId,x:x,y:y,el:el,rotation:0,
             open:false,blown:false,           /* สถานะสวิตช์/ฟิวส์ */
+            /* ความต้านทานของ "ชิ้นนี้" — เปลี่ยนได้เฉพาะตัวต้านทานในโหมดอิสระ
+               null = ใช้ค่ากลางของชนิดนั้นตาม ESPEC (ดู itemSpec ใน js/devices.js) */
+            ohms:(deviceId==='resistor' ? ESPEC.resistor.r : null),
             heat:0,stress:0,failed:false,failMode:null};   /* สถานะความเสียหาย */
   G.wsItems.push(item);
 
   /* ย้ายจุดขั้วไปอยู่ตำแหน่งขาจริงของอุปกรณ์ตัวนี้ (ดู PORT_ANCHORS ใน js/devices.js)
      ต้องทำหลังใส่ลง DOM แล้ว เพราะต้องอ่านขนาดกล่องจริง */
   layoutPorts(item);
+  applyResistorBands(item);   /* แถบสีให้ตรงกับค่าความต้านทานตั้งต้น */
 
   /* จัดให้อยู่ในกรอบด้วยขนาดจริง แล้ว "เสียบขา" ลงรูเบรดบอร์ด */
   clampWsItem(item);
@@ -125,6 +193,17 @@ function removeWsItem(itemId){
   if((G.tapWireFrom && G.tapWireFrom.dataset.itemId===itemId) ||
      (G.drawingFrom && G.drawingFrom.itemId===itemId)){
     cancelTapConnect();
+  }
+
+  /* คลิปบอร์ดชี้ไปที่ชิ้นที่กำลังจะหายไป — ถอยไปอ้างต้นฉบับ หรือทิ้งไปเลย
+     ถ้าปล่อยไว้ pasteItem() จะหาชิ้นอ้างอิงไม่เจอแล้วขึ้นข้อความว่าลบไปแล้ว
+     ทั้งที่จริงยังมีต้นฉบับอยู่และวางต่อได้ */
+  if(G.clip){
+    if(G.clip.fromId === itemId){
+      G.clip.fromId = G.clip.rootId;
+      G.clip.baseX = null; G.clip.baseY = null;
+    }
+    if(G.clip.rootId === itemId && G.clip.fromId === itemId) G.clip = null;
   }
 
   /* โหมดอิสระไม่จำกัดจำนวน จึงไม่ต้องคืนของเข้าคลัง */
@@ -165,6 +244,7 @@ function clearWorkspace(silent){
   hideMobileToolbar();   /* ปุ่มลอยของอุปกรณ์ที่กำลังจะหายไป ต้องหายตาม */
   G.wsItems=[]; G.wires=[]; G.wsCounter=0; G.wireCounter=0;
   G.selectedItemId=null;
+  G.clip=null;   /* คลิปบอร์ดอ้างอิงชิ้นที่เพิ่งถูกล้างไป ต้องทิ้งไปพร้อมกัน */
   var ws=document.getElementById('workspace');
   /* เก็บชิ้นส่วนถาวรของพื้นที่ทำงานไว้ ล้างเฉพาะอุปกรณ์ที่ผู้เล่นวาง
      (bb-layer คือตัวแผงเบรดบอร์ด, mobile-toolbar คือปุ่มลอยบนมือถือ) */
@@ -202,10 +282,14 @@ function getUpXY(e){ return e.changedTouches ? {x:e.changedTouches[0].clientX,y:
 
 function makeDraggable(el){
   function startDrag(e){
-    /* แตะจุดขั้ว/ปุ่มลบ/ตัวสับสวิตช์ = ไม่ใช่การลากย้าย */
+    /* แตะจุดขั้ว/ปุ่มลบ/ป้ายบนตัวอุปกรณ์ = ไม่ใช่การลากย้าย
+       (ป้ายพวกนี้ stopPropagation ของตัวเองอยู่แล้ว นี่คือกันชนชั้นที่สอง
+        เผื่อมีการเพิ่มป้ายใหม่แล้วลืมผูก bindBadgeTap) */
     if(e.target.classList.contains('port')||
        e.target.classList.contains('ws-item-delete')||
-       e.target.classList.contains('ws-switch-state')) return;
+       e.target.classList.contains('ws-switch-state')||
+       e.target.classList.contains('ws-ohm-state')||
+       e.target.classList.contains('ws-item-dup')) return;
     if(e.cancelable) e.preventDefault();
     e.stopPropagation();
 
@@ -267,6 +351,9 @@ function makeDraggable(el){
              เหมือนเสียบอุปกรณ์ลงแผงจริงที่ลงได้เฉพาะตำแหน่งรูเท่านั้น */
           bbSnapItem(item);
           bbRefresh();
+          /* ลากชิ้นที่เพิ่งวางไปเอง = สอนระยะห่างให้การวางครั้งถัดไป
+             ต้องอยู่หลัง bbSnapItem เพื่อให้ระยะที่จำเป็นระยะบนรูจริง */
+          learnPasteOffset(item);
         }
         refreshWires(el.id);   /* ตำแหน่งเพิ่งถูกดึงกลับ สายต้องตามไปด้วย */
       }
@@ -325,6 +412,228 @@ function toggleSwitchItem(itemId){
   }
 
   if(typeof onCircuitChanged === 'function') onCircuitChanged();
+}
+
+/* ============================================================
+   ค่าความต้านทานของตัวต้านทานแต่ละชิ้น (โหมดอิสระ)
+
+   เลือกได้เฉพาะค่าในอนุกรม E12 ที่มีขายจริง (ดู RESISTOR_OHMS ใน js/devices.js)
+   ไม่ให้พิมพ์เลขเอง เพราะจะได้ค่าที่ไม่มีในโลกจริงอย่าง 137Ω
+   ============================================================ */
+var _ohmTargetId = null;
+
+function findWsItem(itemId){
+  var found = null;
+  G.wsItems.forEach(function(i){ if(i.id === itemId) found = i; });
+  return found;
+}
+
+function openOhmPicker(itemId){
+  var item = findWsItem(itemId);
+  if(!item || item.deviceId !== 'resistor') return;
+  if(!G.sandbox){
+    showToast('เปลี่ยนค่าตัวต้านทานได้ในโหมดอิสระเท่านั้น','error');
+    return;
+  }
+  _ohmTargetId = itemId;
+
+  var cur = item.ohms || ESPEC.resistor.r;
+  var grid = document.getElementById('ohm-grid');
+  grid.innerHTML = '';
+  RESISTOR_OHMS.forEach(function(v){
+    var b = document.createElement('button');
+    b.className = 'ohm-opt' + (v === cur ? ' active' : '');
+    /* โชว์แถบรหัสสีคู่กับตัวเลขทุกปุ่ม — ผู้เรียนจะได้เห็นว่าค่าไหนให้สีอะไร
+       ก่อนกดเลือก แล้วค่อยไปเทียบกับแถบบนตัวถังที่เปลี่ยนตามจริง */
+    b.innerHTML = '<span class="ohm-val">' + fmtOhm(v) + '</span>' +
+                  '<span class="ohm-bands">' +
+                  ohmBands(v).map(function(c){
+                    return '<i style="background:' + c + '"></i>';
+                  }).join('') + '</span>';
+    b.onclick = function(){ setItemOhms(_ohmTargetId, v); closeModal('modal-ohm'); };
+    grid.appendChild(b);
+  });
+
+  /* บอกผลที่จะเกิดจริงกับวงจรที่ต่ออยู่ ไม่ใช่แค่โชว์ตัวเลขเฉย ๆ */
+  var note = document.getElementById('ohm-note');
+  note.innerHTML = 'ค่าปัจจุบัน <b>' + fmtOhm(cur) + '</b> · พิกัดกำลัง ' +
+                   ESPEC.resistor.pmax + 'W<br>' +
+                   'ค่ามาก = กระแสน้อย อุปกรณ์หรี่ลงแต่ปลอดภัยขึ้น · ' +
+                   'ค่าน้อย = กระแสมาก สว่างขึ้นแต่เสี่ยงไหม้';
+  openModal('modal-ohm');
+}
+
+/* วาดแถบรหัสสีและตัวเลขบนตัวถังให้ตรงกับค่าความต้านทานของชิ้นนั้น
+
+   ทำได้เพราะรูปอุปกรณ์ถูกฝังเป็นโหนดจริงในหน้า (ดู makeSvgIconInline ใน js/ui.js)
+   ถ้ายังใช้ <use> อยู่ จะแก้สีแถบทีละชิ้นไม่ได้เลย เพราะรูปทุกชิ้น
+   อ้างไปที่ symbol ก้อนเดียวกัน แก้ที่หนึ่งจะเปลี่ยนหมดทุกตัวบนแผง */
+function applyResistorBands(item){
+  if(!item || item.deviceId !== 'resistor' || !item.el) return;
+  var v = item.ohms || ESPEC.resistor.r;
+  var band = ohmBands(v);
+  for(var i = 0; i < 3; i++){
+    var b = item.el.querySelector('.res-band' + (i + 1));
+    if(b) b.setAttribute('fill', band[i]);
+  }
+  var lbl = item.el.querySelector('.res-label');
+  if(lbl) lbl.textContent = fmtOhm(v);
+  var badge = item.el.querySelector('.ws-ohm-state');
+  if(badge) badge.title = 'ค่าความต้านทาน ' + fmtOhm(v) + ' — แตะเพื่อเปลี่ยน';
+}
+
+function setItemOhms(itemId, v){
+  var item = findWsItem(itemId);
+  if(!item) return;
+  item.ohms = v;
+  applyResistorBands(item);
+  showToast('ตั้งค่าตัวต้านทานเป็น ' + fmtOhm(v) + ' — แถบสีบนตัวถังเปลี่ยนตามแล้ว', 'success');
+
+  /* กำลังจ่ายไฟอยู่ → เห็นผลเดี๋ยวนั้น เหมือนเปลี่ยนตัวต้านทานคาไฟ */
+  if(PowerSim.on) powerStep(0.02);
+  if(typeof onCircuitChanged === 'function') onCircuitChanged();
+}
+
+/* ============================================================
+   COPY / PASTE อุปกรณ์
+
+   ระยะห่างของชิ้นที่วางเป็น "ระยะที่เรียนรู้มา": วางชิ้นแรกแล้วลากไปวางที่
+   ต้องการเอง ระบบจำระยะที่ลากไว้ แล้วชิ้นถัด ๆ ไปจะวางห่างเท่ากันทุกชิ้น
+   เรียงถ่าน 4 ก้อนเป็นแถวจึงทำได้ด้วยการลากมือหนึ่งครั้ง แล้วกดวางซ้ำ
+
+   ถ้าไม่เคยลากเลย ใช้ระยะปริยาย = หนึ่งช่องเบรดบอร์ดเฉียงลง
+   ============================================================ */
+function copyItem(itemId, silent){
+  var item = findWsItem(itemId || G.selectedItemId);
+  if(!item){ showToast('เลือกอุปกรณ์ที่จะคัดลอกก่อน','error'); return false; }
+  G.clip = {
+    deviceId: item.deviceId,
+    rotation: item.rotation || 0,
+    ohms: item.ohms,
+    open: !!item.open,
+    rootId: item.id,            /* ต้นฉบับ — กดปุ่ม ⧉ ที่ตัวนี้ซ้ำ = ต่อแถวเดิม */
+    fromId: item.id,            /* ชิ้นอ้างอิงของการวางครั้งถัดไป */
+    baseX: null, baseY: null,   /* ตำแหน่งที่ระบบวางให้ ใช้วัดว่าผู้เล่นลากไปไกลแค่ไหน */
+    dx: null, dy: null          /* ระยะห่างที่เรียนรู้มาแล้ว */
+  };
+  if(!silent){
+    showToast('คัดลอก ' + DEVICES[item.deviceId].name + ' แล้ว — กด Ctrl+V เพื่อวาง', 'success');
+  }
+  return true;
+}
+
+function pasteItem(){
+  var c = G.clip;
+  if(!c){ showToast('ยังไม่ได้คัดลอกอะไร (เลือกอุปกรณ์แล้วกด Ctrl+C)','error'); return; }
+  if(invSoldOut(c.deviceId)) return;
+
+  /* อ้างจากชิ้นที่วางล่าสุด ถ้าถูกลบไปแล้วก็ถอยไปใช้ต้นฉบับ */
+  var ref = findWsItem(c.fromId) || findWsItem(c.rootId);
+  if(!ref){
+    showToast('อุปกรณ์ต้นแบบถูกลบไปแล้ว — เลือกชิ้นใหม่แล้วกด Ctrl+C','error');
+    G.clip = null;
+    return;
+  }
+
+  var nx, ny;
+  if(c.dx !== null && c.dx !== undefined){
+    /* เคยสอนระยะไว้แล้ว = ก้าวต่อด้วยระยะเดิมทุกครั้ง เรียงเป็นแถวสม่ำเสมอ */
+    nx = (ref.x || 0) + c.dx;
+    ny = (ref.y || 0) + c.dy;
+  } else {
+    /* ยังไม่เคยสอนระยะ = วาง "ข้าง ๆ" ตัวเดิม ไม่ใช่เฉียงทับกัน
+
+       ของเดิมเยื้องเฉียงลงขวา 1.5 ช่อง (~30px) ซึ่งน้อยกว่าครึ่งของกล่อง 65px
+       ชิ้นใหม่จึงไปนอนทับตัวเดิมเกือบทั้งใบ มองไม่ออกว่ามีสองชิ้น
+
+       ก้าวเป็นจำนวนช่องเต็มของเบรดบอร์ด ขาจะลงรูพอดีไม่ต้องขยับแก้
+       และเว้นช่องว่างให้เห็นชัดว่าเป็นของสองชิ้น */
+    var bw  = (ref.el && ref.el.offsetWidth)  || 65;
+    var bh  = (ref.el && ref.el.offsetHeight) || 65;
+    var U   = portUnit();
+    var stepX = Math.ceil((bw + 6) / U) * U;
+
+    nx = (ref.x || 0) + stepX;
+    ny = (ref.y || 0);
+
+    /* ชนขอบขวาแล้วขึ้นแถวใหม่ ไม่ใช่ไปกองเบียดอยู่ริมขอบ
+       (clampWsItem จะดึงกลับให้อยู่ในกรอบ แต่มันดึงมากองทับกันที่ขอบเดียว) */
+    var wsEl = document.getElementById('workspace');
+    var maxX = (wsEl ? wsEl.clientWidth : 640) - bw - 6;
+    if(nx > maxX){
+      nx = 6;
+      ny = (ref.y || 0) + Math.ceil((bh + 6) / U) * U;
+    }
+  }
+
+  addWsItem(c.deviceId, nx, ny);
+  consumeInvItem(c.deviceId);
+
+  var made = G.wsItems[G.wsItems.length - 1];
+  if(!made) return;
+
+  /* คืนสภาพของต้นฉบับให้ครบ: มุมหมุน ค่าความต้านทาน และสถานะสวิตช์ */
+  if(c.ohms != null) setItemOhmsQuiet(made, c.ohms);
+  if(c.rotation){
+    made.rotation = 0;
+    for(var k = 0; k < (c.rotation / 90); k++) rotateItem(made.id, true);
+  }
+  /* ตั้งสถานะสวิตช์ตรง ๆ ไม่เรียก toggleSwitchItem
+     ตัวนั้นจะไปตรวจแรงดันย้อนกลับและขึ้นข้อความ ทั้งที่นี่แค่ก๊อปปี้ของ */
+  if(c.open && made.deviceId === 'switch'){
+    made.open = true;
+    var swb = made.el.querySelector('.ws-switch-state');
+    if(swb) swb.textContent = 'OFF';
+    made.el.classList.add('switch-open');
+  }
+
+  /* ชิ้นที่วางใหม่กลายเป็นตัวอ้างอิงของครั้งถัดไป
+     baseX/Y คือตำแหน่งที่ "ระบบวางให้" ถ้าผู้เล่นลากออกจากจุดนี้ = สอนระยะใหม่
+     (อ่านค่าหลัง addWsItem แล้ว เพราะ clampWsItem/bbSnapItem ขยับตำแหน่งไปอีก) */
+  c.fromId = made.id;
+  c.baseX = made.x; c.baseY = made.y;
+  selectItem(made.id);
+
+  showToast('วาง ' + DEVICES[c.deviceId].name +
+            (c.dx === null ? ' — ลากไปวางที่ต้องการ แล้วกดวางอีกครั้งจะห่างเท่ากัน' : ''),
+            'success');
+}
+
+/* ตั้งค่าความต้านทานแบบไม่ขึ้น toast (ใช้ตอนคัดลอก ไม่ใช่ผู้เล่นสั่งเอง) */
+function setItemOhmsQuiet(item, v){
+  item.ohms = v;
+  applyResistorBands(item);
+}
+
+/* ผู้เล่นลากชิ้นที่เพิ่งวางไปเอง = กำลังบอกว่า "อยากให้ห่างเท่านี้"
+   จำไว้ใช้กับการวางครั้งถัดไปทุกครั้ง เรียกจาก dragOnUp ใน makeDraggable */
+function learnPasteOffset(item){
+  var c = G.clip;
+  if(!c || !item || c.fromId !== item.id) return;
+  if(c.baseX === null || c.baseY === null) return;
+  var dx = item.x - c.baseX, dy = item.y - c.baseY;
+  if(Math.abs(dx) + Math.abs(dy) < 6) return;   /* ขยับจิ๊ดเดียว ไม่นับ */
+  c.dx = dx; c.dy = dy;
+  c.baseX = item.x; c.baseY = item.y;
+}
+
+/* ปุ่ม ⧉ บนตัวอุปกรณ์ = คัดลอกแล้ววางในจังหวะเดียว
+
+   กดที่ต้นฉบับรัว ๆ ได้ ของจะเรียงต่อแถวเดิมไปเรื่อย ๆ เพราะการวางครั้งที่ 2
+   ขึ้นไปอ้างจากชิ้นที่เพิ่งวาง ไม่ใช่ต้นฉบับ (ไม่งั้นทุกชิ้นจะไปกองทับกันที่เดิม) */
+function duplicateItem(itemId){
+  var c = G.clip;
+  var sameChain = c && (c.rootId === itemId || c.fromId === itemId) &&
+                  (findWsItem(c.fromId) || findWsItem(c.rootId));
+  if(sameChain){
+    /* อ่านค่าจากชิ้นที่กดตอนนี้อีกครั้ง — ผู้เล่นอาจหมุนหรือเปลี่ยนค่าโอห์ม
+       หลังจากคัดลอกไปแล้ว ชิ้นถัดไปต้องเหมือนของจริง ไม่ใช่เหมือนตอนกดครั้งแรก */
+    var src = findWsItem(itemId);
+    if(src){ c.rotation = src.rotation || 0; c.ohms = src.ohms; c.open = !!src.open; }
+    pasteItem();
+    return;
+  }
+  if(copyItem(itemId, true)) pasteItem();
 }
 
 /* มีสวิตช์ตัวไหนสับเปิดค้างอยู่ไหม (ใช้เตือนก่อนตรวจวงจร) */
@@ -393,7 +702,9 @@ function hideMobileToolbar(){
    - ย้าย class port-* ให้ตรงทิศใหม่
    - refresh สายไฟที่เชื่อมกับ item
    ============================================================ */
-function rotateItem(itemId){
+/* quiet = ไม่ขึ้นข้อความแจ้ง ใช้ตอนระบบหมุนให้เอง (คัดลอกอุปกรณ์ที่หมุนไว้แล้ว)
+   ไม่ใช่ตอนผู้เล่นสั่งหมุนเอง ซึ่งควรได้ข้อความยืนยันว่ากดติด */
+function rotateItem(itemId, quiet){
   var item = null;
   G.wsItems.forEach(function(i){ if(i.id===itemId) item=i; });
   if(!item) return;
@@ -435,6 +746,7 @@ function rotateItem(itemId){
     refreshWires(itemId);
   }, 180);
 
+  if(quiet) return;
   var name = item.el.querySelector('.ws-item-name');
   showToast((name?name.textContent:'อุปกรณ์')+' หมุน '+deg+'°','success');
 }

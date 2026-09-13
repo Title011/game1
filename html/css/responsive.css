@@ -57,6 +57,30 @@
   .ws-item.selected::after{bottom:-44px;font-size:.62rem;padding:2px 8px;}
   .ws-item.has-port-bottom.selected::after{bottom:-62px;}
 
+  /* ป้ายบนตัวอุปกรณ์ต้องใหญ่พอให้ปลายนิ้วกดโดน
+     ของเดิมป้าย ON/OFF สูงราว 16px ซึ่งเล็กกว่าครึ่งหนึ่งของเป้าที่นิ้วกดแม่น
+     กดพลาดไปโดนตัวอุปกรณ์แทนจนกลายเป็นการลากย้าย = "กดเปิดปิดสวิตช์ไม่ติด"
+     ที่นี่ขยายทั้งตัวป้ายและเป้ารับสัมผัสใส ๆ รอบป้าย (::before) */
+  /* ป้าย ON/OFF เป็นข้อความ ขยายด้วย font+padding แล้วเผื่อเป้ารับสัมผัส
+     รอบป้ายอีก 13px เพราะตัวป้ายเองยังสูงไม่ถึงขนาดที่นิ้วกดแม่น */
+  .ws-switch-state{font-size:.62rem;padding:3px 6px;top:-12px;left:-12px;}
+  .ws-switch-state::before{inset:-13px;}
+
+  /* ปุ่ม Ω กับปุ่มคัดลอกเป็นจัตุรัส ขยายตัวปุ่มเป็น 26px ได้ตรง ๆ
+     จึงเผื่อเป้ารอบปุ่มแค่ 7px — ถ้าเผื่อ 13px เท่าป้ายข้อความ
+     เป้าของสองปุ่มจะทับกันเอง และล้นไปคลุมขั้วที่อยู่ข้างเคียง */
+  .ws-ohm-state{width:26px;height:26px;font-size:.9rem;top:-12px;left:-12px;}
+  .ws-item-dup{width:26px;height:26px;font-size:.95rem;}
+  .ws-ohm-state::before,.ws-item-dup::before{inset:-7px;}
+  .ws-item.dup-top    .ws-item-dup{top:-13px;}
+  .ws-item.dup-bottom .ws-item-dup{bottom:-13px;}
+  .ws-item.dup-left   .ws-item-dup{left:-13px;}
+  .ws-item.dup-right  .ws-item-dup{right:-13px;}
+
+  /* ตารางค่าตัวต้านทาน 4 คอลัมน์แคบไปบนจอมือถือ ลดเหลือ 3 ให้อ่านเลขออก */
+  .ohm-grid{grid-template-columns:repeat(3,1fr);gap:9px;}
+  .ohm-opt{height:54px;font-size:.82rem;}
+
   /* modal เป็นแผ่นเลื่อนขึ้นจากขอบล่าง
      เพดานความสูงต้องต่ำกว่าจอ ไม่ใช่เต็มจอ — เว้นขอบบนไว้ให้เห็นว่า
      ยังมีหน้าเกมอยู่ข้างหลัง และกันไม่ให้หัวกล่องมุดใต้แถบที่อยู่ของเบราว์เซอร์

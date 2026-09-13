@@ -30,6 +30,35 @@ function makeSvgIcon(svgId,w,h){
   return svg;
 }
 
+/* ไอคอนแบบ "ฝังชิ้นส่วนจริง" — ก๊อปปี้รูปทรงข้างใน symbol มาวางเป็นโหนดจริง
+
+   ทำไมต้องมีอีกแบบ: <use> วางเนื้อหาไว้ใน shadow tree ที่ตัวเลือก CSS
+   จากไฟล์ .css เข้าไปไม่ถึง เลือกได้แค่ตัว <svg>/<use> ทั้งก้อนเท่านั้น
+   กฎอย่าง ".ws-item.lit .motor-rotor" จึงไม่เคยจับอะไรเลย
+   (สืบทอดค่าเข้าไปได้อยู่ เช่น --glow — แต่เลือกทีละชิ้นไม่ได้)
+
+   อุปกรณ์ในพื้นที่ทำงานต้องขยับ/เรืองแสงทีละชิ้นตามค่าไฟฟ้าจริง
+   จึงต้องฝังของจริง ส่วนไอคอนในกล่องอุปกรณ์และรูปคำใบ้ไม่ต้องขยับ
+   ใช้ <use> ต่อไปได้ เบากว่าและไม่ต้องโคลน DOM
+
+   symbol ทั้ง 17 อันในไฟล์ js/device-symbols.js เป็นรูปทรงล้วน
+   ไม่มี id / gradient / clipPath อยู่ข้างใน การโคลนจึงไม่ทำ id ซ้ำในหน้า */
+function makeSvgIconInline(svgId,w,h){
+  var sym=document.getElementById(svgId);
+  if(!sym) return makeSvgIcon(svgId,w,h);
+  var ns='http://www.w3.org/2000/svg';
+  var svg=document.createElementNS(ns,'svg');
+  svg.setAttribute('viewBox', sym.getAttribute('viewBox') || '0 0 52 52');
+  svg.setAttribute('width',w||34);
+  svg.setAttribute('height',h||34);
+  svg.setAttribute('preserveAspectRatio','xMidYMid meet');
+  /* แสงเรืองล้นขอบ viewBox ได้ ไม่ต้องให้ตัดทิ้ง */
+  svg.style.overflow='visible';
+  var kids=sym.childNodes;
+  for(var i=0;i<kids.length;i++) svg.appendChild(kids[i].cloneNode(true));
+  return svg;
+}
+
 /* วาง SVG icon ลงในปุ่ม/หัวข้อ (แทน emoji) */
 function injectUIIcons(){
   var map = {
