@@ -36,6 +36,138 @@ function pruneOrphanWires(){
   return dead.length;
 }
 
+/* ============================================================
+   AUTO-JOIN — ขาที่แตะกันถือว่าต่อถึงกันเอง
+
+   ของจริง ขาโลหะสองขาที่ชนกันก็นำไฟถึงกันแล้ว ไม่ต้องมีสายคาดให้
+   ในเกมจึงควรเป็นแบบเดียวกัน: เลื่อนอุปกรณ์ให้ขาชนกัน = ต่อถึงกันทันที
+   ลากแยกออกจากกัน = ขาดจากกันทันที ไม่ต้องกดลบสาย
+
+   วิธีทำ: สร้างใหม่ "ทั้งชุด" ทุกครั้งที่ตำแหน่งอุปกรณ์นิ่ง
+   (วิธีเดียวกับเส้นเชื่อมในรางเบรดบอร์ด ดู bbSyncLinks ใน js/breadboard.js)
+   จึงไม่ต้องตามลบทีละเส้นตอนลากแยก — รอบถัดไปคู่นั้นไม่แตะกันแล้ว
+   เส้นก็ไม่ถูกสร้างขึ้นมาอีก สถานะจึงตรงกับภาพที่เห็นเสมอ
+
+   ติดธง virtual ไว้เหมือนรางเบรดบอร์ด ระบบอื่นจึงเห็นเป็นสายจริงทั้งหมด
+   (ตัวแก้สมการ · ตัววิเคราะห์วงจร · การตรวจขั้ว) แต่คลิกลบตรง ๆ ไม่ได้
+   เพราะมันไม่ใช่สายที่ผู้เล่นลาก — วิธี "ลบ" คือลากอุปกรณ์แยกออกจากกัน
+
+   ธง touch แยกไว้อีกชั้น เพื่อไม่ให้ bbClearLinks() ของเบรดบอร์ดกวาดไปด้วย
+   (สองระบบต้องล้างเฉพาะเส้นของตัวเอง ไม่งั้นสลับกันลบทิ้งไปเรื่อย)
+   ============================================================ */
+var _joinCounter = 0;
+
+/* เก็บตำแหน่งและขนาดของขาทุกขาบนแผง (พิกัดหน้าจอ)
+
+   จุดศูนย์กลางอ่านจาก getBoundingClientRect เพราะต้องเทียบข้ามอุปกรณ์
+   แต่ "รัศมี" อ่านจาก offsetWidth ไม่ใช่จาก rect
+   เพราะ .port:hover กับ .tap-selected ใส่ scale() ไว้ rect จึงพองตาม
+   ขาที่เมาส์ชี้อยู่จะกลายเป็นแตะง่ายกว่าขาอื่น ซึ่งไม่ควรเป็นอย่างนั้น
+   (offsetWidth เป็นขนาดตอน layout ไม่สนใจ transform) */
+function allPortPoints(){
+  var pts = [];
+  G.wsItems.forEach(function(it){
+    if(!it.el) return;
+    var ps = it.el.querySelectorAll('.port');
+    for(var i=0;i<ps.length;i++){
+      var p = ps[i];
+      var r = p.getBoundingClientRect();
+      if(!r.width && !r.height) continue;     /* ขาที่ถูกซ่อน/หลุด DOM */
+      pts.push({
+        el: p, itemId: it.id,
+        x: r.left + r.width/2,
+        y: r.top  + r.height/2,
+        rad: (p.offsetWidth || 14) / 2
+      });
+    }
+  });
+  return pts;
+}
+
+/* วงกลมสองวงนี้ซ้อนกันจริงไหม
+   ใช้ 0.8 ของผลรวมรัศมี = ต้องซ้อนกันให้เห็นชัด ไม่ใช่แค่เฉี่ยวขอบ
+   ป้องกันการเชื่อมโดยไม่ได้ตั้งใจตอนวางอุปกรณ์ชิดกันพอดี */
+function portsTouch(a, b){
+  var dx = a.x - b.x, dy = a.y - b.y;
+  return Math.sqrt(dx*dx + dy*dy) <= (a.rad + b.rad) * 0.8;
+}
+
+function makeAutoJoin(pa, pb){
+  var id = 'join-' + (++_joinCounter);
+  var ns = 'http://www.w3.org/2000/svg';
+  var path = document.createElementNS(ns, 'path');
+  path.id = id;
+  path.setAttribute('class', 'wire-path wire-joint');
+  document.getElementById('wire-svg').appendChild(path);
+
+  pa.classList.add('port-joined');
+  pb.classList.add('port-joined');
+
+  G.wires.push({
+    id:id, virtual:true, touch:true,
+    fromItemId:pa.dataset.itemId, fromPort:pa,
+    toItemId:pb.dataset.itemId,   toPort:pb,
+    pathEl:path,
+    fromPol:pa.dataset.polarity || 'none',
+    toPol:  pb.dataset.polarity || 'none',
+    color:'#00ff88', flowDir:'forward', forcedColor:null
+  });
+}
+
+/* สร้างเส้นเชื่อม "ขาแตะกัน" ใหม่ทั้งชุด — คืนจำนวนเส้นที่ได้รอบนี้ */
+function syncAutoJoins(){
+  /* ล้างของรอบก่อนทิ้งให้หมด รวมทั้งไฮไลต์บนขา */
+  var keep = [];
+  G.wires.forEach(function(w){
+    if(w.touch){ if(w.pathEl) w.pathEl.remove(); }
+    else keep.push(w);
+  });
+  G.wires = keep;
+  document.querySelectorAll('.port.port-joined').forEach(function(p){
+    p.classList.remove('port-joined');
+  });
+
+  var pts = allPortPoints();
+  if(pts.length < 2) return 0;
+
+  /* คู่นี้มีสายเชื่อมอยู่แล้วหรือยัง — นับทั้งสายที่ผู้เล่นลากและรางเบรดบอร์ด
+     ถ้ามีแล้วก็ไม่ต้องซ้อนเส้นที่สามเข้าไปอีก */
+  function alreadyLinked(a, b){
+    for(var i=0;i<G.wires.length;i++){
+      var w = G.wires[i];
+      if((w.fromPort === a && w.toPort === b) ||
+         (w.fromPort === b && w.toPort === a)) return true;
+    }
+    return false;
+  }
+
+  var made = 0;
+  for(var i=0;i<pts.length;i++){
+    for(var j=i+1;j<pts.length;j++){
+      /* ขาสองขาของอุปกรณ์ตัวเดียวกันห้ามเชื่อม = ลัดวงจรคร่อมตัวมันเอง
+         (หมุนอุปกรณ์บางท่าขาสองข้างเข้ามาใกล้กันได้จริง) */
+      if(pts[i].itemId === pts[j].itemId) continue;
+      if(!portsTouch(pts[i], pts[j])) continue;
+      if(alreadyLinked(pts[i].el, pts[j].el)) continue;
+      makeAutoJoin(pts[i].el, pts[j].el);
+      made++;
+    }
+  }
+  return made;
+}
+
+/* เรียกเมื่อ "ตำแหน่งอุปกรณ์นิ่งแล้ว" — วางเสร็จ ลากเสร็จ หมุนเสร็จ ลบเสร็จ
+
+   ต่างจาก refreshWires() ที่วิ่งทุกเฟรมระหว่างลาก ตัวนี้วิ่งตอนจบท่าเท่านั้น
+   เพราะการสร้าง/ลบสายกลางการลากจะทำให้เส้นกะพริบ และระบบคำนวณวงจร
+   กับแผงพยากรณ์ของโหมดอิสระจะถูกเรียกรัว ๆ ทุกเฟรมโดยไม่จำเป็น */
+function settleCircuit(){
+  var made = syncAutoJoins();
+  refreshWires();
+  recolorWires();
+  return made;
+}
+
 /* ยกเลิกการต่อสายที่ค้างอยู่ (มือถือแตะจุดแรกไว้แล้วเปลี่ยนใจ) */
 function cancelTapConnect(){
   if(G.tapWireFrom){ G.tapWireFrom.classList.remove('tap-selected'); G.tapWireFrom=null; }
@@ -450,15 +582,21 @@ function cancelPolarityPick(){
 function addWire(fromItemId,fromPort,fx,fy,toItemId,toPort,tx,ty,forcedFromPol,forcedToPol){
   /* อนุญาตให้ 1 port ต่อได้หลายเส้น (เหมือน node ในวงจรจริง)
      กันเฉพาะการต่อสายซ้ำเป๊ะ ๆ ระหว่าง port คู่เดิม */
-  var dupExact=false, dupIsStrip=false;
+  var dupExact=false, dupKind='';
   G.wires.forEach(function(w){
     if((w.fromPort===fromPort&&w.toPort===toPort)||
-       (w.fromPort===toPort&&w.toPort===fromPort)){ dupExact=true; if(w.virtual) dupIsStrip=true; }
+       (w.fromPort===toPort&&w.toPort===fromPort)){
+      dupExact=true;
+      if(w.touch)        dupKind='touch';
+      else if(w.virtual) dupKind='strip';
+    }
   });
   if(dupExact){
-    showToast(dupIsStrip
-      ? 'สองจุดนี้เสียบอยู่รางเดียวกัน ต่อถึงกันอยู่แล้ว ไม่ต้องเดินสาย'
-      : 'สายนี้ต่ออยู่แล้ว','error');
+    showToast(dupKind==='touch'
+        ? 'ขาสองขานี้แตะกันอยู่ ต่อถึงกันแล้ว ไม่ต้องเดินสาย'
+      : dupKind==='strip'
+        ? 'สองจุดนี้เสียบอยู่รางเดียวกัน ต่อถึงกันอยู่แล้ว ไม่ต้องเดินสาย'
+        : 'สายนี้ต่ออยู่แล้ว','error');
     return;
   }
 
@@ -544,7 +682,9 @@ function removeWire(wireId){
   /* เส้นเชื่อมภายในรางเบรดบอร์ดไม่ใช่สายที่ผู้เล่นลาก ลบตรง ๆ ไม่ได้
      ต้องถอดขาอุปกรณ์ออกจากราง ระบบจะเอาเส้นออกให้เอง */
   if(found.virtual){
-    showToast('นี่คือรางในตัวแผง ลบไม่ได้ — ย้ายอุปกรณ์ออกจากรางแทน','error');
+    showToast(found.touch
+      ? 'นี่คือขาสองขาที่แตะกันอยู่ ลบไม่ได้ — ลากอุปกรณ์แยกออกจากกันเพื่อตัด'
+      : 'นี่คือรางในตัวแผง ลบไม่ได้ — ย้ายอุปกรณ์ออกจากรางแทน','error');
     return;
   }
   found.pathEl.remove();

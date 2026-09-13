@@ -512,10 +512,13 @@ function bbMakeLink(pa, pb){
   });
 }
 
+/* ล้างเฉพาะเส้นเชื่อมในรางของแผง — ต้องเว้นเส้น "ขาแตะกัน" (w.touch) ไว้
+   สองระบบนี้ติดธง virtual เหมือนกัน ถ้าล้างเหมารวมจะสลับกันลบทิ้งไปเรื่อย
+   (ดู syncAutoJoins ใน js/wires.js ซึ่งล้างเฉพาะเส้นของตัวเองเหมือนกัน) */
 function bbClearLinks(){
   var keep = [];
   G.wires.forEach(function(w){
-    if(w.virtual){ if(w.pathEl) w.pathEl.remove(); }
+    if(w.virtual && !w.touch){ if(w.pathEl) w.pathEl.remove(); }
     else keep.push(w);
   });
   G.wires = keep;

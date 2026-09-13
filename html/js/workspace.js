@@ -169,6 +169,8 @@ function addWsItem(deviceId,x,y){
   clampWsItem(item);
   bbSnapItem(item);
   bbRefresh();
+  /* วางลงตรงที่ขาไปแตะขาของตัวอื่นพอดี = ต่อถึงกันทันที (ดู syncAutoJoins) */
+  settleCircuit();
 
   /* มีอุปกรณ์บนแผงแล้ว ข้อความแนะนำต้องหลบไป
      (เดิมซ่อนอยู่ที่ตัวจัดการ drop เท่านั้น จึงค้างเวลาวางด้วยวิธีอื่น) */
@@ -227,7 +229,9 @@ function removeWsItem(itemId){
   G.wsItems.splice(idx,1);
   pruneOrphanWires();   /* กันสายที่หลุดอ้างอิงเหลือค้างอยู่ */
   bbRefresh();          /* ถอดขาออกจากราง = เส้นเชื่อมในรางต้องหายตาม */
-  recolorWires();
+  /* ขาที่เคยแตะกับอุปกรณ์ตัวนี้ต้องขาดจากกันด้วย — pruneOrphanWires เก็บได้
+     เฉพาะเส้นที่อ้างอุปกรณ์ที่หายไป ตัวนี้สร้างชุดใหม่จากของที่เหลืออยู่จริง */
+  settleCircuit();
   if(G.wsItems.length===0) document.getElementById('workspace-hint').style.display='';
 }
 
@@ -355,7 +359,10 @@ function makeDraggable(el){
              ต้องอยู่หลัง bbSnapItem เพื่อให้ระยะที่จำเป็นระยะบนรูจริง */
           learnPasteOffset(item);
         }
-        refreshWires(el.id);   /* ตำแหน่งเพิ่งถูกดึงกลับ สายต้องตามไปด้วย */
+        /* ตำแหน่งนิ่งแล้ว — เชื่อม/ตัดขาที่แตะกันตามตำแหน่งจริงรอบนี้
+           แล้ววาดสายใหม่ทั้งหมด (settleCircuit อยู่ใน js/wires.js) */
+        var joined = settleCircuit();
+        if(joined) showToast('ขาแตะกัน ' + joined + ' จุด — ต่อถึงกันแล้วโดยไม่ต้องเดินสาย','success');
       }
       document.removeEventListener('mousemove',dragOnMove);
       document.removeEventListener('mouseup',dragOnUp);
@@ -743,7 +750,9 @@ function rotateItem(itemId, quiet){
     clampWsItem(item);
     bbSnapItem(item);
     bbRefresh();
-    refreshWires(itemId);
+    /* หมุนแล้วขาย้ายไปอยู่คนละทิศ อาจไปแตะขาตัวอื่นหรือหลุดจากที่แตะอยู่
+       ต้องคิดใหม่หลัง transition ของขาจบแล้ว ไม่ใช่ตอนขากำลังเลื่อน */
+    settleCircuit();
   }, 180);
 
   if(quiet) return;
