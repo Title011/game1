@@ -101,13 +101,79 @@ function loadLevel(idx){
   renderInventory();
   document.getElementById('goal-title').textContent=lv.title;
   document.getElementById('goal-desc').textContent=lv.goal;
+  setGoalOutcome(lv.outcome);
   G.timerSec=lv.timeLimit;
   G.levelStartTime=Date.now();
   updateTimerDisplay();
   document.getElementById('timer-display').classList.remove('warning');
   G.timerInt=setInterval(tickTimer,1000);
   updateLevelBar();
+  ensureBreadboard();
   saveGame();   /* บันทึกทุกครั้งที่เปลี่ยนด่าน */
+}
+
+/* ============================================================
+   สร้าง/สร้างใหม่แผงต่อวงจรให้พอดีกับพื้นที่ทำงานตอนนั้น
+
+   เรียก 2 จังหวะโดยตั้งใจ:
+     ครั้งแรกทันที — ถ้าหน้าจัดเสร็จอยู่แล้ว (เช่นเปลี่ยนด่านระหว่างเล่น)
+                     แผงจะขึ้นทันทีโดยไม่กะพริบ
+     ครั้งที่สองใน rAF — เผื่อเพิ่งสลับมาหน้าเกม ซึ่งตอนเรียกครั้งแรก
+                     พื้นที่ทำงานยังวัดขนาดไม่ได้ (clientWidth = 0)
+   applyBreadboard() เรียกซ้ำได้ปลอดภัย และข้ามไปเองถ้ายังวัดขนาดไม่ได้
+   ============================================================ */
+/* แถบ "ผลที่ต้องได้" บนโจทย์ — บอกว่าวงจรที่ต่อเสร็จต้องออกมาเป็นยังไง
+   ผู้เรียนจะได้รู้ว่ากำลังเล็งไปที่ผลลัพธ์อะไร ไม่ใช่แค่ทำตามคำสั่ง */
+function setGoalOutcome(text){
+  var el = document.getElementById('goal-outcome');
+  if(!el) return;
+  if(!text){ el.style.display = 'none'; el.textContent = ''; return; }
+  el.style.display = '';
+  el.textContent = 'ผลที่ต้องได้: ' + text;
+}
+
+/* ด่านไหนเล่นบนแผงเบรดบอร์ด ด่านไหนเล่นบนพื้นที่ว่าง
+
+   เบรดบอร์ดเป็น "บทเรียนหนึ่งบท" ไม่ใช่พื้นหลังของทั้งเกม
+   ด่าน 1-19 จึงเป็นพื้นที่ว่างเปล่า วางอุปกรณ์ตรงไหนก็ได้แล้วเดินสายเอง
+   ผู้เรียนจะได้เห็นวงจรเป็นเส้น ๆ ชัด ๆ ว่าอะไรต่อกับอะไร
+   พอถึงด่าน 20 (ดู board:true ใน js/levels.js) พื้นที่ทำงานถึงกลายเป็น
+   แผงจริง แล้วค่อยเรียนว่ารางในแผงต่อถึงกันเองยังไง
+
+   โหมดอิสระกับโหมดวัดความเร็วไม่ใช่ "ด่าน" จึงไม่มีแผงเช่นกัน
+   (อยากให้โหมดอิสระมีแผงด้วย แก้บรรทัด G.sandbox ข้างล่างเป็น true) */
+function boardWanted(){
+  if(G.sandbox) return false;
+  if(G.endless) return false;
+  var lv = LEVELS[G.level];
+  return !!(lv && lv.board);
+}
+
+function applyBreadboard(){
+  var ws = document.getElementById('workspace');
+  if(!ws || !ws.clientWidth || !ws.clientHeight) return;
+
+  /* วัดขนาด "หนึ่งช่อง" ทุกครั้ง แม้ด่านนี้จะไม่มีแผงก็ตาม
+     เพราะตำแหน่งขาของอุปกรณ์อ้างอิงหน่วยนี้ (ดู PORT_ANCHORS ใน js/devices.js)
+     ไม่ใช่แค่เบรดบอร์ดที่ใช้ — ย่อ/ขยายจอแล้วขาต้องขยับตามกล่องด้วย */
+  bbMeasurePitch();
+  relayoutAllPorts();
+
+  if(!boardWanted()){
+    bbTurnOff();
+    document.body.classList.remove('has-breadboard');
+    return;
+  }
+
+  buildBreadboard();
+  document.body.classList.toggle('has-breadboard', BB.on);
+  G.wsItems.forEach(function(it){ bbSnapItem(it); });
+  bbRefresh();
+}
+
+function ensureBreadboard(){
+  applyBreadboard();
+  requestAnimationFrame(applyBreadboard);
 }
 
 function tickTimer(){
@@ -136,6 +202,19 @@ function onTimeUp(){
    CHECK + POWER ANIMATIONS
    ============================================================ */
 function checkCircuit(){
+  /* กำลังเล่นฉากวงจรพังอยู่ ห้ามสั่งตรวจซ้อน — บอกให้รู้ด้วยว่าทำไมยังกดไม่ได้ */
+  if(G.hazardPlaying){
+    showToast('กำลังแสดงผลที่เกิดขึ้นกับวงจร รอสักครู่...','');
+    return;
+  }
+
+  /* สวิตช์สับเปิดค้างอยู่ = วงจรขาดโดยตั้งใจ ยังไม่ใช่การต่อผิด
+     เตือนให้สับปิดก่อน จะได้ไม่เสียชีวิตฟรี ๆ */
+  if(hasOpenSwitch()){
+    showToast('สวิตช์ยังสับ OFF อยู่ — สับให้เป็น ON ก่อนตรวจวงจร','error');
+    return;
+  }
+
   /* โหมดอิสระ: ไม่มีเฉลยให้เทียบ ไม่มีคะแนน ไม่เสียชีวิต */
   if(G.sandbox){ sandboxCheck(); return; }
 
@@ -143,21 +222,48 @@ function checkCircuit(){
 
   var lv=currentLevel();
   var result=lv.check(G.wsItems,G.wires);
-  /* เช็คเทียบเฉลย (ยืดหยุ่น: สลับซ้ายขวา/กลับทิศได้ แต่การเชื่อมต้องครบ ไม่เกิน ขั้วถูก) */
-  if(result.ok && lv.solution){
-    var exact = checkExactWiring(G.wsItems, G.wires, lv.solution);
-    if(!exact.ok) result = exact;
+
+  /* ตัดสินจาก "ผลที่ออกมา" ไม่ใช่ "ต่อเหมือนเฉลยไหม"
+     จ่ายไฟจำลองจริงแล้ววัดทีละข้อตามที่โจทย์กำหนด — ดู js/outcome.js
+     ต่อแบบไหนก็ได้ที่ให้ผลตามต้องการ ถือว่าผ่านหมด
+     (เฉลย lv.solution ยังใช้อยู่ แต่ใช้แค่วาดแผนภาพคำใบ้ตอนยังไม่ผ่าน) */
+  var outcome = lv.require ? checkOutcome(G.wsItems, G.wires, lv.require, lv.inventory) : null;
+  if(result.ok && outcome && !outcome.ok) result = { ok:false, msg:outcome.msg };
+
+  /* เทียบกับแบบที่ด่านสอนไว้ — เป็นข้อมูลเสริม ไม่ได้ใช้ตัดสิน
+     ต่อคนละแบบแต่ได้ผลตามต้องการก็ผ่าน แต่ถ้าตรงตามแบบด้วยก็บอกให้รู้
+     ลำดับที่ด่านสอน (เช่นฟิวส์อยู่ใกล้แหล่งจ่าย) ยังมีคุณค่าทางวิชาช่าง */
+  if(outcome && lv.solution){
+    try{
+      outcome.sameAsGuide = matchSolution(G.wsItems, G.wires, lv.solution, lv.inventory).ok;
+    }catch(e){ outcome.sameAsGuide = undefined; }
   }
 
-  /* อันตรายทางไฟฟ้าเกิดก่อนเสมอ — ต่อให้ตรงเฉลย ถ้าลัดวงจรก็ยังไหม้
+  /* อันตรายทางไฟฟ้ามาก่อนเสมอ — ต่อให้ตรงเฉลย ถ้าลัดวงจรก็ยังไหม้
      (ตรวจแล้วว่าเฉลยของทั้ง 20 ด่านไม่มีด่านไหนเข้าเงื่อนไขนี้) */
   var fault = analyzeCircuitFaults(G.wsItems, G.wires);
-  if(!fault.ok){
-    applyDamage(fault);
-    result = { ok:false, msg:fault.msg };
-  }
-
   var elapsed=Math.floor((Date.now()-G.levelStartTime)/1000);
+
+  if(!fault.ok){
+    /* จ่ายไฟจริงให้ดูก่อน แล้วปล่อยให้มันค่อย ๆ ร้อนจนพังต่อหน้า
+       ค่อยสรุปเป็นรายงานเหตุการณ์ — ผู้เรียนจะได้เห็น "กระบวนการ"
+       ไม่ใช่แค่ผลลัพธ์ว่าผิด */
+    playHazardSequence(fault, function(){
+      var bad = { ok:false, msg:fault.msg };
+      if(G.endless){ endlessResult(bad, elapsed); return; }
+      G.lives--;
+      updateLevelBar();
+      saveGame();
+      showResult(false, fault.msg, 0, elapsed, false, fault);
+      if(G.lives<=0){
+        setTimeout(function(){
+          showToast('หมดชีวิตแล้ว! เริ่มเกมใหม่','error');
+          setTimeout(initGame, 1500);
+        }, 1500);
+      }
+    });
+    return;
+  }
 
   /* โหมดวัดความเร็วมีระบบคะแนน/เวลาของตัวเอง ไม่ยุ่งกับคะแนนและชีวิตของโหมดด่าน */
   if(G.endless){ endlessResult(result, elapsed); return; }
@@ -181,22 +287,147 @@ function checkCircuit(){
     G.doneLevels[G.level]=true;
     updateLevelBar();
     saveGame();   /* บันทึกคะแนน + ด่านที่ผ่าน */
-    showResult(true,result.msg,earned,elapsed,replay);
+    showResult(true,result.msg,earned,elapsed,replay,fault,outcome);
   } else {
     /* ตรวจไม่ผ่าน = เสียชีวิต 1 ดวง */
     G.lives--;
     updateLevelBar();
     saveGame();   /* บันทึกจำนวนชีวิตที่เหลือ */
     if(G.lives<=0){
-      showResult(false, result.msg, 0, elapsed);
+      showResult(false, result.msg, 0, elapsed, false, fault, outcome);
       setTimeout(function(){
         showToast('หมดชีวิตแล้ว! เริ่มเกมใหม่','error');
         setTimeout(initGame, 1500);
       }, 1500);
     } else {
-      showResult(false, result.msg, 0, elapsed);
+      showResult(false, result.msg, 0, elapsed, false, fault, outcome);
     }
   }
+}
+
+/* ============================================================
+   ลำดับเหตุการณ์ตอนวงจรพัง — จ่ายไฟจริงแล้วปล่อยให้ค่อย ๆ พังต่อหน้า
+
+   ระบบความเสียหายใน js/hazard.js เดินอยู่ในลูปจำลอง 20 ครั้งต่อวินาที
+   อยู่แล้ว ฟังก์ชันนี้แค่ "เปิดไฟทิ้งไว้" นานพอให้เห็นอุปกรณ์ร้อนขึ้น
+   มีควัน แล้วพัง จากนั้นจึงตรึงผลตามที่ทำนายไว้ล่วงหน้าให้ตรงกับรายงาน
+
+   ความยาวของฉากคิดจากเวลาที่เหตุการณ์สุดท้ายเกิดขึ้นจริงในการทำนาย
+   บวกอีกเล็กน้อยให้ดูจบ — พังไวก็สั้น ค่อย ๆ คุกรุ่นก็ยาวกว่า
+   ============================================================ */
+function playHazardSequence(fault, done){
+  var last = 0;
+  (fault.incidents || []).forEach(function(i){ last = Math.max(last, i.t || 0); });
+  var dur = Math.max(1.0, Math.min(4.5, last + 0.9));
+
+  G.hazardPlaying = true;
+  resetHazards();
+  G.wsItems.forEach(function(it){ if(it.el) it.el.classList.add('powered'); });
+  document.body.classList.add('hazard-live');
+  /* ปิดเสียงรายงานอัตโนมัติระหว่างฉาก — สรุปทีเดียวตอนจบ */
+  PowerSim.onIncident = function(){};
+  startCurrentFlow();
+
+  setTimeout(function(){
+    PowerSim.onIncident = null;
+    G.hazardPlaying = false;
+    document.body.classList.remove('hazard-live');
+    applyDamage(fault);
+    if(typeof done === 'function') done();
+  }, Math.round(dur * 1000));
+}
+
+/* ============================================================
+   แผงผลวิเคราะห์ — "ระบบอ่านวงจรของคุณได้แบบนี้"
+
+   ให้ผู้เรียนเห็นว่าเกมเข้าใจวงจรที่ตัวเองต่อยังไง ไม่ใช่แค่บอกผ่าน/ไม่ผ่าน
+   ถ้าสิ่งที่เห็นไม่ตรงกับที่ตั้งใจ แปลว่าต่อพลาดตรงไหนสักแห่ง
+   ============================================================ */
+var TOPO_TH = {
+  series:'อนุกรม (ทางเดียว)',
+  parallel:'ขนาน',
+  mixed:'ผสม (มีทั้งอนุกรมและขนาน)',
+  open:'ยังไม่ครบวง',
+  none:'ยังอ่านไม่ได้'
+};
+
+/* ============================================================
+   รายการตรวจผลลัพธ์ — "ผลออกมาได้ตามต้องการหรือยัง"
+
+   หัวใจของการตัดสินแบบใหม่: ไม่ได้บอกแค่ผ่าน/ไม่ผ่าน แต่แจกแจงทีละข้อ
+   ว่าผลที่โจทย์ต้องการนั้น ได้แล้วข้อไหน ยังไม่ได้ข้อไหน และเพราะอะไร
+   ============================================================ */
+function buildOutcomeChecklist(outcome){
+  if(!outcome || !outcome.checks || !outcome.checks.length) return '';
+  var pass = outcome.checks.filter(function(c){ return c.ok; }).length;
+  var rows = outcome.checks.map(function(c){
+    return '<li class="' + (c.ok ? 'oc-ok' : 'oc-no') + '">'
+         + '<span class="oc-mark">' + (c.ok ? '&#x2713;' : '&#x2715;') + '</span>'
+         + '<span class="oc-text">' + c.label
+         + (c.detail ? '<em>' + c.detail + '</em>' : '')
+         + '</span></li>';
+  }).join('');
+
+  /* ข้อเสริมที่ไม่ได้ใช้ตัดสิน — บอกว่าต่อตรงตามแบบที่ด่านสอนด้วยหรือเปล่า */
+  var extra = '';
+  if(outcome.sameAsGuide !== undefined){
+    extra = '<li class="oc-opt"><span class="oc-mark">' + (outcome.sameAsGuide ? '&#x2713;' : '&#x25CB;') + '</span>'
+          + '<span class="oc-text">ต่อตรงตามแบบที่ด่านนี้สอน'
+          + '<em>' + (outcome.sameAsGuide
+              ? 'ตรงตามลำดับที่แนะนำ'
+              : 'ต่อคนละแบบกับที่สอน แต่ได้ผลตามต้องการแล้ว — ข้อนี้ไม่บังคับ')
+          + '</em></span></li>';
+  }
+
+  return '<div class="report-box outcome-box' + (outcome.ok ? ' all-ok' : '') + '">'
+       + '<div class="report-title">ผลที่ได้จริง ' + pass + '/' + outcome.checks.length + ' ข้อ</div>'
+       + '<ul class="oc-list">' + rows + extra + '</ul>'
+       + '</div>';
+}
+
+function buildAnalysisPanel(){
+  if(!G.wsItems.length) return '';
+  var an;
+  try{ an = analyzeCircuit(G.wsItems, G.wires); }catch(e){ return ''; }
+  if(!an || !an.net) return '';
+
+  var rows = '';
+  function row(k, v){ rows += '<dt>' + k + '</dt><dd>' + v + '</dd>'; }
+
+  var chain = describeCircuit(an);
+  if(chain) row('เส้นทางไฟ', chain);
+  row('รูปแบบวงจร', (TOPO_TH[an.topology] || an.topology) +
+      (an.branches > 1 ? ' · ' + an.branches + ' สาขา' : ''));
+  row('จุดเชื่อมไฟฟ้า', an.net.nodeCount + ' จุด · อุปกรณ์ ' + an.net.els.length + ' ชิ้น');
+
+  if(an.floating.length){
+    row('ขาที่ยังลอยอยู่', an.floating.map(function(f){
+      return termName(an.net, f.el.item, f.port);
+    }).slice(0,4).join(', '));
+  }
+  if(an.shorted.length){
+    row('ถูกต่อคร่อม', an.shorted.map(function(e){ return DEVICES[e.deviceId].name; }).join(', '));
+  }
+  if(an.islands.length){
+    row('หลุดออกจากวง', an.islands.map(function(e){ return DEVICES[e.deviceId].name; }).join(', '));
+  }
+
+  return '<div class="report-box analysis-box">'
+       + '<div class="report-title">ระบบอ่านวงจรของคุณได้แบบนี้</div>'
+       + '<dl class="inc-rows">' + rows + '</dl>'
+       + '</div>';
+}
+
+/* ============================================================
+   กล่องรายงานเหตุการณ์ — ใช้ตอนเล่นอิสระและตอนเกิดเหตุระหว่างเล่น
+   ============================================================ */
+function showIncidentModal(list){
+  if(!list || !list.length) return;
+  var box = document.getElementById('incident-body');
+  if(!box) return;
+  box.innerHTML = incidentReportHTML(list);
+  document.getElementById('incident-title').textContent = incidentSummary(list);
+  openModal('modal-incident');
 }
 
 /* ============================================================
@@ -444,21 +675,33 @@ function buildSolutionHint(){
        + '</div>';
 }
 
-function showResult(ok,msg,earned,elapsed,replay){
+function showResult(ok,msg,earned,elapsed,replay,fault,outcome){
+  /* ต่อผิดธรรมดา กับ "วงจรพังจริง" ต้องรู้สึกต่างกัน */
+  var broke = !ok && fault && fault.incidents && fault.incidents.length;
   document.getElementById('result-icon').innerHTML = ok
     ? '<span style="color:#00d97e">'+ICON('checkCircle',56)+'</span>'
-    : '<span style="color:#ff4d5e">'+ICON('target',56)+'</span>';
-  document.getElementById('result-header-title').innerHTML=ok?(ICON('check',18)+' ผ่านด่าน!'):'ยังไม่ถูกต้อง';
-  document.getElementById('result-title').textContent=ok?'ถูกต้อง!':'ลองอีกครั้ง!';
+    : (broke ? '<span style="color:#ff8a30;font-size:3.4rem;line-height:1">&#x26A0;</span>'
+             : '<span style="color:#ff4d5e">'+ICON('target',56)+'</span>');
+  document.getElementById('result-header-title').innerHTML =
+    ok ? (ICON('check',18)+' ผ่านด่าน!') : (broke ? '&#x26A0; วงจรเสียหาย' : 'ยังไม่ถูกต้อง');
+  document.getElementById('result-title').textContent =
+    ok ? 'ถูกต้อง!' : (broke ? 'วงจรพังแล้ว!' : 'ลองอีกครั้ง!');
   document.getElementById('result-msg').textContent=msg;
   /* เล่นซ้ำด่านที่ผ่านแล้ว = ไม่ได้คะแนนเพิ่ม (กันไล่เก็บคะแนนซ้ำ) */
   document.getElementById('stat-score').textContent =
     !ok ? '—' : (replay ? 'ซ้ำ' : '+'+earned);
   document.getElementById('stat-time').textContent=elapsed+'s';
   document.getElementById('stat-wires').textContent=G.wires.length;
+  /* ผ่านด่าน = ให้เห็น "ค่าที่วัดได้จริง" ของวงจรที่ตัวเองต่อ
+     ไม่ผ่านเพราะวงจรพัง = ให้เห็นรายงานเหตุการณ์ก่อน แล้วค่อยตามด้วยคำใบ้
+     (รายงานตอบว่า ต่อแบบนี้ → พังตรงไหน → อันตรายยังไง → ป้องกันยังไง) */
+  var incidents = (fault && fault.incidents) ? fault.incidents : [];
+  var warnings  = (fault && fault.warnings)  ? fault.warnings  : [];
+  var list = buildOutcomeChecklist(outcome);
   document.getElementById('result-hint').innerHTML =
-    ok ? (replay ? '<span style="color:var(--text-dim)">ด่านนี้เก็บคะแนนไปแล้ว — เล่นซ้ำเพื่อทบทวนได้ แต่ไม่ได้คะแนนเพิ่ม</span>' : '')
-       : buildSolutionHint();
+    ok ? (list + buildAnalysisPanel() + incidentReportHTML(warnings) + buildCircuitReport() +
+          (replay ? '<span style="color:var(--text-dim)">ด่านนี้เก็บคะแนนไปแล้ว — เล่นซ้ำเพื่อทบทวนได้ แต่ไม่ได้คะแนนเพิ่ม</span>' : ''))
+       : (list + buildAnalysisPanel() + incidentReportHTML(incidents) + incidentReportHTML(warnings) + buildSolutionHint());
   var isLast=G.level===LEVELS.length-1;
   var btn=document.getElementById('btn-next-level');
   btn.innerHTML=ok?(isLast?(ICON('trophy',16)+' ดูผลสรุป'):'ด่านถัดไป →'):'ยังไม่ผ่าน';
@@ -601,6 +844,15 @@ document.addEventListener('keydown',function(e){
     } else {
       showToast('คลิกเลือกอุปกรณ์ก่อน แล้วกด R เพื่อหมุน','error');
     }
+    return;
+  }
+
+  /* S = สับสวิตช์ที่เลือกอยู่ (เปิด/ปิดวงจร) */
+  if(isKey(e,'s')){
+    var sel=null;
+    G.wsItems.forEach(function(i){ if(i.id===G.selectedItemId) sel=i; });
+    if(sel && sel.deviceId==='switch') toggleSwitchItem(sel.id);
+    else showToast('คลิกเลือกสวิตช์ก่อน แล้วกด S เพื่อสับเปิด/ปิด','error');
     return;
   }
 

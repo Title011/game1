@@ -208,9 +208,8 @@ var DEVICE_SYMBOLS_SVG = `
   <!-- base leads -->
   <line x1="22" y1="54" x2="22" y2="58" stroke="#aaa" stroke-width="2.5"/>
   <line x1="30" y1="54" x2="30" y2="58" stroke="#aaa" stroke-width="2.5"/>
-  <!-- port connections -->
-  <line x1="0"  y1="26" x2="11" y2="26" stroke="#ccc" stroke-width="2"/>
-  <line x1="41" y1="26" x2="52" y2="26" stroke="#ccc" stroke-width="2"/>
+  <!-- ไม่มีเส้นเชื่อมออกข้างแล้ว เพราะขั้วของหลอดอยู่ที่ก้นทั้งคู่
+       (ขาที่ก้นคือ base leads ด้านบน · ดู PORT_ANCHORS ใน js/devices.js) -->
   <text x="26" y="62" text-anchor="middle" fill="#6e88a8" font-size="6.5">BULB  60W</text>
 </symbol>
 
@@ -297,9 +296,7 @@ var DEVICE_SYMBOLS_SVG = `
   <circle cx="28" cy="57" r="3" fill="#2980b9" stroke="#0044aa" stroke-width="1"/>
   <text x="12" y="62" text-anchor="middle" fill="#c0392b" font-size="5.5">+</text>
   <text x="28" y="62" text-anchor="middle" fill="#2980b9" font-size="5.5">−</text>
-  <!-- port connections -->
-  <line x1="0"  y1="26" x2="4"  y2="26" stroke="#ccc" stroke-width="2"/>
-  <line x1="36" y1="26" x2="40" y2="26" stroke="#ccc" stroke-width="2"/>
+  <!-- ไม่มีเส้นเชื่อมออกข้างแล้ว เพราะขาบัซเซอร์อยู่ที่ก้นทั้งคู่ (pin legs ด้านบน) -->
   <text x="26" y="66" text-anchor="middle" fill="#6e88a8" font-size="6">BUZZER</text>
 </symbol>
 
@@ -351,9 +348,7 @@ var DEVICE_SYMBOLS_SVG = `
   <!-- leads -->
   <line x1="14" y1="50" x2="14" y2="60" stroke="#aaa" stroke-width="2.5"/>
   <line x1="26" y1="50" x2="26" y2="60" stroke="#aaa" stroke-width="2.5"/>
-  <!-- port side connections -->
-  <line x1="2"  y1="32" x2="6"  y2="32" stroke="#ccc" stroke-width="2"/>
-  <line x1="34" y1="32" x2="38" y2="32" stroke="#ccc" stroke-width="2"/>
+  <!-- ไม่มีเส้นเชื่อมออกข้างแล้ว เพราะขาตัวเก็บประจุอยู่ที่ก้นทั้งคู่ (leads ด้านบน) -->
   <!-- powered glow -->
   <rect x="6" y="8" width="28" height="42" rx="5" fill="none" stroke="rgba(0,212,255,0)" stroke-width="2" class="cap-glow"/>
   <text x="20" y="63" text-anchor="middle" fill="#6e88a8" font-size="5.5">CAPACITOR</text>

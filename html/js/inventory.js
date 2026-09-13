@@ -62,7 +62,9 @@ function renderInventory(){
     {label:ICON('bolt',15)+' พลังงาน/ควบคุม', ids:['battery_aa','battery_9v','transformer','switch','fuse']},
     {label:ICON('chip',15)+' อิเล็กทรอนิกส์', ids:['resistor','ldr','diode','led','capacitor','transistor']},
     {label:ICON('bulbIdea',15)+' เปลี่ยนพลังงาน',  ids:['bulb','motor','buzzer']},
-    {label:ICON('wrench',15)+' เครื่องมือ',   ids:['wire','breadboard','multimeter']},
+    /* ไม่มี 'breadboard' ในหมวดนี้แล้ว — พื้นที่ทำงานทั้งผืนคือเบรดบอร์ดอยู่แล้ว
+       จึงไม่มีเหตุผลให้หยิบเบรดบอร์ดมาวางบนเบรดบอร์ดอีกชิ้น */
+    {label:ICON('wrench',15)+' เครื่องมือ',   ids:['wire','multimeter']},
   ];
   var unlimited = invUnlimited();
   cats.forEach(function(cat){

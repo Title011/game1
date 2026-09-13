@@ -6,19 +6,29 @@
 /* ============================================================
    WORKSPACE ITEMS
    ============================================================ */
+/* ดึงอุปกรณ์กลับให้อยู่ในพื้นที่ทำงานเสมอ (วัดขนาดจริงจาก DOM)
+   #workspace เป็น overflow:hidden ถ้าปล่อยให้เลยขอบ อุปกรณ์จะถูกตัด
+   หายไปจนแตะไม่ถูก ต้องล้างพื้นที่ทั้งหมดถึงจะกู้คืนได้ */
+function clampWsItem(item){
+  var wsEl=document.getElementById('workspace');
+  if(!wsEl||!item||!item.el) return;
+  var M=4;
+  var maxX=Math.max(M, wsEl.clientWidth  - item.el.offsetWidth  - M);
+  var maxY=Math.max(M, wsEl.clientHeight - item.el.offsetHeight - M);
+  var nx=Math.min(Math.max(M, parseFloat(item.el.style.left)||0), maxX);
+  var ny=Math.min(Math.max(M, parseFloat(item.el.style.top) ||0), maxY);
+  item.el.style.left=nx+'px'; item.el.style.top=ny+'px';
+  item.x=nx; item.y=ny;
+}
+
 function addWsItem(deviceId,x,y){
   var dev=DEVICES[deviceId];
   var itemId='ws-'+(++G.wsCounter);
 
-  /* บังคับตำแหน่งให้อยู่ในพื้นที่ทำงาน — ที่เรียกเข้ามาคุมแต่ขอบล่าง (Math.max(0,..))
-     ถ้าวางชิดขอบขวา/ล่าง อุปกรณ์จะโดน overflow:hidden ตัดจนแตะไม่ถูก
-     (ประมาณขนาดกล่องไว้ 78x74 เพราะยังไม่ได้ใส่ลง DOM จึงวัดจริงไม่ได้) */
-  var wsEl=document.getElementById('workspace');
-  if(wsEl){
-    var M=6, BW=78, BH=74;
-    x=Math.min(Math.max(M,x||0), Math.max(M, wsEl.clientWidth  - BW - M));
-    y=Math.min(Math.max(M,y||0), Math.max(M, wsEl.clientHeight - BH - M));
-  }
+  /* ตำแหน่งคร่าว ๆ ก่อน — ขนาดกล่องจริงวัดได้หลังใส่ลง DOM แล้ว
+     จากนั้น clampWsItem() + bbSnapItem() จะจัดตำแหน่งสุดท้ายให้ */
+  x=Math.max(0, x||0);
+  y=Math.max(0, y||0);
 
   var el=document.createElement('div');
   el.className='ws-item'; el.id=itemId;
@@ -63,9 +73,41 @@ function addWsItem(deviceId,x,y){
     el.appendChild(port);
   });
 
+  /* สวิตช์ของจริงต้องสับเปิด-ปิดได้ ไม่ใช่ต่อแล้วไฟติดตลอด
+     ป้าย ON/OFF เป็นตัวสับ แตะแล้ววงจรเปิด/ปิดจริง (ดู toggleSwitchItem) */
+  if(deviceId==='switch'){
+    var sw=document.createElement('span');
+    sw.className='ws-switch-state';
+    sw.textContent='ON';
+    sw.title='แตะเพื่อสับสวิตช์ — เปิด/ปิดวงจร';
+    sw.addEventListener('click',function(e){e.stopPropagation();toggleSwitchItem(itemId);});
+    sw.addEventListener('mousedown',function(e){e.stopPropagation();});
+    sw.addEventListener('touchstart',function(e){e.stopPropagation();toggleSwitchItem(itemId);},{passive:true});
+    el.appendChild(sw);
+  }
+
   makeDraggable(el);
   document.getElementById('workspace').appendChild(el);
-  G.wsItems.push({id:itemId,deviceId:deviceId,x:x,y:y,el:el,rotation:0});
+  var item={id:itemId,deviceId:deviceId,x:x,y:y,el:el,rotation:0,
+            open:false,blown:false,           /* สถานะสวิตช์/ฟิวส์ */
+            heat:0,stress:0,failed:false,failMode:null};   /* สถานะความเสียหาย */
+  G.wsItems.push(item);
+
+  /* ย้ายจุดขั้วไปอยู่ตำแหน่งขาจริงของอุปกรณ์ตัวนี้ (ดู PORT_ANCHORS ใน js/devices.js)
+     ต้องทำหลังใส่ลง DOM แล้ว เพราะต้องอ่านขนาดกล่องจริง */
+  layoutPorts(item);
+
+  /* จัดให้อยู่ในกรอบด้วยขนาดจริง แล้ว "เสียบขา" ลงรูเบรดบอร์ด */
+  clampWsItem(item);
+  bbSnapItem(item);
+  bbRefresh();
+
+  /* มีอุปกรณ์บนแผงแล้ว ข้อความแนะนำต้องหลบไป
+     (เดิมซ่อนอยู่ที่ตัวจัดการ drop เท่านั้น จึงค้างเวลาวางด้วยวิธีอื่น) */
+  var hint = document.getElementById('workspace-hint');
+  if(hint) hint.style.display = 'none';
+
+  if(typeof onCircuitChanged === 'function') onCircuitChanged();
 }
 
 function removeWsItem(itemId){
@@ -90,11 +132,14 @@ function removeWsItem(itemId){
     G.invCounts[item.deviceId]=(G.invCounts[item.deviceId]||0)+1;
     updateInvCount(item.deviceId);
   }
-  G.wires.filter(function(w){return w.fromItemId===itemId||w.toItemId===itemId;})
+  /* ข้ามเส้นเชื่อมในรางเบรดบอร์ด — พวกนี้ระบบสร้างเอง removeWire() ไม่ยอมลบ
+     (จะขึ้นข้อความเตือนโดยไม่จำเป็น) ปล่อยให้ bbRefresh() ด้านล่างจัดการ */
+  G.wires.filter(function(w){return !w.virtual && (w.fromItemId===itemId||w.toItemId===itemId);})
          .forEach(function(w){removeWire(w.id);});
   item.el.remove();
   G.wsItems.splice(idx,1);
   pruneOrphanWires();   /* กันสายที่หลุดอ้างอิงเหลือค้างอยู่ */
+  bbRefresh();          /* ถอดขาออกจากราง = เส้นเชื่อมในรางต้องหายตาม */
   recolorWires();
   if(G.wsItems.length===0) document.getElementById('workspace-hint').style.display='';
 }
@@ -108,14 +153,18 @@ function clearWorkspace(silent){
   G.wsItems=[]; G.wires=[]; G.wsCounter=0; G.wireCounter=0;
   G.selectedItemId=null;
   var ws=document.getElementById('workspace');
+  /* เก็บชิ้นส่วนถาวรของพื้นที่ทำงานไว้ ล้างเฉพาะอุปกรณ์ที่ผู้เล่นวาง
+     (bb-layer คือตัวแผงเบรดบอร์ด, mobile-toolbar คือปุ่มลอยบนมือถือ) */
+  var KEEP={'wire-svg':1,'workspace-hint':1,'bb-layer':1,'mobile-toolbar':1,'hazard-bar':1};
   Array.from(ws.children).forEach(function(ch){
-    if(ch.id!=='wire-svg'&&ch.id!=='workspace-hint') ch.remove();
+    if(!KEEP[ch.id]) ch.remove();
   });
   var svg=document.getElementById('wire-svg');
   Array.from(svg.children).forEach(function(ch){
     if(ch.id!=='wire-preview'&&ch.tagName!=='defs') ch.remove();
   });
   document.getElementById('workspace-hint').style.display='';
+  bbRefresh();   /* ล้างไฮไลต์รางที่ค้างอยู่บนแผงด้วย */
   if(!silent) renderInventory();
 }
 
@@ -126,8 +175,10 @@ function getUpXY(e){ return e.changedTouches ? {x:e.changedTouches[0].clientX,y:
 
 function makeDraggable(el){
   function startDrag(e){
-    /* แตะจุดขั้ว/ปุ่มลบ = ไม่ใช่การลากย้าย (เช็คที่ target ด้านล่าง) */
-    if(e.target.classList.contains('port')||e.target.classList.contains('ws-item-delete')) return;
+    /* แตะจุดขั้ว/ปุ่มลบ/ตัวสับสวิตช์ = ไม่ใช่การลากย้าย */
+    if(e.target.classList.contains('port')||
+       e.target.classList.contains('ws-item-delete')||
+       e.target.classList.contains('ws-switch-state')) return;
     if(e.cancelable) e.preventDefault();
     e.stopPropagation();
 
@@ -167,19 +218,15 @@ function makeDraggable(el){
         var itemId=el.id; deselectAll(); removeWsItem(itemId);
         showToast('คืนอุปกรณ์กลับคลัง','success');
       } else {
-        /* บังคับให้อยู่ในพื้นที่ทำงานเสมอ
-           #workspace เป็น overflow:hidden ถ้าปล่อยให้ตำแหน่งติดลบหรือเลยขอบ
-           อุปกรณ์จะถูกตัดหายไปจนแตะไม่ถูก ต้องล้างพื้นที่ทั้งหมดถึงจะกู้คืนได้ */
-        var M=6;
-        var maxX=Math.max(M, wsEl.clientWidth  - el.offsetWidth  - M);
-        var maxY=Math.max(M, wsEl.clientHeight - el.offsetHeight - M);
-        var nx=Math.min(Math.max(M, parseInt(el.style.left)||0), maxX);
-        var ny=Math.min(Math.max(M, parseInt(el.style.top)||0),  maxY);
-        el.style.left=nx+'px'; el.style.top=ny+'px';
-
         var item=null;
         G.wsItems.forEach(function(i){if(i.id===el.id)item=i;});
-        if(item){item.x=nx;item.y=ny;}
+        if(item){
+          clampWsItem(item);
+          /* ปล่อยนิ้ว/เมาส์ = "เสียบขาลงรู" ขาจะดีดเข้าหารูที่ใกล้ที่สุด
+             เหมือนเสียบอุปกรณ์ลงแผงจริงที่ลงได้เฉพาะตำแหน่งรูเท่านั้น */
+          bbSnapItem(item);
+          bbRefresh();
+        }
         refreshWires(el.id);   /* ตำแหน่งเพิ่งถูกดึงกลับ สายต้องตามไปด้วย */
       }
       document.removeEventListener('mousemove',dragOnMove);
@@ -194,6 +241,56 @@ function makeDraggable(el){
   }
   el.addEventListener('mousedown',startDrag);
   el.addEventListener('touchstart',startDrag,{passive:false});
+}
+
+/* ============================================================
+   SWITCH — สับเปิด/ปิดวงจรได้จริง (เหมือนสวิตช์ไฟในบ้าน)
+   สับเปิด = ตัดทางเดินไฟ ตัวแก้สมการจะได้กระแส 0 ทั้งวง
+   ============================================================ */
+function toggleSwitchItem(itemId){
+  var item=null;
+  G.wsItems.forEach(function(i){ if(i.id===itemId) item=i; });
+  if(!item || item.deviceId!=='switch') return;
+
+  /* ตัดไฟขดลวดกะทันหัน = จังหวะที่เกิดแรงดันย้อนกลับ (Back-EMF)
+     ต้องตรวจ "ก่อน" สับออก เพราะต้องรู้ว่ากระแสกำลังไหลอยู่เท่าไร */
+  var emf = null;
+  if(!item.open && typeof checkBackEMF === 'function') emf = checkBackEMF();
+
+  item.open = !item.open;
+  var badge = item.el.querySelector('.ws-switch-state');
+  if(badge) badge.textContent = item.open ? 'OFF' : 'ON';
+  item.el.classList.toggle('switch-open', !!item.open);
+
+  if(emf){
+    applyHazardVisuals();
+    if(item.el) item.el.classList.add('arcing');
+    setTimeout(function(){ if(item.el) item.el.classList.remove('arcing'); }, 700);
+    showToast(emf.titleTh, 'error');
+    if(typeof showIncidentModal === 'function') showIncidentModal([emf]);
+  } else {
+    showToast(item.open ? 'สับสวิตช์ OFF — วงจรขาด ไฟไม่ไหล'
+                        : 'สับสวิตช์ ON — วงจรครบ ไฟไหลได้',
+              item.open ? '' : 'success');
+  }
+
+  /* กำลังจ่ายไฟอยู่ → คิดวงจรใหม่ทันทีให้เห็นผลเดี๋ยวนั้น */
+  if(PowerSim.on) powerStep(0.02);
+
+  /* ตัดไฟแล้วตัวเก็บประจุยังมีไฟค้าง — เตือนเรื่องความปลอดภัย */
+  if(item.open && typeof storedChargeWarning === 'function'){
+    var sc = storedChargeWarning();
+    if(sc) showToast(sc.titleTh + ' ' + sc.measuredTh, 'error');
+  }
+
+  if(typeof onCircuitChanged === 'function') onCircuitChanged();
+}
+
+/* มีสวิตช์ตัวไหนสับเปิดค้างอยู่ไหม (ใช้เตือนก่อนตรวจวงจร) */
+function hasOpenSwitch(){
+  var found=false;
+  G.wsItems.forEach(function(it){ if(it.deviceId==='switch' && it.open) found=true; });
+  return found;
 }
 
 /* ============================================================
@@ -257,45 +354,35 @@ function rotateItem(itemId){
   var iconWrap = item.el.querySelector('.ws-item-svg');
   if(iconWrap) iconWrap.style.transform = 'rotate('+deg+'deg)';
 
-  /*
-    หมุน port dot ตามภาพด้วย (CW 90° ต่อครั้ง)
-    ตำแหน่งภาพหมุน: left→top→right→bottom→left
-    ทิศทางการย้าย class เมื่อหมุน CW:
-      left→top, top→right, right→bottom, bottom→left
-    เราคำนวณจาก "ตำแหน่งดั้งเดิม" (dev.ports) + มุมปัจจุบัน
-    เพื่อไม่ให้ค่าเพี้ยนสะสม
-  */
-  var rotMap = {
-    0:   {left:'left',  right:'right', top:'top',    bottom:'bottom'},
-    90:  {left:'top',   right:'bottom',top:'right',  bottom:'left'},
-    180: {left:'right', right:'left',  top:'bottom', bottom:'top'},
-    270: {left:'bottom',right:'top',   top:'left',   bottom:'right'}
-  };
-  var map = rotMap[deg];
-  var dev = DEVICES[item.deviceId];
+  /* หมุนจุดขั้วตามภาพ
+     layoutPorts() คำนวณจาก "ตำแหน่งขาตั้งต้น" ของอุปกรณ์ + มุมปัจจุบันเสมอ
+     ไม่ได้หมุนต่อจากตำแหน่งเดิม ค่าจึงไม่เพี้ยนสะสมแม้หมุนหลายรอบ
+     (ดู rotatePortAnchor ใน js/devices.js — ตามเข็ม 90° คือ (x,y) → (−y,x))
 
-  var portEls = item.el.querySelectorAll('.port');
-  portEls.forEach(function(portEl, idx){
-    var originalPos = dev.ports[idx];       /* ตำแหน่งดั้งเดิมของ port นี้ */
-    var newPos = map[originalPos] || originalPos;
+     ขาที่อยู่ก้นตัวถังจึงหมุนไปอยู่ข้างอย่างถูกต้อง เช่นหมุนหลอดไฟ 90°
+     ขั้วที่ก้นจะไปอยู่ด้านซ้ายของกล่อง ไม่ใช่เด้งกลับไปขอบซ้าย-ขวาเหมือนเดิม
 
-    /* ย้าย class ตำแหน่งภาพ (ให้ dot ไปอยู่ที่ใหม่ตามภาพหมุน) */
-    portEl.classList.remove('port-left','port-right','port-top','port-bottom');
-    portEl.classList.add('port-'+newPos);
-
-    /* อัปเดต dataset.pos = ตำแหน่งใหม่ (สำหรับ getPortCenter/refreshWires)
-       แต่ polarity ยังติดกับ port เดิม (+ ก็ยังเป็น +) ไม่แตะต้อง */
-    portEl.dataset.pos = newPos;
-
-    /* ล้าง inline transform ที่อาจค้างจาก :hover */
-    portEl.style.transform = '';
+     polarity ไม่แตะต้อง — ขั้วบวกผูกกับตัวขา ไม่ได้ผูกกับทิศที่มันไปอยู่ */
+  layoutPorts(item);
+  item.el.querySelectorAll('.port').forEach(function(portEl){
+    portEl.style.transform = '';   /* ล้าง inline transform ที่อาจค้างจาก :hover */
   });
 
   /* อัปเดตสายไฟที่ต่อกับ item นี้ (ตำแหน่ง port เปลี่ยน)
      เรียกซ้ำหลัง transition 0.15s ของ port จบ ไม่งั้นสายจะวาดตามตำแหน่ง
-     ที่ port กำลังเลื่อนอยู่ แล้วค้างเพี้ยนจนกว่าจะลากอุปกรณ์ */
+     ที่ port กำลังเลื่อนอยู่ แล้วค้างเพี้ยนจนกว่าจะลากอุปกรณ์
+
+     การเสียบลงรูใหม่ต้องรอจังหวะเดียวกัน เพราะต้องวัดตำแหน่งขาจริง
+     หลังหมุนเสร็จ ระบบจะเลื่อนอุปกรณ์ให้ขาลงรูพอดีอีกครั้ง
+     ถ้าหมุนจนตั้งฉาก ขาจะไปลงคนละฝั่งของร่องกลางให้เอง
+     (ถ้าลงฝั่งเดียวกันคือขาสองข้างอยู่รางเดียวกัน = ลัดวงจรตัวเอง) */
   refreshWires(itemId);
-  setTimeout(function(){ refreshWires(itemId); }, 180);
+  setTimeout(function(){
+    clampWsItem(item);
+    bbSnapItem(item);
+    bbRefresh();
+    refreshWires(itemId);
+  }, 180);
 
   var name = item.el.querySelector('.ws-item-name');
   showToast((name?name.textContent:'อุปกรณ์')+' หมุน '+deg+'°','success');

@@ -11,6 +11,8 @@
 <link rel="stylesheet" href="css/game-layout.css">
 <link rel="stylesheet" href="css/components.css">
 <link rel="stylesheet" href="css/circuit.css">
+<link rel="stylesheet" href="css/breadboard.css">
+<link rel="stylesheet" href="css/hazard.css">
 <link rel="stylesheet" href="css/modals.css">
 <link rel="stylesheet" href="css/responsive.css">
 </head>
@@ -73,17 +75,27 @@
       <div id="level-goal">
         <span id="goal-target-ic"></span> <strong id="goal-title">&#x2014;</strong>
         <span id="goal-desc">&#x2014;</span>
+        <span id="goal-outcome" class="goal-outcome" style="display:none;"></span>
       </div>
       <div id="workspace"
         ondragover="onWsDragOver(event)"
         ondrop="onWsDrop(event)"
         ondragleave="onWsDragLeave()">
+        <!-- คำแนะนำมี 2 ชุด เพราะพื้นที่ทำงานมี 2 แบบ
+             ด่านปกติ = พื้นที่ว่าง วางตรงไหนก็ได้แล้วเดินสายเอง
+             ด่านเบรดบอร์ด = แผงจริง ขาที่อยู่รางเดียวกันต่อถึงกันเอง
+             สลับด้วยคลาส body.has-breadboard (ดู css/breadboard.css) -->
         <div id="workspace-hint">
-          <span style="font-size:2rem;opacity:.3">&#x2B07;</span>
-          <span>ลากอุปกรณ์จากคลังมาวางที่นี่</span>
-          <span style="font-size:.75rem">ต่อสาย: ลาก (หรือแตะ) จากจุดขั้ว &#x25CF; ไปอีกจุดหนึ่ง &nbsp;|&nbsp; ลบสาย: คลิก/แตะที่เส้นสาย</span>
-          <span style="font-size:.72rem;opacity:.75">คีย์ลัด: R หมุน &nbsp;·&nbsp; C ตรวจวงจร &nbsp;·&nbsp; M เครื่องวัด &nbsp;·&nbsp; H คู่มือ &nbsp;·&nbsp; Del ลบอุปกรณ์</span>
+          <span class="hint-free">ลากอุปกรณ์จากคลังมาวางบนพื้นที่ทำงาน</span>
+          <span class="hint-board">ลากอุปกรณ์จากคลังมาเสียบลงรูบนแผงต่อวงจร</span>
+          <span class="hint-free" style="font-size:.75rem">เดินสายเชื่อมวงจร: ลาก (หรือแตะ) จากขาหนึ่งไปอีกขาหนึ่ง &nbsp;|&nbsp; คลิกที่สายเพื่อลบสายเส้นนั้น</span>
+          <span class="hint-board" style="font-size:.75rem">ขาอุปกรณ์ที่อยู่ในรางเดียวกันจะต่อถึงกันเอง (รางเรืองแสง = เชื่อมแล้ว) &nbsp;|&nbsp; เดินสายเพิ่ม: ลาก/แตะจากขาหนึ่งไปอีกขาหนึ่ง</span>
+          <span class="hint-board" style="font-size:.75rem">แถว A-E และ F-J แยกกันด้วยร่องกลาง &nbsp;·&nbsp; รางแดง (+) และรางน้ำเงิน (−) ต่อถึงกันตลอดแนว</span>
+          <span style="font-size:.72rem;opacity:.75">คีย์ลัด: R หมุน &nbsp;·&nbsp; S สับสวิตช์ &nbsp;·&nbsp; C ตรวจวงจร &nbsp;·&nbsp; M เครื่องวัด &nbsp;·&nbsp; H คู่มือ &nbsp;·&nbsp; Del ลบอุปกรณ์</span>
         </div>
+
+        <!-- แถบสถานะความปลอดภัย — ขึ้นเองเมื่อมีอุปกรณ์เริ่มร้อนหรือพัง -->
+        <div id="hazard-bar" style="display:none;"></div>
         <!-- Mobile floating toolbar -->
         <div id="mobile-toolbar" style="display:none;position:absolute;z-index:20;background:rgba(10,22,40,.95);border:1px solid var(--border2);border-radius:10px;padding:6px 8px;gap:8px;flex-direction:row;box-shadow:0 4px 20px rgba(0,0,0,.5);">
           <button onclick="G.selectedItemId&&rotateItem(G.selectedItemId)" style="background:var(--bg-card2);border:1px solid var(--border);color:var(--accent2);border-radius:8px;padding:8px 14px;font-size:.85rem;cursor:pointer;">&#x21BA; หมุน</button>
@@ -108,14 +120,15 @@
     </div>
   </div>
 
-  <!-- จอแสดงผลเครื่องวัด (ลอยมุมล่าง) -->
+  <!-- จอแสดงผลเครื่องวัด (ลอยมุมล่าง) — ค่าทั้งหมดมาจากการแก้สมการวงจรจริง -->
   <div id="probe-display" style="display:none;">
+    <div class="probe-name" id="probe-target">ยังไม่ได้เลือก</div>
     <div class="probe-screen">
       <div class="probe-row"><span class="probe-lbl">แรงดัน</span><span class="probe-val" id="probe-voltage">-- V</span></div>
       <div class="probe-row"><span class="probe-lbl">กระแส</span><span class="probe-val" id="probe-current">-- mA</span></div>
-      <div class="probe-row"><span class="probe-lbl">ขั้ว</span><span class="probe-val" id="probe-polarity">--</span></div>
+      <div class="probe-row"><span class="probe-lbl">กำลังไฟ</span><span class="probe-val" id="probe-power">-- mW</span></div>
     </div>
-    <div class="probe-hint" id="probe-hint">กดที่สายไฟเพื่อวัด</div>
+    <div class="probe-hint" id="probe-hint">จิ้มที่สายไฟหรือตัวอุปกรณ์เพื่อวัด</div>
   </div>
 
   <!-- Popup เลือกขั้ว (เมื่อจุดมี 2 สีต่ออยู่) -->
@@ -191,11 +204,13 @@
         </div>
       </div>
       <div id="tutorial-text-box">ใส่ข้อความสอน</div>
-      <div class="tut-nav">
-        <button class="btn-tut" id="btn-tut-prev" onclick="changeTutPage(-1)">&#x25C4; ก่อนหน้า</button>
-        <span class="tut-page" id="tut-page-indicator">1 / 1</span>
-        <button class="btn-tut primary" id="btn-tut-next" onclick="changeTutPage(1)">ถัดไป &#x25BA;</button>
-      </div>
+    </div>
+    <!-- ปุ่มพลิกหน้าต้องอยู่นอก .modal-body — ถ้าอยู่ข้างในมันจะเลื่อนหนีไป
+         กับเนื้อหา พอหน้าไหนข้อความยาว ผู้เรียนจะหาปุ่ม "ถัดไป" ไม่เจอ -->
+    <div class="modal-footer tut-nav">
+      <button class="btn-tut" id="btn-tut-prev" onclick="changeTutPage(-1)">&#x25C4; ก่อนหน้า</button>
+      <span class="tut-page" id="tut-page-indicator">1 / 1</span>
+      <button class="btn-tut primary" id="btn-tut-next" onclick="changeTutPage(1)">ถัดไป &#x25BA;</button>
     </div>
   </div>
 </div>
@@ -223,6 +238,21 @@
     <div class="modal-footer">
       <button class="btn-confirm-cancel" onclick="quitEndlessToLevels()">กลับสู่ด่าน</button>
       <button class="btn-confirm-ok" onclick="restartEndless()">เล่นอีกครั้ง</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL INCIDENT — รายงานเหตุการณ์เมื่อวงจรพัง
+     ตอบ 4 ข้อ: ต่อแบบนี้ / พังตรงไหน / อันตรายยังไง / ป้องกันยังไง -->
+<div id="modal-incident" class="modal-overlay">
+  <div class="modal-box" style="max-width:620px">
+    <div class="modal-header incident-header">
+      <h3><span class="inc-bolt">&#x26A0;</span> <span id="incident-title">&#x2014;</span></h3>
+      <button class="modal-close" onclick="closeModal('modal-incident')">&#x2715;</button>
+    </div>
+    <div class="modal-body" id="incident-body"></div>
+    <div class="modal-footer">
+      <button class="btn-confirm-ok danger" onclick="closeModal('modal-incident')">เข้าใจแล้ว</button>
     </div>
   </div>
 </div>
@@ -261,7 +291,7 @@
       <div class="result-stats">
         <div class="stat-box"><div class="stat-val" id="stat-score">+100</div><div class="stat-lbl">คะแนน</div></div>
         <div class="stat-box"><div class="stat-val" id="stat-time">&#x2014;</div><div class="stat-lbl">เวลา</div></div>
-        <div class="stat-box"><div class="stat-val" id="stat-wires">&#x2014;</div><div class="stat-lbl">สายไฟ</div></div>
+        <div class="stat-box"><div class="stat-val" id="stat-wires">&#x2014;</div><div class="stat-lbl">จุดเชื่อม</div></div>
       </div>
       <div id="result-hint" style="font-size:.82rem;color:var(--text-dim);text-align:center;"></div>
     </div>
@@ -280,15 +310,20 @@
        icons           ไอคอน UI + หัวใจ
        devices         นิยามอุปกรณ์ + ชื่อจุด
        levels          ข้อมูล 20 ด่าน
-       circuit-check   ตรรกะตรวจวงจร
+       analyze         ระบบวิเคราะห์วงจร (อ่านเป็นโครงข่ายจริง)
+       outcome         ตัดสินจาก "ผลที่ออกมา" โดยจ่ายไฟจำลองแล้ววัดจริง
+       circuit-check   ตรวจโครงสร้าง/ขั้ว และคำใบ้ของแต่ละด่าน
        save            บันทึก/โหลดความคืบหน้าลง localStorage
        state           ตัวแปรสถานะกลาง (G) + หน้าจอ + แบบทดสอบ
        ui              ไอคอน/modal/toast
        inventory       คลังอุปกรณ์ + drag & drop
-       workspace       อุปกรณ์บนพื้นที่ทำงาน + หมุน + เลือก
+       workspace       อุปกรณ์บนพื้นที่ทำงาน + หมุน + เลือก + สับสวิตช์
        wires           ระบบสายไฟ + ลงสีตามขั้ว
-       probe           กระแสไหล + เครื่องวัด
-       damage          ความเสียหายจากการต่อผิด (ลัดวงจร/กระแสเกิน)
+       solver          แก้สมการวงจรจริง (Nodal Analysis) — หัวใจของค่าไฟฟ้า
+       breadboard      แผงต่อวงจรจริง: รูเสียบ รางจ่ายไฟ และรางที่นำไฟได้
+       probe           จำลองการทำงานตามเวลาจริง + เครื่องวัด
+       hazard          ความร้อนสะสม ความเสียหาย และรายงานอันตราย
+       damage          ตัวประสานระหว่างเกมกับระบบความเสียหาย
        sandbox         โหมดอิสระ (เล่นทดลองไม่จำกัด)
        endless         โหมดวัดความเร็ว + ตัวสุ่มโจทย์ + ตารางอันดับ
        game            วงจรการเล่นหลัก + คีย์ลัด (โหลดท้ายสุด)
@@ -297,6 +332,8 @@
 <script src="js/icons.js"></script>
 <script src="js/devices.js"></script>
 <script src="js/levels.js"></script>
+<script src="js/analyze.js"></script>
+<script src="js/outcome.js"></script>
 <script src="js/circuit-check.js"></script>
 <script src="js/save.js"></script>
 <script src="js/state.js"></script>
@@ -304,7 +341,10 @@
 <script src="js/inventory.js"></script>
 <script src="js/workspace.js"></script>
 <script src="js/wires.js"></script>
+<script src="js/solver.js"></script>
+<script src="js/breadboard.js"></script>
 <script src="js/probe.js"></script>
+<script src="js/hazard.js"></script>
 <script src="js/damage.js"></script>
 <script src="js/sandbox.js"></script>
 <script src="js/endless.js"></script>
