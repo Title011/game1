@@ -50,7 +50,7 @@ function addWsItem(deviceId,x,y){
   dev.ports.forEach(function(pos){
     var port=document.createElement('div');
     port.className='port port-'+pos;
-    port.dataset.itemId=itemId; port.dataset.pos=pos;
+    port.dataset.itemId=itemId;
     port.dataset.origPos=pos; /* ชื่อจุดถาวร ไม่เปลี่ยนตอนหมุน — ใช้เช็คเฉลย */
 
     /* กำหนดขั้ว +/− สำหรับอุปกรณ์ที่มีขั้ว */

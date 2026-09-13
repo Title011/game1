@@ -12,7 +12,6 @@
 }
 .test-container h1{font-size:1.7rem;color:var(--accent);font-weight:700;text-align:center;}
 .test-container p{color:var(--text-dim);text-align:center;font-size:.95rem;line-height:1.7;}
-.test-container iframe{width:100%;height:540px;border:none;border-radius:12px;background:#fff;}
 
 /* แบบสอบถาม — ปุ่มลิงก์ + สถานะ */
 .form-link-box{

@@ -385,7 +385,3 @@ function nodeVoltageAt(sol, portEl){
   return sol.nodeV[n];
 }
 
-/* แก้วงจรจากสถานะปัจจุบันของเกม (ใช้บ่อยจนควรมีทางลัด) */
-function solveNow(opts){
-  return solveCircuit(G.wsItems, G.wires, opts);
-}

@@ -36,10 +36,10 @@
      (ระยะห่างรูวัดจากอุปกรณ์จริงตอนเริ่มเกม จึงปรับตามอัตโนมัติ) */
   .ws-item{width:68px;height:68px;padding:5px;}
   .port{width:16px;height:16px;}
+  /* เหลือแค่ซ้าย-ขวา เพราะสองกฎนี้คือตัวที่ bbMeasurePitch() ใช้วัดขนาดช่องของแผง
+     (ทิศบน-ล่างไม่ต้องมี จุดขั้วจริงทุกจุดวางด้วย inline style จาก layoutPorts) */
   .port.port-left  {left:-10px;    top:50%;}
   .port.port-right {right:-10px;   top:50%;}
-  .port.port-top   {top:-10px;}
-  .port.port-bottom{top:auto;bottom:-10px;}
   /* เลขคู่เหมือนกัน เพื่อให้กึ่งกลางวงกลมตกที่พิกเซลเต็ม
      กล่อง 20 → ในกรอบ 16 → เครื่องหมาย 12 → แท่งหนา 4 → (12−4)/2 = 4 ลงตัว */
   .port.port-pos,.port.port-neg{width:20px;height:20px;}

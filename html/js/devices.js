@@ -132,7 +132,6 @@ function layoutPorts(item){
     p.style.top    = (H/2 + v.y*U) + 'px';
     p.style.right  = 'auto';
     p.style.bottom = 'auto';
-    p.dataset.pos  = v.face;     /* ทิศที่หันออก ใช้ตอนวาดสายไฟ */
     if(v.y >  1.5) hasBottom = true;
     if(v.y < -1.5) hasTop    = true;
   });
@@ -231,32 +230,6 @@ var THAI_POS = {left:'ซ้าย', right:'ขวา', top:'บน', bottom:'�
 /* ============================================================
    ตัวช่วยตั้งชื่อจุด (ใช้ในข้อความแจ้งเตือน/คำใบ้)
    ============================================================ */
-
-/* จากคีย์เฉลย: "battery_aa.right" → "ถ่านไฟฉาย AA (จุดขวา +)" */
-function portLabel(key){
-  var parts = key.split('.');
-  var dev = DEVICES[parts[0]];
-  var name = dev ? dev.name : parts[0];
-  var posTh = THAI_POS[parts[1]] || parts[1];
-  var polMark = '';
-  if(dev && dev.polarized){
-    if(parts[1]===dev.pos) polMark=' +';
-    else if(parts[1]===dev.neg) polMark=' −';
-  }
-  return name+' (จุด'+posTh+polMark+')';
-}
-
-/* จาก item + element ของ port จริงบนพื้นที่ทำงาน */
-function ptName(item, portEl){
-  var dev = DEVICES[item.deviceId];
-  var posTh = THAI_POS[portEl.dataset.origPos] || portEl.dataset.origPos;
-  var mark = '';
-  if(dev.polarized){
-    if(portEl.dataset.origPos===dev.pos) mark=' +';
-    else if(portEl.dataset.origPos===dev.neg) mark=' −';
-  }
-  return dev.name+' (จุด'+posTh+mark+')';
-}
 
 /* หา deviceId จาก itemId (ใช้ในข้อความ) */
 function itemDeviceId(itemId){

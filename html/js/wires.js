@@ -672,10 +672,6 @@ function recolorWires(){
     else if(dr <= db)                          color = RED;   /* บวกถึงก่อนหรือเท่ากัน = แดง */
     else                                      color = BLUE;
 
-    /* เก็บระยะจากขั้ว+ ไว้ กำหนดทิศไหล (กระแสไหล +→−)
-       ปลายสายที่ใกล้ขั้ว+ = ต้นทาง, ไกลกว่า = ปลายทาง */
-    w._distPlus = (dr===undefined) ? 9999 : dr;
-
     w.color = color;
     w.pathEl.classList.remove('wire-pos','wire-neg');
     if(color===RED)       w.pathEl.classList.add('wire-pos');

@@ -84,10 +84,6 @@
   width:30px;height:30px;border-radius:50%;
 }
 .port:hover{background:var(--accent);}
-.port.port-left:hover  {transform:translate(-50%,-50%) scale(1.5);}
-.port.port-right:hover {transform:translate(50%,-50%)  scale(1.5);}
-.port.port-top:hover   {transform:translate(-50%,-50%) scale(1.5);}
-.port.port-bottom:hover{transform:translate(-50%,50%)  scale(1.5);}
 .port.connected{background:var(--accent3);box-shadow:0 0 6px rgba(0,255,136,.6);}
 
 /* จุดที่เลือกไว้ตอนต่อสายบนมือถือ (แตะทีละจุด)
@@ -99,10 +95,6 @@
   box-shadow:0 0 0 3px rgba(255,215,0,.4), 0 0 14px rgba(255,215,0,.8)!important;
   animation:tap-pulse .8s ease-in-out infinite;
 }
-.port.port-left.tap-selected  {transform:translate(-50%,-50%) scale(1.6)!important;}
-.port.port-right.tap-selected {transform:translate(50%,-50%)  scale(1.6)!important;}
-.port.port-top.tap-selected   {transform:translate(-50%,-50%) scale(1.6)!important;}
-.port.port-bottom.tap-selected{transform:translate(-50%,50%)  scale(1.6)!important;}
 
 /* จุดขั้วที่วางตามตำแหน่งขาจริงของอุปกรณ์ (ดู PORT_ANCHORS ใน js/devices.js)
    ตำแหน่ง left/top มาเป็นพิกเซลจาก JS แบบ inline style ส่วน right/bottom
@@ -121,7 +113,6 @@
    คลาสทั้งสองใส่โดย layoutPorts() ใน js/devices.js ตามทิศขาจริงหลังหมุนแล้ว */
 .ws-item.has-port-bottom .ws-item-name{top:calc(100% + 22px);}
 .ws-item.has-port-top.failed::after,
-.ws-item.has-port-top.burned::after,
 .ws-item.has-port-top.fuse-blown::after{top:-24px;}
 @keyframes tap-pulse{0%,100%{box-shadow:0 0 0 3px rgba(255,215,0,.4),0 0 14px rgba(255,215,0,.8)}50%{box-shadow:0 0 0 5px rgba(255,215,0,.6),0 0 20px rgba(255,215,0,1)}}
 
@@ -184,7 +175,6 @@
 .btn-check{background:linear-gradient(135deg,var(--accent3),#059669);color:#000;font-weight:800;}
 
 /* UI ICONS (แทน emoji) — ขนาดกำหนดที่ attribute ของ SVG ตรงๆ ไม่ override */
-.ui-icon{pointer-events:none;}
 #game-header h2 .hdr-icon svg{color:var(--accent2);filter:drop-shadow(0 0 4px rgba(255,215,0,.5));}
 .hud-hearts{display:inline-flex;align-items:center;}
 .hearts-row{display:inline-flex;gap:5px;align-items:center;line-height:0;}

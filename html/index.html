@@ -44,7 +44,7 @@
 
     <!-- กล่อง "เล่นต่อ" — JS จะเปิดให้เองเมื่อพบข้อมูลที่บันทึกไว้ (js/save.js) -->
     <div class="resume-box" id="resume-box" style="display:none;">
-      <div class="resume-info">
+      <div>
         <div class="resume-title">พบความคืบหน้าที่บันทึกไว้ในเครื่องนี้</div>
         <div class="resume-detail" id="resume-detail">&#x2014;</div>
       </div>
@@ -103,11 +103,6 @@
           <button onclick="deselectAll();hideMobileToolbar();" style="background:var(--bg-card);border:1px solid var(--border);color:var(--text-dim);border-radius:8px;padding:8px 14px;font-size:.85rem;cursor:pointer;">ยกเลิก</button>
         </div>
         <svg id="wire-svg" xmlns="http://www.w3.org/2000/svg">
-          <defs>
-            <marker id="arrowhead" markerWidth="6" markerHeight="4" refX="3" refY="2" orient="auto">
-              <polygon points="0 0, 6 2, 0 4" fill="#ffd700" opacity="0.6"/>
-            </marker>
-          </defs>
           <path id="wire-preview"/>
         </svg>
       </div>

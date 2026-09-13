@@ -476,31 +476,6 @@ function scoreMapping(net, sol, choice){
   return { score:score, perfect:perfect, msg:msg, detail:detail };
 }
 
-/* ลำดับการต่อที่เฉลยกำหนด เขียนเป็นข้อความ เช่น
-   "ถ่านไฟฉาย AA → สวิตช์ → หลอดไฟ → กลับ ถ่านไฟฉาย AA" */
-function solutionOrderText(solution){
-  if(!solution || !solution.length) return '';
-  var seq = [ solution[0][0].split('.')[0] ];
-  for(var i=0;i<solution.length;i++){
-    var d = solution[i][1].split('.')[0];
-    if(i === solution.length - 1 && d === seq[0]) break;
-    seq.push(d);
-  }
-  var names = seq.map(function(d){ return DEVICES[d] ? DEVICES[d].name : d; });
-  return names.join(' → ') + ' → กลับ ' + names[0];
-}
-
-/* วงจรนี้ครบวงเดียวและมีทุกชิ้นอยู่บนทางเดินไฟไหม
-   ใช้แยกกรณี "ต่อครบแล้วแต่สลับลำดับ" ออกจาก "ต่อไม่ครบ" */
-function isCompleteSingleLoop(an){
-  if(!an.branches || an.branches !== 1) return false;
-  if(an.floating.length || an.shorted.length || an.islands.length) return false;
-  var onPath = {};
-  an.paths[0].forEach(function(s){ onPath[s.el.item.id] = true; });
-  var all = true;
-  an.net.els.forEach(function(e){ if(!e.isSource && !onPath[e.item.id]) all = false; });
-  return all;
-}
 
 function itemById(net, id){
   var found = null;

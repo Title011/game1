@@ -6,8 +6,8 @@
 
    ── หัวใจ: ตัวสุ่มต้องสร้างวงจร "ที่ต่อได้จริง" ──
    ไม่ได้สุ่มอุปกรณ์มั่วแล้วหวังว่าจะต่อได้ แต่สร้างจากแม่แบบที่รู้แน่ว่า
-   ผ่านตัวตรวจทุกตัว (checkSeriesTopology / checkParallelTopology /
-   tracePolarity / tracePolarityThrough / isClosedCircuit) คือ:
+   ผ่านทั้ง isClosedCircuit (js/circuit-check.js) และ checkOutcome
+   (js/outcome.js ซึ่งตรวจ "ผลที่วงจรทำได้จริง") คือ:
 
      อนุกรม : แหล่งจ่าย(+) → d1 → d2 → ... → dn → กลับแหล่งจ่าย(−)
      ขนาน   : ทำสายโซ่ข้างบนซ้ำหลายสาขา แยกจากขั้วแหล่งจ่ายโดยตรง

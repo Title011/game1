@@ -64,7 +64,9 @@ function renderInventory(){
     {label:ICON('bulbIdea',15)+' เปลี่ยนพลังงาน',  ids:['bulb','motor','buzzer']},
     /* ไม่มี 'breadboard' ในหมวดนี้แล้ว — พื้นที่ทำงานทั้งผืนคือเบรดบอร์ดอยู่แล้ว
        จึงไม่มีเหตุผลให้หยิบเบรดบอร์ดมาวางบนเบรดบอร์ดอีกชิ้น */
-    {label:ICON('wrench',15)+' เครื่องมือ',   ids:['wire','multimeter']},
+    /* ไม่มี 'wire' ในรายการ — สายไฟในเกมนี้ใช้วิธีลากจากขาหนึ่งไปอีกขาหนึ่ง
+       ไม่ได้หยิบมาวางเป็นชิ้น จึงไม่เคยมีด่านไหนแจกมันเลย */
+    {label:ICON('wrench',15)+' เครื่องมือ',   ids:['multimeter']},
   ];
   var unlimited = invUnlimited();
   cats.forEach(function(cat){
