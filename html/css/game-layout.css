@@ -56,8 +56,8 @@
 body.modes-unlocked .btn-sandbox,
 body.modes-unlocked .btn-endless{display:inline-flex;}
 
-/* ปุ่มสลับโหมดอิสระ (Sandbox) */
-.btn-sandbox{
+/* ปุ่มโหมดพิเศษทั้งสองใช้โครงเดียวกัน ต่างกันแค่โทนสีตอน hover/active */
+.btn-sandbox,.btn-endless{
   align-items:center;gap:6px;
   background:var(--bg-card);color:var(--text-dim);
   border:1px solid var(--border2);
@@ -65,30 +65,25 @@ body.modes-unlocked .btn-endless{display:inline-flex;}
   cursor:pointer;white-space:nowrap;
   transition:transform .15s,color .15s,border-color .15s,background .15s;
 }
-.btn-sandbox:hover{transform:translateY(-1px);color:var(--accent3);border-color:var(--accent3);}
+.btn-sandbox svg,.btn-endless svg{pointer-events:none;}
+.btn-sandbox:hover,.btn-endless:hover{transform:translateY(-1px);}
+
+/* โหมดอิสระ (Sandbox) — โทนเขียว
+   :hover ต้องมาก่อน .active เสมอ ปุ่มที่เปิดอยู่แล้วถูกชี้จะได้คงสีของ .active */
+.btn-sandbox:hover{color:var(--accent3);border-color:var(--accent3);}
 .btn-sandbox.active{
   background:linear-gradient(135deg,var(--accent3),#059669);
   color:#04231a;border-color:transparent;
   box-shadow:0 0 14px rgba(0,255,136,.4);
 }
-.btn-sandbox svg{pointer-events:none;}
 
-/* ปุ่มสลับโหมดไม่รู้จบ — ใช้สไตล์เดียวกับปุ่มโหมดอิสระ แต่โทนทอง */
-.btn-endless{
-  align-items:center;gap:6px;
-  background:var(--bg-card);color:var(--text-dim);
-  border:1px solid var(--border2);
-  padding:8px 14px;border-radius:8px;font-size:.82rem;font-weight:700;
-  cursor:pointer;white-space:nowrap;
-  transition:transform .15s,color .15s,border-color .15s,background .15s;
-}
-.btn-endless:hover{transform:translateY(-1px);color:var(--accent2);border-color:var(--accent2);}
+/* โหมดวัดความเร็ว — โทนทอง */
+.btn-endless:hover{color:var(--accent2);border-color:var(--accent2);}
 .btn-endless.active{
   background:linear-gradient(135deg,var(--accent2),#d97706);
   color:#2a1a00;border-color:transparent;
   box-shadow:0 0 14px rgba(255,215,0,.45);
 }
-.btn-endless svg{pointer-events:none;}
 /* โหมดไม่รู้จบไม่ใช้แถบด่าน (โจทย์สุ่มขึ้นมาใหม่ทุกรอบ) */
 body.endless-mode #level-bar{display:none;}
 body.endless-mode #workspace{border-color:rgba(255,215,0,.45);}

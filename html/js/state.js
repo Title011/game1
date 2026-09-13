@@ -46,6 +46,18 @@ function showScreen(id){
   document.getElementById(id).classList.add('active');
 }
 
+/* ด่านสุดท้ายคือเงื่อนไขปลดล็อกโหมดพิเศษ — กันไว้เผื่อเรียกฟังก์ชันตรง ๆ
+   คืน false เมื่อยังไม่ปลดล็อก ผู้เรียกต้อง return ทันที
+   (ใช้ร่วมกันโดย enterSandbox() และ enterEndless()) */
+function specialModeReady(){
+  if(!G.modesUnlocked){
+    showToast('ปลดล็อกโหมดนี้ได้หลังเล่นครบทุกด่าน','error');
+    return false;
+  }
+  showScreen('screen-game');
+  return true;
+}
+
 /* ============================================================
    PRE/POST-TEST FORM STATUS
    เช็คว่ากดปุ่มเปิดแบบทดสอบแล้วหรือยัง (เก็บใน memory ของ session)

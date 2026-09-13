@@ -28,21 +28,19 @@ function toggleSandbox(){
 }
 
 function enterSandbox(){
-  /* ด่านสุดท้ายคือเงื่อนไขปลดล็อก — กันไว้เผื่อเรียกฟังก์ชันตรง ๆ */
-  if(!G.modesUnlocked){
-    showToast('ปลดล็อกโหมดนี้ได้หลังเล่นครบทุกด่าน','error');
-    return;
-  }
-  showScreen('screen-game');
+  if(!specialModeReady()) return;
   G.sandbox = true;
 
   /* ปิดโหมดค้างต่าง ๆ + หยุดเวลาของด่านเดิม */
   clearInterval(G.timerInt);
-  cancelTapConnect();
-  if(G.probeMode) toggleProbeMode();
-  stopCurrentFlow();
-  deselectAll();
-  clearWorkspace(true);
+  /* ต้องปิดโหมดวัดความเร็วด้วย ไม่งั้นสองโหมดทำงานพร้อมกัน
+     รอบที่เล่นค้างอยู่จะถูกทิ้งไปเงียบ ๆ พร้อมคะแนนทั้งหมด */
+  if(G.endless){
+    G.endless = false; G.genLevel = null;
+    document.body.classList.remove('endless-mode');
+    if(typeof updateEndlessButton === 'function') updateEndlessButton();
+  }
+  resetPlayfield();
 
   G.invCounts = Object.assign({}, SANDBOX_INVENTORY);
   renderInventory();

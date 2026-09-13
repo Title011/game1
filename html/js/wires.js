@@ -528,6 +528,12 @@ function addWire(fromItemId,fromPort,fx,fy,toItemId,toPort,tx,ty,forcedFromPol,f
   /* ลงสีสายทั้งวงจรใหม่ (ไล่จากขั้วแบต) */
   recolorWires();
 
+  /* ต่อสายเพิ่มระหว่างที่ไฟกำลังเดินอยู่ — สายใหม่ต้องมีจุดไฟวิ่งด้วย
+     ของเดิมสร้างจุดครั้งเดียวตอนเริ่มจ่ายไฟ สายที่ต่อทีหลังจึงไม่มีจุดเลย */
+  if(typeof PowerSim !== 'undefined' && PowerSim.on && typeof buildFlowDots === 'function'){
+    buildFlowDots();
+  }
+
   showToast('ต่อสายสำเร็จ!','success');
 }
 
@@ -542,6 +548,18 @@ function removeWire(wireId){
     return;
   }
   found.pathEl.remove();
+
+  /* จุดไฟวิ่งของสายเส้นนี้ต้องหายไปพร้อมกัน
+     ไม่งั้นมันจะวิ่งอยู่บนเส้นทางที่ถูกลบไปแล้ว (offset-path เก็บสำเนา d ไว้ในตัว
+     จุดจึงยังลอยวิ่งกลางอากาศต่อไปจนกว่าจะหยุดจ่ายไฟ) */
+  if(G.flowDots && G.flowDots.length){
+    G.flowDots = G.flowDots.filter(function(d){
+      if(d._wireId === wireId){ d.remove(); return false; }
+      return true;
+    });
+  }
+  if(typeof PowerSim !== 'undefined' && PowerSim.dotDur) delete PowerSim.dotDur[wireId];
+
   [found.fromPort,found.toPort].forEach(function(p){
     var used=false;
     G.wires.forEach(function(w){if(w.id!==wireId&&(w.fromPort===p||w.toPort===p))used=true;});
@@ -549,6 +567,12 @@ function removeWire(wireId){
   });
   G.wires=G.wires.filter(function(w){return w.id!==wireId;});
   recolorWires();
+
+  /* ต่อสาย/ลบสายระหว่างจ่ายไฟอยู่ → สร้างจุดไฟวิ่งใหม่ให้ตรงกับสายชุดปัจจุบัน
+     (สายที่เพิ่งเพิ่มตอนไฟเดินอยู่ ของเดิมจะไม่มีจุดวิ่งเลย) */
+  if(typeof PowerSim !== 'undefined' && PowerSim.on && typeof buildFlowDots === 'function'){
+    buildFlowDots();
+  }
 }
 
 /*

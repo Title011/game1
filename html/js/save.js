@@ -97,6 +97,17 @@ function restoreFormStatus(){
   }
 }
 
+/* คืนความคืบหน้าที่บันทึกไว้ลงใน G — ส่วนที่ทั้ง resumeGame() และ
+   ทางกลับหน้าแบบทดสอบหลังเรียนใช้เหมือนกัน เพิ่มช่องใหม่ที่นี่ที่เดียว
+   (G.level / G.finished ต่างกันในแต่ละทาง ผู้เรียกตั้งเอง) */
+function restoreProgress(s){
+  G.score       = s.score;
+  G.lives       = s.lives;
+  G.doneLevels  = s.doneLevels;
+  G.unlockedMax = s.unlockedMax;
+  G.modesUnlocked = !!s.modesUnlocked;   /* ปลดล็อกแล้วต้องยังปลดล็อกอยู่ */
+}
+
 /* คืนสถานะปลดล็อกโหมดพิเศษตั้งแต่เปิดหน้า
    ปลดล็อกครั้งเดียวติดตลอด แม้จะเริ่มเกมใหม่ก็ไม่หาย */
 function restoreUnlocks(){
@@ -145,13 +156,9 @@ function continueGame(){
      เพราะจากหน้านี้ผู้เล่นกดเข้าโหมดพิเศษได้ พอออกจากโหมดกลับมาหน้าเกม
      ถ้าแถบด่านไม่เคยถูกสร้าง จะไม่มีจุดด่านให้กดเลือกเลย */
   if(s.finished){
-    G.score       = s.score;
-    G.lives       = s.lives;
-    G.doneLevels  = s.doneLevels;
-    G.unlockedMax = s.unlockedMax;
-    G.level       = Math.min(s.level, LEVELS.length-1);
-    G.finished    = true;
-    G.modesUnlocked = !!s.modesUnlocked;
+    restoreProgress(s);
+    G.level    = Math.min(s.level, LEVELS.length-1);
+    G.finished = true;
     updateModeButtons();
     buildLevelBar();
     showScreen('screen-posttest');

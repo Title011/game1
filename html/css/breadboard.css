@@ -25,6 +25,20 @@
   50%    {fill:rgba(255,176,32,.26);stroke-opacity:.95}
 }
 
+/* รางที่กำลังลัดวงจร — ขาสองข้างของอุปกรณ์ตัวเดียวกันอยู่รางเดียวกัน
+   ทั้งรางเป็นจุดเดียวกัน ไฟจึงวิ่งกลับขั้วตัวเองโดยไม่ผ่านอะไรเลย
+   ใช้สีแดงกะพริบเร็วกว่ารางปกติ ให้แยกออกทันทีว่านี่ไม่ใช่การต่อถึงกันแบบที่ตั้งใจ */
+.bb-strip-short{
+  fill:rgba(255,68,34,.24);
+  stroke:rgba(255,68,34,.95);
+  stroke-width:1.8;
+  animation:bb-strip-short .75s ease-in-out infinite;
+}
+@keyframes bb-strip-short{
+  0%,100%{fill:rgba(255,68,34,.16);stroke-opacity:.7}
+  50%    {fill:rgba(255,68,34,.34);stroke-opacity:1}
+}
+
 /* พื้นที่ทำงานตอนมีบอร์ด — กรอบทึบแทนเส้นประ เพราะแผงคือพื้นจริงแล้ว */
 body.has-breadboard #workspace{
   border-style:solid;

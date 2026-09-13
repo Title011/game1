@@ -158,7 +158,10 @@ function solveCircuit(items, wires, opts){
     ok:false, byItem:{}, nodeV:[], nodeOf:null,
     supplyI:0, supplyP:0, maxI:0, hasSource:false, transient:!!dt
   };
-  if(!items || items.length < 2) return res;
+  /* อุปกรณ์ตัวเดียวก็เป็นวงจรได้ ถ้ามีสายลัดขั้วมันเข้าหากันเอง
+     ซึ่งเป็นการลัดวงจรที่อันตรายที่สุดแบบหนึ่ง และเป็นสิ่งที่เกมนี้ต้องสอน
+     ของเดิมตัดทิ้งตั้งแต่ items.length < 2 ระบบเตือนอันตรายจึงมองไม่เห็นเลย */
+  if(!items || items.length < 1) return res;
 
   var nb = buildNodes(items, wires);
   if(!nb.count) return res;
@@ -315,7 +318,8 @@ function solveCircuit(items, wires, opts){
       if(sp.kind === 'source'){
         /* กระแสที่ "จ่ายออก" จากแหล่งจ่าย = (EMF − แรงดันที่ขั้ว)/rint */
         I = (sp.volt - V) / sp.rint;
-        res.supplyI += Math.abs(I);
+        /* กำลังไฟบวกกันได้ แหล่งจ่ายหลายตัวก็ช่วยกันจ่ายกำลังจริง ๆ
+           แต่ "กระแส" บวกกันไม่ได้ ดูที่ res.supplyI ท้ายฟังก์ชัน */
         res.supplyP += Math.abs(I * V);
       } else if(sp.kind === 'cap'){
         I = (dt > 0) ? (sp.c/dt) * (V - (capV[br.it.id]||0)) : V/sp.rleak;
@@ -335,6 +339,16 @@ function solveCircuit(items, wires, opts){
       aPort:  br.aPort, bPort: br.bPort
     };
     if(sp.kind !== 'source') res.maxI = Math.max(res.maxI, Math.abs(I));
+
+    /* กระแสสูงสุดที่ไหลผ่าน "จุดใดจุดหนึ่ง" ของวงจร รวมตัวแหล่งจ่ายด้วย
+       ห้ามบวกกระแสของแหล่งจ่ายทุกตัวเข้าด้วยกันเด็ดขาด:
+       ถ่านต่ออนุกรม 2 ก้อน มีกระแสก้อนเดียวไหลผ่านทั้งสองก้อน ถ้าบวกกันจะได้ 2 เท่า
+       (เคยเป็นแบบนั้น ทำให้ค่าที่โชว์ผิด และสายไฟถูกตัดสินว่าไหม้ที่กระแสครึ่งเดียว)
+
+       ใช้ค่าสูงสุดแทนการบวก ได้คำตอบถูกทั้งสองแบบ:
+         อนุกรม  ทุกตัวกระแสเท่ากัน → ได้กระแสของวงนั้น
+         ขนาน    ตัวแหล่งจ่ายรับกระแสรวมของทุกสาขาอยู่แล้ว → ได้กระแสรวม */
+    res.supplyI = Math.max(res.supplyI, Math.abs(I));
   });
 
   return res;

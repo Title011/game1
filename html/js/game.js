@@ -21,12 +21,8 @@ function initGame(){
 function resumeGame(s){
   if(!s){ initGame(); return; }
   injectUIIcons();
-  G.score       = s.score;
-  G.lives       = s.lives;
-  G.doneLevels  = s.doneLevels;
-  G.unlockedMax = s.unlockedMax;
-  G.finished    = false;
-  G.modesUnlocked = !!s.modesUnlocked;   /* ปลดล็อกแล้วต้องยังปลดล็อกอยู่ */
+  restoreProgress(s);
+  G.finished = false;
   updateModeButtons();
   buildLevelBar();
   loadLevel(Math.min(s.level, LEVELS.length-1));
@@ -77,6 +73,24 @@ function updateLevelBar(){
     : renderHearts(G.lives, 3);
 }
 
+/* เอานิยามด่านขึ้นจอ: คลังอุปกรณ์ กล่องโจทย์ นาฬิกา แถบด่าน และแผงต่อวงจร
+   ใช้ร่วมกันระหว่างด่านปกติ (loadLevel) กับโหมดวัดความเร็ว (loadEndlessRound)
+   ผู้เรียกต้อง clearInterval(G.timerInt) และเก็บกวาดสนามมาก่อนแล้ว */
+function applyLevelToScreen(lv){
+  G.invCounts=Object.assign({},lv.inventory);
+  renderInventory();
+  document.getElementById('goal-title').textContent=lv.title;
+  document.getElementById('goal-desc').textContent=lv.goal;
+  setGoalOutcome(lv.outcome);
+  G.timerSec=lv.timeLimit;
+  G.levelStartTime=Date.now();
+  updateTimerDisplay();
+  document.getElementById('timer-display').classList.remove('warning');
+  G.timerInt=setInterval(tickTimer,1000);
+  updateLevelBar();
+  ensureBreadboard();
+}
+
 function loadLevel(idx){
   if(idx>=LEVELS.length){endGame();return;}
   /* ออกจากโหมดพิเศษอัตโนมัติ ครอบคลุมทั้งปุ่มกลับสู่ด่าน
@@ -94,21 +108,18 @@ function loadLevel(idx){
   G.level=idx;
   if(idx>G.unlockedMax) G.unlockedMax=idx;  /* จำด่านไกลสุดที่ปลดล็อก */
   clearInterval(G.timerInt);
+
+  /* เก็บกวาดของค้างจากด่านก่อนให้หมดก่อนเริ่มด่านใหม่
+     ไม่งั้นผู้เล่นจะเจอ: ฉากความเสียหายของด่านเก่ามาหักชีวิตในด่านใหม่,
+     กล่องผลลัพธ์ของด่านเก่าบังจออยู่ทั้งที่เวลาด่านใหม่เดินแล้ว,
+     และโหมดเครื่องวัดค้างอยู่จนต่อสายในด่านใหม่ไม่ได้ */
+  cancelHazardSequence();
+  if(G.probeMode) toggleProbeMode();
+  closeModal('modal-result');
+
   clearWorkspace(true);
   cancelTapConnect();
-  var lv=LEVELS[idx];
-  G.invCounts=Object.assign({},lv.inventory);
-  renderInventory();
-  document.getElementById('goal-title').textContent=lv.title;
-  document.getElementById('goal-desc').textContent=lv.goal;
-  setGoalOutcome(lv.outcome);
-  G.timerSec=lv.timeLimit;
-  G.levelStartTime=Date.now();
-  updateTimerDisplay();
-  document.getElementById('timer-display').classList.remove('warning');
-  G.timerInt=setInterval(tickTimer,1000);
-  updateLevelBar();
-  ensureBreadboard();
+  applyLevelToScreen(LEVELS[idx]);
   saveGame();   /* บันทึกทุกครั้งที่เปลี่ยนด่าน */
 }
 
@@ -162,12 +173,23 @@ function applyBreadboard(){
   if(!boardWanted()){
     bbTurnOff();
     document.body.classList.remove('has-breadboard');
+    /* ย่อจอแล้วอุปกรณ์อาจหลุดออกนอกกรอบ ซึ่ง #workspace เป็น overflow:hidden
+       อุปกรณ์จะหายไปเลย คลิกไม่ได้ ลบไม่ได้ ต้องล้างพื้นที่ทั้งหมดถึงจะกู้คืน */
+    G.wsItems.forEach(clampWsItem);
+    refreshWires();
     return;
   }
 
   buildBreadboard();
   document.body.classList.toggle('has-breadboard', BB.on);
-  G.wsItems.forEach(function(it){ bbSnapItem(it); });
+
+  /* ต้องล้างของที่เสียบไว้กับ "แผงใบเก่า" ทิ้งก่อน
+     ไม่งั้น bbSnapItem จะเห็นรางที่ถูกจองไว้ตามพิกัดของแผงเดิม (BB.portStrip/
+     BB.portHole ที่ยังค้างอยู่) แล้วหลบไปผิดที่ จนอุปกรณ์คนละตัวไปกองรางเดียวกัน */
+  BB.portStrip = new Map();
+  BB.portHole  = new Map();
+
+  G.wsItems.forEach(function(it){ clampWsItem(it); bbSnapItem(it); });
   bbRefresh();
 }
 
@@ -202,10 +224,17 @@ function onTimeUp(){
    CHECK + POWER ANIMATIONS
    ============================================================ */
 function checkCircuit(){
-  /* กำลังเล่นฉากวงจรพังอยู่ ห้ามสั่งตรวจซ้อน — บอกให้รู้ด้วยว่าทำไมยังกดไม่ได้ */
+  /* กำลังเล่นฉากวงจรพังอยู่ ห้ามสั่งตรวจซ้อน — บอกให้รู้ด้วยว่าทำไมยังกดไม่ได้
+
+     แต่ต้องกู้ตัวเองได้ด้วย: ถ้าธงค้างเป็น true โดยไม่มีตัวจับเวลาของฉากอยู่จริง
+     (เช่นฉากถูกขัดจังหวะกลางคัน) ปุ่มตรวจวงจรจะเงียบสนิทตลอดกาล
+     ผู้เล่นกดเท่าไรก็ไม่มีอะไรเกิดขึ้นและไม่มีทางแก้เอง — ล้างธงแล้วไปต่อ */
   if(G.hazardPlaying){
-    showToast('กำลังแสดงผลที่เกิดขึ้นกับวงจร รอสักครู่...','');
-    return;
+    if(G.hazardTimer){
+      showToast('กำลังแสดงผลที่เกิดขึ้นกับวงจร รอสักครู่...','');
+      return;
+    }
+    cancelHazardSequence();
   }
 
   /* สวิตช์สับเปิดค้างอยู่ = วงจรขาดโดยตั้งใจ ยังไม่ใช่การต่อผิด
@@ -255,14 +284,26 @@ function checkCircuit(){
       updateLevelBar();
       saveGame();
       showResult(false, fault.msg, 0, elapsed, false, fault);
-      if(G.lives<=0){
-        setTimeout(function(){
-          showToast('หมดชีวิตแล้ว! เริ่มเกมใหม่','error');
-          setTimeout(initGame, 1500);
-        }, 1500);
-      }
+      if(G.lives<=0) scheduleGameOver();
     });
     return;
+  }
+
+  /* มีคำเตือนแต่ยังไม่ถึงขั้นพัง (เช่นต่อ LED ตรงโดยไม่มีตัวต้านทาน บนถ่านที่ไม่แรงพอ)
+     ต้องมีอะไรสะดุดตาทันที ไม่ใช่ซ่อนอยู่ในกล่องให้เลื่อนหา
+     ทำเครื่องหมายบนตัวอุปกรณ์ + เด้งข้อความ ให้เห็นว่า "ระบบเห็นแล้วนะ ไม่ได้เงียบ" */
+  if(fault.ok && (fault.warnings || []).length){
+    var w0 = fault.warnings[0];
+    (fault.warnings || []).forEach(function(w){
+      (w.targets || []).forEach(function(id){
+        var el = document.getElementById(id);
+        if(el){
+          el.classList.add('risk-warn');
+          setTimeout(function(){ el.classList.remove('risk-warn'); }, 6000);
+        }
+      });
+    });
+    showToast(w0.titleTh + ' — ดูรายละเอียดในกล่องผลตรวจ', 'error');
   }
 
   /* โหมดวัดความเร็วมีระบบคะแนน/เวลาของตัวเอง ไม่ยุ่งกับคะแนนและชีวิตของโหมดด่าน */
@@ -293,16 +334,17 @@ function checkCircuit(){
     G.lives--;
     updateLevelBar();
     saveGame();   /* บันทึกจำนวนชีวิตที่เหลือ */
-    if(G.lives<=0){
-      showResult(false, result.msg, 0, elapsed, false, fault, outcome);
-      setTimeout(function(){
-        showToast('หมดชีวิตแล้ว! เริ่มเกมใหม่','error');
-        setTimeout(initGame, 1500);
-      }, 1500);
-    } else {
-      showResult(false, result.msg, 0, elapsed, false, fault, outcome);
-    }
+    showResult(false, result.msg, 0, elapsed, false, fault, outcome);
+    if(G.lives<=0) scheduleGameOver();
   }
+}
+
+/* หมดชีวิตแล้ว — ให้เวลาอ่านกล่องผลลัพธ์ก่อน แล้วค่อยเริ่มเกมใหม่ */
+function scheduleGameOver(){
+  setTimeout(function(){
+    showToast('หมดชีวิตแล้ว! เริ่มเกมใหม่','error');
+    setTimeout(initGame, 1500);
+  }, 1500);
 }
 
 /* ============================================================
@@ -328,13 +370,25 @@ function playHazardSequence(fault, done){
   PowerSim.onIncident = function(){};
   startCurrentFlow();
 
-  setTimeout(function(){
+  /* ต้องเก็บ id ไว้ยกเลิกได้ ไม่งั้นถ้าผู้เล่นเปลี่ยนด่านหรือสลับโหมดระหว่างฉากนี้
+     ตัวจับเวลาจะยังทำงานต่อแล้วไปหักชีวิต ทำอุปกรณ์พัง และเปิดกล่องผลลัพธ์
+     ของด่านที่ทิ้งไปแล้ว ใส่ทับด่าน/โหมดใหม่ที่ผู้เล่นกำลังเล่นอยู่ */
+  G.hazardTimer = setTimeout(function(){
+    G.hazardTimer = null;
     PowerSim.onIncident = null;
     G.hazardPlaying = false;
     document.body.classList.remove('hazard-live');
     applyDamage(fault);
     if(typeof done === 'function') done();
   }, Math.round(dur * 1000));
+}
+
+/* ยกเลิกฉากความเสียหายที่ค้างอยู่ — เรียกทุกครั้งที่ออกจากด่าน/โหมด */
+function cancelHazardSequence(){
+  if(G.hazardTimer){ clearTimeout(G.hazardTimer); G.hazardTimer = null; }
+  PowerSim.onIncident = null;
+  G.hazardPlaying = false;
+  document.body.classList.remove('hazard-live');
 }
 
 /* ============================================================
@@ -698,10 +752,15 @@ function showResult(ok,msg,earned,elapsed,replay,fault,outcome){
   var incidents = (fault && fault.incidents) ? fault.incidents : [];
   var warnings  = (fault && fault.warnings)  ? fault.warnings  : [];
   var list = buildOutcomeChecklist(outcome);
+  /* เหตุการณ์อันตรายกับคำเตือนต้องมาก่อนทุกอย่าง
+     ของเดิมวางไว้ท้ายสุด ต่อจากรายการตรวจและแผงอ่านวงจร ซึ่งยาวพอที่จะดัน
+     คำเตือนตกขอบจอไปเลย ผู้เล่นเลื่อนไม่ถึงก็ไม่เห็น แล้วสรุปว่า "ไม่มีอะไรเกิดขึ้น"
+     ทั้งที่ระบบตรวจเจอและเขียนอธิบายไว้ครบแล้ว */
   document.getElementById('result-hint').innerHTML =
-    ok ? (list + buildAnalysisPanel() + incidentReportHTML(warnings) + buildCircuitReport() +
+    ok ? (incidentReportHTML(warnings) + list + buildAnalysisPanel() + buildCircuitReport() +
           (replay ? '<span style="color:var(--text-dim)">ด่านนี้เก็บคะแนนไปแล้ว — เล่นซ้ำเพื่อทบทวนได้ แต่ไม่ได้คะแนนเพิ่ม</span>' : ''))
-       : (list + buildAnalysisPanel() + incidentReportHTML(incidents) + incidentReportHTML(warnings) + buildSolutionHint());
+       : (incidentReportHTML(incidents) + incidentReportHTML(warnings) +
+          list + buildAnalysisPanel() + buildSolutionHint());
   var isLast=G.level===LEVELS.length-1;
   var btn=document.getElementById('btn-next-level');
   btn.innerHTML=ok?(isLast?(ICON('trophy',16)+' ดูผลสรุป'):'ด่านถัดไป →'):'ยังไม่ผ่าน';
@@ -806,6 +865,11 @@ document.addEventListener('DOMContentLoaded', function(){
     ov.addEventListener('click',function(e){
       if(e.target!==ov) return;
       if(ov.id==='modal-confirm'){ closeConfirm(false); return; }
+      /* กล่องจบรันต้องพากลับเข้าด่านด้วย ไม่ใช่แค่ปิดกล่อง
+         (เหตุผลเดียวกับปุ่ม ✕ ของมัน — ดู index.html) */
+      if(ov.id==='modal-endless-over' && typeof quitEndlessToLevels === 'function'){
+        quitEndlessToLevels(); return;
+      }
       closeModal(ov.id);
     });
   });
@@ -833,6 +897,16 @@ document.addEventListener('keydown',function(e){
   if(e.target.tagName==='INPUT'||e.target.tagName==='TEXTAREA') return;
   /* กันกดค้างแล้วสั่งซ้ำ (เช่น E สลับโหมดกลับไปกลับมา) */
   if(e.repeat) return;
+
+  /* มีกล่องเปิดคลุมจออยู่ = คีย์ลัดต้องเงียบ
+     ไม่งั้นกด C ตอนกล่องผลลัพธ์เปิดอยู่จะสั่งตรวจวงจรซ้ำ หักชีวิตซ้ำ
+     และเขียนทับไฟล์บันทึก ทั้งที่ผู้เล่นมองไม่เห็นพื้นที่ทำงานด้วยซ้ำ
+     (ปุ่ม Esc ยังปิดกล่องได้ตามปกติ เพราะมีตัวจัดการของมันเองด้านบน) */
+  var openModal = document.querySelector('.modal-overlay.open');
+  if(openModal) return;
+
+  /* ระหว่างฉากแสดงความเสียหายก็เช่นกัน — ปล่อยให้ฉากเล่นจบก่อน */
+  if(G.hazardPlaying) return;
 
   /* ทุกคีย์ลัดเทียบผ่าน isKey/isNamedKey (js/ui.js)
      ซึ่งดู e.code + e.keyCode ก่อน e.key จึงใช้ได้ทุกภาษาแป้นพิมพ์ */

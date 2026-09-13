@@ -34,7 +34,13 @@ function startCurrentFlow(){
   PowerSim.last = Date.now();
   PowerSim.dotDur = {};
 
-  powerStep(0);            /* รอบแรกทันที ไม่ต้องรอ timer */
+  /* รอบแรกทันที ไม่ต้องรอ timer — แต่ต้องเป็น "ก้าวเวลาจริง" ห้ามเป็น 0
+     dt=0 คือการแก้วงจรแบบสภาวะคงตัว ตัวเก็บประจุจะถูกมองเป็นตัวต้านทานรั่ว
+     แล้ว PowerSim.capV จะถูกเซ็ตเป็นแรงดันตอนประจุเต็มทันทีตั้งแต่เฟรมแรก
+     ซึ่งเป็นจุดคงที่ของสมการ วงจร RC จึงค้างอยู่ตรงนั้นตลอดกาล
+     ผลคือด่านที่สอนเรื่องหน่วงเวลาไม่มีช่วงหน่วงให้ดูเลย และตารางค่าที่วัดได้
+     ในกล่องผลลัพธ์ (ซึ่งอ่านค่าจากเฟรมนี้) ก็รายงานกระแสผิด */
+  powerStep(0.001);
   buildFlowDots();
   PowerSim.timer = setInterval(function(){
     var now = Date.now();
@@ -145,6 +151,11 @@ function flowDuration(amp){
 function buildFlowDots(){
   var ns = 'http://www.w3.org/2000/svg';
   var svg = document.getElementById('wire-svg');
+
+  /* เก็บจุดชุดเก่าออกจากหน้าก่อน ไม่ใช่แค่ทิ้งรายการอ้างอิง
+     ไม่งั้นเรียกซ้ำ (เช่นต่อ/ลบสายระหว่างจ่ายไฟ) จะเหลือจุดเก่าลอยค้างใน SVG
+     โดยไม่มีใครอ้างถึง ลบไม่ได้ และสะสมเพิ่มทุกครั้งที่เรียก */
+  if(G.flowDots) G.flowDots.forEach(function(d){ d.remove(); });
   G.flowDots = [];
 
   G.wires.forEach(function(w){

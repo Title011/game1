@@ -26,10 +26,15 @@ function sourceVoltage(items){
   return v;
 }
 
-/* มีเส้นทางจากขั้ว + กลับถึงขั้ว − โดยไม่ผ่านความต้านทานเลยไหม
-   ไล่ตามสาย และทะลุได้เฉพาะอุปกรณ์ที่ ohm = 0 (สวิตช์/ฟิวส์/บอร์ด)
-   ถ้าเจอโหลด (มี ohm) จะหยุด ไม่นับเป็นลัดวงจร */
-function findShortPath(items, wires){
+/* ไล่จากขั้วบวกของแหล่งจ่าย ว่ากลับถึงขั้วลบ "ของก้อนเดียวกัน" ได้ไหม
+
+   ไล่ทีละแหล่งจ่ายโดยตั้งใจ ถ้าไล่รวมทุกก้อน การต่อถ่านอนุกรม
+   (บวกก้อนหนึ่งไปลบอีกก้อน) จะถูกนับผิดว่าครบวงทั้งที่เป็นการต่อปกติ
+
+   ผู้เรียกกำหนดสองอย่าง:
+     isSource(it)            — นับอุปกรณ์ตัวนี้เป็นแหล่งจ่ายไหม
+     canPassThrough(it, src) — ไฟทะลุอุปกรณ์ตัวนี้ไปออกขาอื่นได้ไหม */
+function sourceLoopExists(items, wires, isSource, canPassThrough){
   function itemOf(id){
     for(var i=0;i<items.length;i++) if(items[i].id===id) return items[i];
     return null;
@@ -37,39 +42,33 @@ function findShortPath(items, wires){
   function wiresAt(p){
     var o=[]; wires.forEach(function(w){ if(w.fromPort===p||w.toPort===p) o.push(w); }); return o;
   }
-  function zeroOhm(it){
-    var d = DEVICES[it.deviceId];
-    if(d.type === 'source') return false;   /* ไม่ทะลุแหล่งจ่าย */
-    if(it.deviceId === 'switch' && it.open)  return false;  /* สับเปิดอยู่ ไฟไม่ผ่าน */
-    if(it.deviceId === 'fuse'   && it.blown) return false;  /* ขาดแล้ว ไฟไม่ผ่าน */
-    return !d.ohm;                          /* 0 หรือไม่ได้ระบุ */
-  }
 
-  /* ไล่ทีละแหล่งจ่าย และต้องกลับถึงขั้วลบ "ของก้อนเดียวกัน" จึงนับว่าลัดวงจร
-     ถ้าไล่รวมทุกก้อน การต่อถ่านอนุกรม (บวกก้อนหนึ่งไปลบอีกก้อน)
-     จะถูกนับเป็นลัดวงจรทั้งที่เป็นการต่อปกติ */
   for(var s=0;s<items.length;s++){
     var src = items[s];
-    if(!src.el || DEVICES[src.deviceId].type !== 'source') continue;
-    var sp = src.el.querySelectorAll('.port');
+    if(!src.el || !isSource(src)) continue;
+    var ports = src.el.querySelectorAll('.port');
     var pos = null, neg = null;
-    for(var i=0;i<sp.length;i++){
-      if(sp[i].dataset.polarity === '+')      pos = sp[i];
-      else if(sp[i].dataset.polarity === '-') neg = sp[i];
+    for(var i=0;i<ports.length;i++){
+      if(ports[i].dataset.polarity === '+')      pos = ports[i];
+      else if(ports[i].dataset.polarity === '-') neg = ports[i];
     }
+    /* แหล่งจ่ายไม่มีขั้ว (หม้อแปลง) ใช้ขาซ้าย-ขวาแทน
+       เหมือนที่ shortCircuitIncident() ทำอยู่แล้ว ถ้าข้ามไป
+       หม้อแปลงที่ถูกลัดวงจรจะไม่เคยถูกจับได้ */
+    if(!pos || !neg){ pos = ports[0]; neg = ports[1]; }
     if(!pos || !neg) continue;
 
     var seen = [pos], q = [pos];
     while(q.length){
       var p = q.shift();
-      if(p === neg) return true;    /* ถึงขั้วลบของตัวเองโดยไม่เจอความต้านทาน */
+      if(p === neg) return true;    /* กลับถึงขั้วลบของตัวเองแล้ว = ครบวง */
 
       wiresAt(p).forEach(function(w){
         var nx = (w.fromPort===p) ? w.toPort : w.fromPort;
         if(seen.indexOf(nx) < 0){ seen.push(nx); q.push(nx); }
       });
       var it = itemOf(p.dataset.itemId);
-      if(it && zeroOhm(it) && it.el){
+      if(it && it.el && canPassThrough(it, src)){
         var ps = it.el.querySelectorAll('.port');
         for(var k=0;k<ps.length;k++){
           if(ps[k]!==p && seen.indexOf(ps[k])<0){ seen.push(ps[k]); q.push(ps[k]); }
@@ -80,53 +79,32 @@ function findShortPath(items, wires){
   return false;
 }
 
-/* มีวงจรปิดทางกายภาพไหม — ไล่จากขั้วบวกของแหล่งจ่าย ผ่านสายไฟ
-   และทะลุอุปกรณ์ทุกชนิด ว่ากลับไปถึงขั้วลบของตัวเองได้หรือไม่
+/* มีเส้นทางจากขั้ว + กลับถึงขั้ว − โดยไม่ผ่านความต้านทานเลยไหม
+   ทะลุได้เฉพาะอุปกรณ์ที่ ohm = 0 (สวิตช์/ฟิวส์/บอร์ด)
+   ถ้าเจอโหลด (มี ohm) จะหยุด ไม่นับเป็นลัดวงจร */
+function findShortPath(items, wires){
+  function zeroOhm(it){
+    var d = DEVICES[it.deviceId];
+    if(d.type === 'source') return false;   /* ไม่ทะลุแหล่งจ่าย */
+    if(it.deviceId === 'switch' && it.open)  return false;  /* สับเปิดอยู่ ไฟไม่ผ่าน */
+    if(it.deviceId === 'fuse'   && it.blown) return false;  /* ขาดแล้ว ไฟไม่ผ่าน */
+    return !d.ohm;                          /* 0 หรือไม่ได้ระบุ */
+  }
+  return sourceLoopExists(items, wires,
+    function(it){ return DEVICES[it.deviceId].type === 'source'; },
+    zeroOhm);
+}
+
+/* มีวงจรปิดทางกายภาพไหม — เหมือน findShortPath() แต่ทะลุอุปกรณ์ได้ทุกชนิด
 
    ต่างจาก isClosedCircuit() ตรงที่ "ไม่สนกฎการต่อของเกม" เลย
    สำคัญมาก เพราะการต่อกลับขั้วเป็นการต่อที่อันตรายจริง ต้องรายงานอันตราย
    ไม่ใช่แค่ตอบว่าผิดแล้วจบ — ถ้าใช้ isClosedCircuit() มากรอง วงจรกลับขั้ว
    จะถูกปัดตกก่อนที่ระบบอันตรายจะได้ทำงาน */
 function hasClosedLoop(items, wires){
-  function wiresAt(p){
-    var o=[]; wires.forEach(function(w){ if(w.fromPort===p||w.toPort===p) o.push(w); }); return o;
-  }
-  function itemOf(id){
-    for(var i=0;i<items.length;i++) if(items[i].id===id) return items[i];
-    return null;
-  }
-
-  for(var s=0;s<items.length;s++){
-    var src = items[s];
-    if(!src.el || !ESPEC[src.deviceId] || ESPEC[src.deviceId].kind !== 'source') continue;
-    var ports = src.el.querySelectorAll('.port');
-    var pos=null, neg=null;
-    for(var i=0;i<ports.length;i++){
-      if(ports[i].dataset.polarity === '+')      pos = ports[i];
-      else if(ports[i].dataset.polarity === '-') neg = ports[i];
-    }
-    /* แหล่งจ่ายไม่มีขั้ว (หม้อแปลง) ใช้ขาซ้าย-ขวาแทน */
-    if(!pos || !neg){ pos = ports[0]; neg = ports[1]; }
-    if(!pos || !neg) continue;
-
-    var seen = [pos], q = [pos];
-    while(q.length){
-      var p = q.shift();
-      if(p === neg) return true;                /* กลับถึงอีกขั้วแล้ว = ครบวง */
-      wiresAt(p).forEach(function(w){
-        var nx = (w.fromPort===p) ? w.toPort : w.fromPort;
-        if(seen.indexOf(nx) < 0){ seen.push(nx); q.push(nx); }
-      });
-      var it = itemOf(p.dataset.itemId);
-      if(it && it !== src && it.el){
-        var ps = it.el.querySelectorAll('.port');
-        for(var k=0;k<ps.length;k++){
-          if(ps[k]!==p && seen.indexOf(ps[k])<0){ seen.push(ps[k]); q.push(ps[k]); }
-        }
-      }
-    }
-  }
-  return false;
+  return sourceLoopExists(items, wires,
+    function(it){ return !!ESPEC[it.deviceId] && ESPEC[it.deviceId].kind === 'source'; },
+    function(it, src){ return it !== src; });
 }
 
 /* เหตุการณ์ "ลัดวงจร" — ต้นเหตุที่ทำให้ทุกอย่างหลังจากนี้พัง

@@ -153,12 +153,7 @@ function toggleEndless(){
 }
 
 function enterEndless(){
-  /* ด่านสุดท้ายคือเงื่อนไขปลดล็อก — กันไว้เผื่อเรียกฟังก์ชันตรง ๆ */
-  if(!G.modesUnlocked){
-    showToast('ปลดล็อกโหมดนี้ได้หลังเล่นครบทุกด่าน','error');
-    return;
-  }
-  showScreen('screen-game');
+  if(!specialModeReady()) return;
   if(G.sandbox){ G.sandbox=false; document.body.classList.remove('sandbox-mode'); updateSandboxButton(); }
   G.endless = true;
   G.endlessRound = 1;
@@ -172,28 +167,9 @@ function enterEndless(){
 
 function loadEndlessRound(){
   G.genLevel = buildEndlessLevel(G.endlessRound);
-  var lv = G.genLevel;
-
   clearInterval(G.timerInt);
-  cancelTapConnect();
-  if(G.probeMode) toggleProbeMode();
-  stopCurrentFlow();
-  deselectAll();
-  clearWorkspace(true);
-
-  G.invCounts = Object.assign({}, lv.inventory);
-  renderInventory();
-  document.getElementById('goal-title').textContent = lv.title;
-  document.getElementById('goal-desc').textContent  = lv.goal;
-  setGoalOutcome(lv.outcome);
-
-  G.timerSec = lv.timeLimit;
-  G.levelStartTime = Date.now();
-  updateTimerDisplay();
-  document.getElementById('timer-display').classList.remove('warning');
-  G.timerInt = setInterval(tickTimer,1000);
-  updateLevelBar();
-  ensureBreadboard();
+  resetPlayfield();
+  applyLevelToScreen(G.genLevel);
 }
 
 /* ผลการตรวจในโหมดวัดความเร็ว — เรียกจาก checkCircuit() */

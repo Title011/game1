@@ -46,12 +46,17 @@
   border:1px solid var(--border);
   padding:1px 7px;border-radius:6px;
 }
+/* ปุ่มลบมุมขวาบน — โผล่ตอนเอาเมาส์ชี้เท่านั้น
+   pointer-events ต้องปิดตอนที่ยังมองไม่เห็น ไม่งั้นบนจอสัมผัส (ซึ่งไม่มี hover)
+   ปุ่มใสขนาด 18px นี้จะแอบรับการแตะแทนตัวอุปกรณ์ แล้วลบทิ้งพร้อมสายทั้งหมด
+   โดยผู้เล่นไม่เห็นว่ากดอะไรไป */
 .ws-item-delete{
   position:absolute;top:-8px;right:-8px;width:18px;height:18px;background:var(--danger);
   border-radius:50%;display:flex;align-items:center;justify-content:center;
   font-size:.65rem;color:#fff;cursor:pointer;z-index:5;opacity:0;transition:opacity .15s;font-weight:700;
+  pointer-events:none;
 }
-.ws-item:hover .ws-item-delete{opacity:1;}
+.ws-item:hover .ws-item-delete{opacity:1;pointer-events:auto;}
 
 /* PORTS — จุดต่อสายไฟ (= "ขา" ของอุปกรณ์ที่เสียบลงรูเบรดบอร์ด)
    วางอิงขอบกล่อง (ที่ตอนนี้พอดีไอคอน) ทั้ง 4 ทิศสมมาตรกัน
@@ -112,6 +117,9 @@
    อุปกรณ์ที่ขาอยู่ด้านบน (แบต 9V) ป้ายสถานะที่ลอยเหนือกล่องก็ต้องหลบขึ้นเหมือนกัน
    คลาสทั้งสองใส่โดย layoutPorts() ใน js/devices.js ตามทิศขาจริงหลังหมุนแล้ว */
 .ws-item.has-port-bottom .ws-item-name{top:calc(100% + 22px);}
+/* ป้ายชื่อเลื่อนลงไปแล้ว ป้ายใบ้ "R หมุน" ที่อยู่ใต้ชื่อก็ต้องเลื่อนตาม
+   ไม่งั้นสองป้ายทับกันจนอ่านชื่ออุปกรณ์ไม่ออกตอนเลือกอยู่ */
+.ws-item.has-port-bottom.selected::after{bottom:-55px;}
 .ws-item.has-port-top.failed::after,
 .ws-item.has-port-top.fuse-blown::after{top:-24px;}
 @keyframes tap-pulse{0%,100%{box-shadow:0 0 0 3px rgba(255,215,0,.4),0 0 14px rgba(255,215,0,.8)}50%{box-shadow:0 0 0 5px rgba(255,215,0,.6),0 0 20px rgba(255,215,0,1)}}

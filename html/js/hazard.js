@@ -426,7 +426,18 @@ function makeWireIncident(sol){
    แรงดันย้อนกลับจากขดลวด — ตรวจตอน "ตัดไฟ" เท่านั้น
    เรียกจาก toggleSwitchItem() ใน js/workspace.js ก่อนสับสวิตช์ออก
    ============================================================ */
-function checkBackEMF(){
+/* อุปกรณ์ตัวนี้ต่ออยู่ในวงจรจริงไหม (ไม่ใช่วางทิ้งไว้เฉย ๆ บนโต๊ะ) */
+function inCircuit(it){
+  if(!it || !it.el) return false;
+  var wired = false;
+  it.el.querySelectorAll('.port').forEach(function(p){
+    G.wires.forEach(function(w){ if(w.fromPort === p || w.toPort === p) wired = true; });
+  });
+  return wired;
+}
+
+/* sw = สวิตช์ตัวที่ผู้เล่นกำลังจะสับออก (ส่งมาจาก toggleSwitchItem) */
+function checkBackEMF(sw){
   if(!PowerSim.on || !PowerSim.sol || !PowerSim.sol.ok) return null;
   var sol = PowerSim.sol;
 
@@ -442,10 +453,23 @@ function checkBackEMF(){
   });
   if(!coil || coilI < 0.02) return null;
 
-  /* มีไดโอดคายพลังงานอยู่ในวงจรไหม (เกมสอนแบบนี้ในด่าน 15) */
+  /* สวิตช์ตัวที่สับต้องอยู่ในทางเดินไฟของขดลวดนั้นจริง ๆ
+     ไม่งั้นสับสวิตช์ของสาขาอื่นก็เกิดแรงดันย้อนกลับ ไปทำลายอุปกรณ์
+     ที่ไม่เกี่ยวข้องกันเลย — ทดสอบตรง ๆ ว่าสับแล้วกระแสในขดลวดหายจริงไหม */
+  if(sw){
+    var was = sw.open;
+    sw.open = true;
+    var off = solveCircuit(G.wsItems, G.wires, {});
+    sw.open = was;
+    var stillI = (off.ok && off.byItem[coil.id]) ? Math.abs(off.byItem[coil.id].I) : 0;
+    if(stillI > coilI * 0.5) return null;   /* สับแล้วขดลวดยังเดินอยู่ = คนละสาขากัน */
+  }
+
+  /* มีไดโอดคายพลังงาน "ที่ต่ออยู่ในวงจร" ไหม (เกมสอนแบบนี้ในด่าน 15)
+     ไดโอดที่วางทิ้งไว้เฉย ๆ ไม่ได้ป้องกันอะไร */
   var protectedByDiode = false;
   G.wsItems.forEach(function(it){
-    if(it.deviceId === 'diode' && !it.failed) protectedByDiode = true;
+    if(it.deviceId === 'diode' && !it.failed && inCircuit(it)) protectedByDiode = true;
   });
   if(protectedByDiode) return null;
 
@@ -453,12 +477,13 @@ function checkBackEMF(){
   var L = 0.02, topen = 15e-6;
   var spike = L * coilI / topen;
 
-  /* สารกึ่งตัวนำที่เปราะที่สุดในวงจรคือเหยื่อ */
+  /* สารกึ่งตัวนำที่เปราะที่สุด "ที่อยู่ในวงจร" คือเหยื่อ
+     ตัวที่วางทิ้งไว้เฉย ๆ ยังไม่ได้ต่อสาย ไม่ควรพังไปด้วย */
   var victim = null;
   ['transistor','led','diode'].forEach(function(id){
     if(victim) return;
     G.wsItems.forEach(function(it){
-      if(!victim && it.deviceId === id && !it.failed) victim = it;
+      if(!victim && it.deviceId === id && !it.failed && inCircuit(it)) victim = it;
     });
   });
 
@@ -542,6 +567,50 @@ function protectionWarnings(sol){
                  fmtCurrent(Math.abs(r.I)) + ' (ปกติต้องไหลออกเท่านั้น)',
       brokeTh:'ยังไม่พังในทันที แต่ความเสียหายสะสมอยู่ตลอดเวลาที่จ่ายไฟ',
       cascadeTh:'', t:HAZARD.t
+    });
+  });
+
+  /* LED ที่ไม่มีตัวต้านทานคั่น — เป็นความผิดพลาดเสมอ แม้ครั้งนี้จะยังไม่ไหม้
+
+     ทำไมต้องเตือนทั้งที่ยังไม่พัง: ถ่าน AA 1.5V ดันกระแสผ่าน LED ได้แค่ราว 0.9 mA
+     (พิกัด 40 mA) จึงรอดไปได้เพราะ "แรงดันไม่พอ" ไม่ใช่เพราะวงจรถูก
+     พอเปลี่ยนเป็นแบต 9V วงจรเดิมเป๊ะ ๆ จะพุ่งเป็น ~428 mA = เกินพิกัด 10 เท่า
+     ไหม้ทันที ถ้าไม่บอกตรงนี้ ผู้เรียนจะเข้าใจผิดว่า "ไม่ใส่ก็ได้ ไม่เห็นพัง" */
+  G.wsItems.forEach(function(it){
+    if(it.deviceId !== 'led' || it.failed) return;
+    var r = sol.byItem[it.id];
+    if(!r || Math.abs(r.I) <= 1e-6) return;          /* ไม่มีไฟผ่าน ไม่ต้องเตือน */
+
+    /* มีตัวต้านทาน (หรือของที่ทำหน้าที่จำกัดกระแส) อยู่ในทางเดินไฟเดียวกันไหม
+       วัดตรง ๆ: ถอดมันออกทีละตัวแล้วกระแสใน LED เปลี่ยนไปมากไหม */
+    var limited = false;
+    G.wsItems.forEach(function(other){
+      if(limited || other === it) return;
+      if(other.deviceId !== 'resistor' && other.deviceId !== 'ldr') return;
+      var was = other.failed;
+      other.failed = true;                            /* ตัดตัวต้านทานออกชั่วคราว */
+      var test = solveCircuit(G.wsItems, G.wires, {});
+      other.failed = was;
+      var after = (test.ok && test.byItem[it.id]) ? Math.abs(test.byItem[it.id].I) : 0;
+      if(after < Math.abs(r.I) * 0.5) limited = true;  /* ถอดแล้วไฟหาย = มันคั่นอยู่จริง */
+    });
+    if(limited) return;
+
+    var spLed = ESPEC.led;
+    out.push({
+      id:'led:no_resistor', sev:'warning',
+      titleTh:'LED ตัวนี้ไม่มีตัวต้านทานคั่น',
+      device: DEVICES.led.name, targets:[it.id],
+      causeTh:'ต่อ LED เข้ากับแหล่งจ่ายโดยตรง ไม่มีตัวต้านทานจำกัดกระแสอยู่ในทางเดินไฟ',
+      mechTh:'LED ไม่ได้จำกัดกระแสในตัวเองเหมือนหลอดไส้ พอแรงดันเกินแรงดันเกณฑ์ของมัน ' +
+             'กระแสจะพุ่งขึ้นแบบชี้กำลัง ตัวจำกัดกระแสมีแค่ความต้านทานภายในแหล่งจ่ายเท่านั้น',
+      dangerTh:'ตอนนี้รอดมาได้เพราะแรงดันยังไม่พอ ไม่ใช่เพราะวงจรถูก — ' +
+               'เปลี่ยนไปใช้แบตเตอรี่ที่แรงกว่า วงจรเดิมนี้จะทำให้ LED ไหม้ทันทีในเสี้ยววินาที',
+      preventTh:'ใส่ตัวต้านทานอนุกรมกับ LED เสมอ ไม่ว่าแหล่งจ่ายจะแรงแค่ไหน',
+      measuredTh:'ตอนนี้กระแสผ่าน LED ' + fmtCurrent(Math.abs(r.I)) +
+                 ' (พิกัด ' + fmtCurrent(spLed.imax) + ') — ' +
+                 'ถ้าเปลี่ยนเป็นแบตเตอรี่ 9V วงจรเดียวกันนี้จะพุ่งเกินพิกัดราว 10 เท่า',
+      brokeTh:'', cascadeTh:'', t:HAZARD.t
     });
   });
 
