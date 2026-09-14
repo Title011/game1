@@ -33,14 +33,24 @@ function clampWsItem(item){
    ============================================================ */
 function bindBadgeTap(el, fn){
   var t0 = null, handled = false;
-  el.addEventListener('mousedown', function(e){ e.stopPropagation(); });
+  /* .pressing = สัญญาณ "โดนปุ่มนี้แล้ว" ทันทีที่นิ้วลง ไม่ต้องรอปล่อยมือ
+     ป้ายพวกนี้กว้างแค่ 18-26px และนิ้วบังไว้พอดี ถ้าไม่มีอะไรเปลี่ยนเลย
+     ผู้เล่นจะไม่รู้ว่ากดโดนป้ายหรือกดโดนตัวอุปกรณ์ข้างใต้ */
+  function press(on){ el.classList.toggle('pressing', !!on); }
+
+  el.addEventListener('mousedown', function(e){ e.stopPropagation(); press(true); });
+  el.addEventListener('mouseup',   function(){ press(false); });
+  el.addEventListener('mouseleave',function(){ press(false); });
   el.addEventListener('touchstart', function(e){
     e.stopPropagation();
     var t = e.touches[0];
     t0 = {x:t.clientX, y:t.clientY};
+    press(true);
   }, {passive:true});
+  el.addEventListener('touchcancel', function(){ t0 = null; press(false); });
   el.addEventListener('touchend', function(e){
     e.stopPropagation();
+    press(false);
     if(!t0) return;
     var t = e.changedTouches[0];
     var moved = Math.abs(t.clientX - t0.x) + Math.abs(t.clientY - t0.y);
@@ -60,6 +70,9 @@ function bindBadgeTap(el, fn){
 
 function addWsItem(deviceId,x,y){
   var dev=DEVICES[deviceId];
+  /* คั่นประวัติก่อนเปลี่ยนวงจร (ดู js/history.js)
+     ตัวมันเองรู้จักข้ามให้เองตอนกู้คืนหรืออยู่ในคำสั่งกลุ่ม */
+  if(typeof pushHistory === 'function') pushHistory('วาง ' + dev.name);
   var itemId='ws-'+(++G.wsCounter);
 
   /* ตำแหน่งคร่าว ๆ ก่อน — ขนาดกล่องจริงวัดได้หลังใส่ลง DOM แล้ว
@@ -107,8 +120,19 @@ function addWsItem(deviceId,x,y){
       port.dataset.polarity='none';
     }
 
+    /* ป้ายชื่อขาที่ CSS หยิบไปโชว์ตอนกำลังลาก/แตะค้าง (ดู .port.wire-from::after)
+       เก็บเป็น data-label เพราะ title ของเบราว์เซอร์ขึ้นช้าและมือถือไม่ขึ้นเลย */
+    port.dataset.label = dev.name + ' ' +
+      (port.dataset.polarity === '+' ? '(+)' :
+       port.dataset.polarity === '-' ? '(−)' :
+       'ขา' + (THAI_POS[pos] || pos));
+
+    /* .pressing ทันทีที่กด — บอกว่าโดนขานี้แล้ว ไม่ต้องรอปล่อยมือแล้วมาลุ้น */
     port.addEventListener('mousedown',onPortMouseDown);
     port.addEventListener('touchstart',onPortMouseDown,{passive:false});
+    ['mouseup','mouseleave','touchend','touchcancel'].forEach(function(ev){
+      port.addEventListener(ev, function(){ port.classList.remove('pressing'); });
+    });
     el.appendChild(port);
   });
 
@@ -181,6 +205,10 @@ function addWsItem(deviceId,x,y){
 }
 
 function removeWsItem(itemId){
+  var _hit=null; G.wsItems.forEach(function(i){ if(i.id===itemId) _hit=i; });
+  if(_hit && typeof pushHistory === 'function'){
+    pushHistory('ลบ ' + DEVICES[_hit.deviceId].name);
+  }
   var idx=-1;
   G.wsItems.forEach(function(item,i){if(item.id===itemId)idx=i;});
   if(idx<0) return;
@@ -203,7 +231,9 @@ function removeWsItem(itemId){
   if(G.clip){
     if(G.clip.fromId === itemId){
       G.clip.fromId = G.clip.rootId;
-      G.clip.baseX = null; G.clip.baseY = null;
+      /* ต้นแบบที่ใช้วัดระยะหายไปด้วย ล้างทิ้งไม่ให้ learnPasteOffset
+         ไปวัดจากตำแหน่งของของที่ไม่มีอยู่แล้ว (แต่ dx ที่เรียนไว้ยังใช้ได้) */
+      G.clip.refX = null; G.clip.refY = null;
     }
     if(G.clip.rootId === itemId && G.clip.fromId === itemId) G.clip = null;
   }
@@ -220,7 +250,16 @@ function removeWsItem(itemId){
   /* อุปกรณ์ที่กำลังถูกเลือกอยู่หายไป = ต้องเลิกเลือกและเก็บปุ่มลอยด้วย
      ไม่งั้นแถบ หมุน/ลบ บนมือถือยังลอยอยู่ ชี้ไปอุปกรณ์ที่ไม่มีแล้ว
      กดแล้วไม่เกิดอะไรขึ้น หรือไปโดนตัวอื่นที่ id ซ้ำกันภายหลัง */
-  if(G.selectedItemId === itemId){
+  if(G.selectedIds && G.selectedIds.indexOf(itemId) >= 0){
+    G.selectedIds = G.selectedIds.filter(function(id){ return id !== itemId; });
+    if(G.selectedItemId === itemId){
+      G.selectedItemId = G.selectedIds.length ? G.selectedIds[G.selectedIds.length-1] : null;
+    }
+    /* ชุดที่เลือกเหลือน้อยลง แถบคำสั่งรวมต้องอัปเดตจำนวนหรือหายไปเลย */
+    if(G.selectedIds.length > 1) showMultiToolbar(G.selectedIds.length);
+    else { hideMultiToolbar(); document.body.classList.remove('multi-select'); }
+    if(!G.selectedIds.length) hideMobileToolbar();
+  } else if(G.selectedItemId === itemId){
     G.selectedItemId = null;
     hideMobileToolbar();
   }
@@ -235,6 +274,16 @@ function removeWsItem(itemId){
   if(G.wsItems.length===0) document.getElementById('workspace-hint').style.display='';
 }
 
+/* ปุ่ม "ล้างพื้นที่" ที่ผู้เล่นกดเอง — ต่างจาก clearWorkspace() ที่ระบบเรียก
+   ตอนเปลี่ยนด่าน/เข้าออกโหมด ซึ่งไม่ควรย้อนกลับได้ (วงจรของด่านก่อนไม่เกี่ยวกัน)
+   แยกออกมาเพื่อให้ "ล้างทั้งแผง" กู้คืนได้ด้วย Ctrl+Z ครั้งเดียว */
+function clearWorkspaceByUser(){
+  if(!G.wsItems.length){ showToast('พื้นที่ทำงานว่างอยู่แล้ว','error'); return; }
+  var n = G.wsItems.length;
+  historyStep('ล้างพื้นที่ (' + n + ' ชิ้น)', function(){ clearWorkspace(); });
+  showToast('ล้างพื้นที่แล้ว — ' + undoHint(),'success');
+}
+
 function clearWorkspace(silent){
   stopCurrentFlow();
   if(!invUnlimited()){
@@ -246,15 +295,29 @@ function clearWorkspace(silent){
   if(typeof resetHazards === 'function') resetHazards();
   if(typeof setHazardBar === 'function') setHazardBar('');
   hideMobileToolbar();   /* ปุ่มลอยของอุปกรณ์ที่กำลังจะหายไป ต้องหายตาม */
+  if(typeof clearCircuitProblems === 'function') clearCircuitProblems();
   G.wsItems=[]; G.wires=[]; G.wsCounter=0; G.wireCounter=0;
-  G.selectedItemId=null;
+  G.selectedItemId=null; G.selectedIds=[];
+  document.body.classList.remove('multi-select');
+  if(typeof hideMultiToolbar === 'function') hideMultiToolbar();
   G.clip=null;   /* คลิปบอร์ดอ้างอิงชิ้นที่เพิ่งถูกล้างไป ต้องทิ้งไปพร้อมกัน */
   var ws=document.getElementById('workspace');
-  /* เก็บชิ้นส่วนถาวรของพื้นที่ทำงานไว้ ล้างเฉพาะอุปกรณ์ที่ผู้เล่นวาง
-     (bb-layer คือตัวแผงเบรดบอร์ด, mobile-toolbar คือปุ่มลอยบนมือถือ) */
-  var KEEP={'wire-svg':1,'workspace-hint':1,'bb-layer':1,'mobile-toolbar':1,'hazard-bar':1};
+
+  /* ล้าง "เฉพาะอุปกรณ์ที่ผู้เล่นวาง" — คือทุกอย่างที่มีคลาส .ws-item เท่านั้น
+
+     *** ของเดิมเป็นบัญชีขาว (KEEP) ของ id ที่ต้องเก็บไว้ ซึ่งพังเงียบ ***
+     ทุกครั้งที่มีใครเพิ่มชิ้นส่วนถาวรลงใน #workspace แล้วลืมใส่ชื่อใน KEEP
+     ชิ้นนั้นจะถูกลบทิ้งตอน clearWorkspace() ครั้งแรก (ซึ่งวิ่งตอนโหลดด่าน
+     และตอนเข้าโหมดอิสระ) แล้วหายไปตลอดทั้งเซสชันโดยไม่มี error ฟ้องเลย
+     เกิดกับ 3 อย่างรวดเดียว: ปุ่มย้อนกลับ/ทำซ้ำ (#history-bar)
+     กรอบคุมดำ (#marquee) และแถบคำสั่งกลุ่ม (#multi-toolbar)
+
+     กลับด้านเป็นบัญชีดำแทน: ลบสิ่งที่ฟังก์ชันนี้รับผิดชอบจริงอย่างเดียว
+     ส่วนที่เหลือใน #workspace เป็นชิ้นส่วนถาวรจาก HTML หรือของที่ระบบอื่น
+     ดูแลเอง (#bb-layer ของเบรดบอร์ด · #wire-svg ที่เก็บสายกับจุดไฟวิ่ง)
+     เพิ่มชิ้นส่วนใหม่ทีหลังจึงไม่ทำให้พังอีก */
   Array.from(ws.children).forEach(function(ch){
-    if(!KEEP[ch.id]) ch.remove();
+    if(ch.classList && ch.classList.contains('ws-item')) ch.remove();
   });
   var svg=document.getElementById('wire-svg');
   Array.from(svg.children).forEach(function(ch){
@@ -297,12 +360,20 @@ function makeDraggable(el){
     if(e.cancelable) e.preventDefault();
     e.stopPropagation();
 
-    selectItem(el.id);
+    /* ลากชิ้นที่อยู่ในชุดคุมดำอยู่แล้ว = ไม่ล้างชุด (ผู้เล่นยังตั้งใจสั่งทั้งกลุ่มอยู่)
+       ลากชิ้นที่ไม่ได้เลือก = เปลี่ยนไปเลือกชิ้นนั้นชิ้นเดียวตามปกติ */
+    if((G.selectedIds || []).indexOf(el.id) < 0) selectItem(el.id);
 
     var p0=getXY(e);
     var startL=parseInt(el.style.left)||0, startT=parseInt(el.style.top)||0;
     var inv=document.getElementById('inventory');
     var overInv=false;
+
+    /* ถ่ายภาพวงจร "ก่อนลาก" ไว้ แต่ยังไม่บันทึกลงประวัติ
+       เพราะตอนนี้ยังไม่รู้ว่าผู้เล่นจะย้ายจริงหรือแค่กดเลือก
+       ถ้าบันทึกทุกครั้งที่กด การคลิกเลือกเฉย ๆ จะสร้างประวัติขยะเต็มไปหมด
+       แล้ว Ctrl+Z จะกลายเป็นกดสิบครั้งก็ไม่มีอะไรเปลี่ยน */
+    var histBefore = (typeof snapshotCircuit === 'function') ? snapshotCircuit() : null;
 
     /* จำว่านิ้วไหนเป็นคนเริ่มลาก
        ไม่งั้นถ้ามีนิ้วที่สองแตะแล้วปล่อย (เช่นเผลอเอามือแตะขอบจอ)
@@ -345,11 +416,18 @@ function makeDraggable(el){
       var outsideWs= (p.x<wr.left || p.x>wr.right || p.y<wr.top || p.y>wr.bottom);
       if(onInv || outsideWs){
         var itemId=el.id; deselectAll(); removeWsItem(itemId);
-        showToast('คืนอุปกรณ์กลับคลัง','success');
+        showToast('คืนอุปกรณ์กลับคลัง — ' + undoHint(),'success');
       } else {
         var item=null;
         G.wsItems.forEach(function(i){if(i.id===el.id)item=i;});
         if(item){
+          /* ย้ายจริงหรือแค่กดเลือก — ตัดสินตรงนี้ ตอนนี้รู้ตำแหน่งสุดท้ายแล้ว
+             ขยับไม่ถึง 4px ถือว่าไม่ได้ย้าย ไม่ต้องเปลืองช่องประวัติ */
+          var mx = Math.abs((parseInt(el.style.left)||0) - startL);
+          var my = Math.abs((parseInt(el.style.top) ||0) - startT);
+          if((mx + my) > 4 && typeof commitHistory === 'function'){
+            commitHistory(histBefore, 'ย้าย ' + DEVICES[item.deviceId].name);
+          }
           clampWsItem(item);
           /* ปล่อยนิ้ว/เมาส์ = "เสียบขาลงรู" ขาจะดีดเข้าหารูที่ใกล้ที่สุด
              เหมือนเสียบอุปกรณ์ลงแผงจริงที่ลงได้เฉพาะตำแหน่งรูเท่านั้น */
@@ -389,6 +467,10 @@ function toggleSwitchItem(itemId){
 
   /* ตัดไฟขดลวดกะทันหัน = จังหวะที่เกิดแรงดันย้อนกลับ (Back-EMF)
      ต้องตรวจ "ก่อน" สับออก เพราะต้องรู้ว่ากระแสกำลังไหลอยู่เท่าไร */
+  if(typeof pushHistory === 'function'){
+    pushHistory('สับสวิตช์เป็น ' + (item.open ? 'ON' : 'OFF'));
+  }
+
   var emf = null;
   if(!item.open && typeof checkBackEMF === 'function') emf = checkBackEMF(item);
 
@@ -492,6 +574,7 @@ function applyResistorBands(item){
 function setItemOhms(itemId, v){
   var item = findWsItem(itemId);
   if(!item) return;
+  if(typeof pushHistory === 'function') pushHistory('เปลี่ยนค่าตัวต้านทานเป็น ' + fmtOhm(v));
   item.ohms = v;
   applyResistorBands(item);
   showToast('ตั้งค่าตัวต้านทานเป็น ' + fmtOhm(v) + ' — แถบสีบนตัวถังเปลี่ยนตามแล้ว', 'success');
@@ -505,10 +588,19 @@ function setItemOhms(itemId, v){
    COPY / PASTE อุปกรณ์
 
    ระยะห่างของชิ้นที่วางเป็น "ระยะที่เรียนรู้มา": วางชิ้นแรกแล้วลากไปวางที่
-   ต้องการเอง ระบบจำระยะที่ลากไว้ แล้วชิ้นถัด ๆ ไปจะวางห่างเท่ากันทุกชิ้น
+   ต้องการเอง ระบบจำระยะนั้นไว้ แล้วชิ้นถัด ๆ ไปจะวางห่างเท่ากันทุกชิ้น
    เรียงถ่าน 4 ก้อนเป็นแถวจึงทำได้ด้วยการลากมือหนึ่งครั้ง แล้วกดวางซ้ำ
 
-   ถ้าไม่เคยลากเลย ใช้ระยะปริยาย = หนึ่งช่องเบรดบอร์ดเฉียงลง
+   *** ระยะที่จำ วัดจาก "ตัวต้นแบบ" ไปถึงจุดที่ปล่อยมือ ***
+   ไม่ใช่วัดจากจุดที่ระบบวางชิ้นใหม่ให้ตอนแรก
+
+   ต่างกันจริง: ต้นแบบอยู่ (100,100) ระบบวางชิ้นใหม่ให้ที่ (179,100)
+   ผู้เล่นลากไปปล่อยที่ (100,220)
+     วัดจากจุดเกิด  → (−79, +120)  = ระยะที่ "แก้ตำแหน่ง" ไม่ใช่ระยะห่างจริง
+     วัดจากต้นแบบ   → (  0, +120)  = ระยะห่างจริงที่ผู้เล่นต้องการ ✓
+   ชิ้นถัดไปจึงต้องเรียงลงล่างห่าง 120 ไม่ใช่เยื้องซ้าย 79 ลง 120
+
+   refX/refY = ตำแหน่งของตัวต้นแบบที่ใช้อ้างอิงในการวางรอบนั้น
    ============================================================ */
 function copyItem(itemId, silent){
   var item = findWsItem(itemId || G.selectedItemId);
@@ -520,8 +612,8 @@ function copyItem(itemId, silent){
     open: !!item.open,
     rootId: item.id,            /* ต้นฉบับ — กดปุ่ม ⧉ ที่ตัวนี้ซ้ำ = ต่อแถวเดิม */
     fromId: item.id,            /* ชิ้นอ้างอิงของการวางครั้งถัดไป */
-    baseX: null, baseY: null,   /* ตำแหน่งที่ระบบวางให้ ใช้วัดว่าผู้เล่นลากไปไกลแค่ไหน */
-    dx: null, dy: null          /* ระยะห่างที่เรียนรู้มาแล้ว */
+    refX: null, refY: null,     /* ตำแหน่ง "ตัวต้นแบบ" ของการวางรอบล่าสุด */
+    dx: null, dy: null          /* ระยะห่างที่เรียนรู้มาแล้ว (วัดจากต้นแบบ) */
   };
   if(!silent){
     showToast('คัดลอก ' + DEVICES[item.deviceId].name + ' แล้ว — กด Ctrl+V เพื่อวาง', 'success');
@@ -595,10 +687,11 @@ function pasteItem(){
   }
 
   /* ชิ้นที่วางใหม่กลายเป็นตัวอ้างอิงของครั้งถัดไป
-     baseX/Y คือตำแหน่งที่ "ระบบวางให้" ถ้าผู้เล่นลากออกจากจุดนี้ = สอนระยะใหม่
-     (อ่านค่าหลัง addWsItem แล้ว เพราะ clampWsItem/bbSnapItem ขยับตำแหน่งไปอีก) */
+     และจำ "ตำแหน่งของต้นแบบที่ใช้อ้างอิงรอบนี้" ไว้ (ref ไม่ใช่ made)
+     ถ้าผู้เล่นลากชิ้นใหม่ไปไหน ระยะที่เรียนรู้ = ต้นแบบ → จุดที่ปล่อยมือ
+     ซึ่งคือระยะห่างจริงที่ผู้เล่นต้องการ ไม่ใช่ระยะที่ลากออกจากจุดเกิด */
   c.fromId = made.id;
-  c.baseX = made.x; c.baseY = made.y;
+  c.refX = (ref.x || 0); c.refY = (ref.y || 0);
   selectItem(made.id);
 
   showToast('วาง ' + DEVICES[c.deviceId].name +
@@ -612,16 +705,22 @@ function setItemOhmsQuiet(item, v){
   applyResistorBands(item);
 }
 
-/* ผู้เล่นลากชิ้นที่เพิ่งวางไปเอง = กำลังบอกว่า "อยากให้ห่างเท่านี้"
-   จำไว้ใช้กับการวางครั้งถัดไปทุกครั้ง เรียกจาก dragOnUp ใน makeDraggable */
+/* ผู้เล่นลากชิ้นที่เพิ่งวางไปเอง = กำลังบอกว่า "อยากให้ห่างจากตัวก่อนหน้าเท่านี้"
+   เรียกจาก dragOnUp ใน makeDraggable หลังขาลงรูเบรดบอร์ดแล้ว
+
+   วัดจาก refX/refY = ตำแหน่งของ "ตัวต้นแบบ" ที่ใช้อ้างอิงตอนวางชิ้นนี้
+   ไม่ใช่จากจุดที่ระบบวางชิ้นนี้ให้ — ระยะที่ได้จึงเป็นระยะห่างระหว่าง
+   อุปกรณ์สองชิ้นจริง ๆ ซึ่งเอาไปวางชิ้นถัดไปต่อแถวได้ตรงตามที่ตั้งใจ
+
+   ไม่อัปเดต refX/refY ที่นี่ — ค่าถัดไปจะถูกตั้งใหม่ใน pasteItem()
+   จากตำแหน่งของตัวอ้างอิงรอบนั้น */
 function learnPasteOffset(item){
   var c = G.clip;
   if(!c || !item || c.fromId !== item.id) return;
-  if(c.baseX === null || c.baseY === null) return;
-  var dx = item.x - c.baseX, dy = item.y - c.baseY;
+  if(c.refX === null || c.refX === undefined) return;
+  var dx = item.x - c.refX, dy = item.y - c.refY;
   if(Math.abs(dx) + Math.abs(dy) < 6) return;   /* ขยับจิ๊ดเดียว ไม่นับ */
   c.dx = dx; c.dy = dy;
-  c.baseX = item.x; c.baseY = item.y;
 }
 
 /* ปุ่ม ⧉ บนตัวอุปกรณ์ = คัดลอกแล้ววางในจังหวะเดียว
@@ -653,28 +752,198 @@ function hasOpenSwitch(){
 /* ============================================================
    SELECT / DESELECT ITEM
    ============================================================ */
-function selectItem(itemId){
-  if(G.selectedItemId && G.selectedItemId !== itemId){
-    var prev = document.getElementById(G.selectedItemId);
-    if(prev) prev.classList.remove('selected');
-  }
-  G.selectedItemId = itemId;
-  var el = document.getElementById(itemId);
-  if(el){
-    el.classList.add('selected');
-    /* บนมือถือ: แสดง floating toolbar ใกล้ item */
-    if('ontouchstart' in window) showMobileToolbar(el);
+/* ตั้งชุดที่เลือกใหม่ทั้งชุด — ทางเดินเดียวของการเลือกทุกแบบ
+
+   G.selectedIds  = ทุกชิ้นที่เลือกอยู่ (คุมดำได้หลายชิ้น)
+   G.selectedItemId = ตัวล่าสุดในชุด เก็บไว้ให้ของเดิมที่ทำงานกับชิ้นเดียว
+                      ใช้ต่อได้ไม่ต้องแก้ (คีย์ S สับสวิตช์ · คัดลอก · เครื่องวัด)  */
+function setSelection(ids){
+  /* ถอดไฮไลต์ของชุดเดิมก่อน แล้วค่อยใส่ชุดใหม่ — เรียกซ้ำได้ปลอดภัย */
+  document.querySelectorAll('.ws-item.selected').forEach(function(el){
+    el.classList.remove('selected');
+  });
+
+  var alive = [];
+  (ids || []).forEach(function(id){
+    var el = document.getElementById(id);
+    if(el && findWsItem(id)){ el.classList.add('selected'); alive.push(id); }
+  });
+
+  G.selectedIds    = alive;
+  G.selectedItemId = alive.length ? alive[alive.length - 1] : null;
+
+  /* เลือกหลายชิ้น = ซ่อนป้ายใบ้ "R หมุน" ที่ลอยใต้ทุกกล่อง ไม่งั้นรกจนอ่านไม่ออก
+     แล้วใช้แถบคำสั่งรวมแทน (บอกจำนวนที่เลือกไว้ด้วย) */
+  document.body.classList.toggle('multi-select', alive.length > 1);
+
+  if(alive.length > 1){
+    hideMobileToolbar();
+    showMultiToolbar(alive.length);
+  } else {
+    hideMultiToolbar();
+    if(alive.length === 1 && 'ontouchstart' in window){
+      showMobileToolbar(document.getElementById(alive[0]));
+    } else if(!alive.length){
+      hideMobileToolbar();
+    }
   }
 }
 
-function deselectAll(){
-  if(G.selectedItemId){
-    var el = document.getElementById(G.selectedItemId);
-    if(el) el.classList.remove('selected');
-  }
-  G.selectedItemId = null;
-  hideMobileToolbar();
+function selectItem(itemId){ setSelection([itemId]); }
+
+function deselectAll(){ setSelection([]); }
+
+/* ============================================================
+   แถบคำสั่งของกลุ่มที่เลือก — ลอยกลางขอบล่างของพื้นที่ทำงาน
+
+   ไม่เกาะตัวอุปกรณ์เหมือนแถบของชิ้นเดียว เพราะกลุ่มที่เลือกกระจายอยู่หลายที่
+   ไม่มี "ตัวเดียว" ให้เกาะ และถ้าไปเกาะตัวใดตัวหนึ่งจะดูเหมือนสั่งแค่ตัวนั้น
+   ============================================================ */
+function showMultiToolbar(n){
+  var tb = document.getElementById('multi-toolbar');
+  if(!tb) return;
+  var c = document.getElementById('multi-count');
+  if(c) c.textContent = 'เลือกไว้ ' + n + ' ชิ้น';
+  tb.style.display = 'flex';
 }
+function hideMultiToolbar(){
+  var tb = document.getElementById('multi-toolbar');
+  if(tb) tb.style.display = 'none';
+}
+
+/* ============================================================
+   หมุน / ลบ "ทั้งกลุ่ม"
+
+   ทำทีเดียวทั้งชุดแล้วสรุปข้อความครั้งเดียว ไม่ใช่ยิง toast ต่อชิ้น
+   (ลบ 8 ชิ้นแล้วได้ข้อความ 8 อันทับกันคือสิ่งที่ไม่มีใครอยากเห็น)
+   ============================================================ */
+function rotateSelection(){
+  var ids = (G.selectedIds || []).slice();
+  if(!ids.length){ showToast('ลากกรอบคุมดำเลือกอุปกรณ์ก่อน หรือคลิกเลือกทีละชิ้น','error'); return; }
+  if(ids.length === 1){ rotateItem(ids[0]); return; }
+  /* นับเป็นก้าวเดียวในประวัติ — กด Ctrl+Z ครั้งเดียวคืนทั้งกลุ่ม
+     ไม่ใช่ต้องกดเท่าจำนวนชิ้นที่หมุน (ดู historyStep ใน js/history.js) */
+  historyStep('หมุน ' + ids.length + ' ชิ้น', function(){
+    ids.forEach(function(id){ rotateItem(id, true); });   /* quiet = ไม่ขึ้นข้อความต่อชิ้น */
+  });
+  showToast('หมุน ' + ids.length + ' ชิ้น 90°','success');
+}
+
+function deleteSelection(){
+  var ids = (G.selectedIds || []).slice();
+  if(!ids.length){ showToast('ลากกรอบคุมดำเลือกอุปกรณ์ก่อน หรือคลิกเลือกทีละชิ้น','error'); return; }
+  /* ต้องล้างชุดที่เลือกก่อนลบ ไม่ใช่ลบแล้วค่อยล้าง
+     เพราะ removeWsItem() จะไปล้าง selection ให้เองตอนเจอชิ้นที่กำลังถูกเลือก
+     ทำให้ ids ที่เหลือถูกทิ้งกลางทาง ลบไม่ครบ */
+  var n = ids.length;
+  setSelection([]);
+  /* ก้าวเดียวในประวัติ — นี่คือเหตุผลหลักที่ต้องมี Undo ตั้งแต่แรก
+     กด Del ครั้งเดียวลบได้หลายสิบชิ้นพร้อมสายทั้งหมด ต้องกู้คืนได้ด้วยครั้งเดียว */
+  historyStep(n > 1 ? ('ลบ ' + n + ' ชิ้น') : 'ลบอุปกรณ์', function(){
+    ids.forEach(function(id){ removeWsItem(id); });
+  });
+  showToast((n > 1 ? ('ลบ ' + n + ' ชิ้นแล้ว') : 'ลบอุปกรณ์แล้ว') + ' — ' + undoHint(),'success');
+}
+
+/* เลือกทุกชิ้นบนแผง (Ctrl+A) */
+function selectAllItems(){
+  var ids = G.wsItems.map(function(it){ return it.id; });
+  if(!ids.length){ showToast('ยังไม่มีอุปกรณ์ในพื้นที่ทำงาน','error'); return; }
+  setSelection(ids);
+  showToast('เลือกทั้งหมด ' + ids.length + ' ชิ้น','success');
+}
+
+/* ============================================================
+   MARQUEE — ลากกรอบ "คุมดำ" บนพื้นที่ว่างเพื่อเลือกหลายชิ้น
+
+   เริ่มได้เฉพาะตอนกดลงบน "พื้นว่าง" จริง ๆ
+   ถ้ากดบนอุปกรณ์ = ลากย้าย · บนขา = ต่อสาย · บนสาย = ลบสาย
+   จึงต้องเช็ค e.target ก่อน ไม่ใช่เช็คแค่ว่า currentTarget เป็น #workspace
+   (สายไฟกับแผงเบรดบอร์ดเป็นลูกของ #workspace อีเวนต์ลอยขึ้นมาถึงเสมอ)
+
+   ลากน้อยกว่า 6px ถือว่าเป็นการ "คลิกที่พื้นว่าง" = เลิกเลือกทั้งหมด
+   ============================================================ */
+var MARQUEE_SKIP = '.ws-item,.port,.wire-path,#mobile-toolbar,#multi-toolbar,' +
+                   '#history-bar,#hazard-bar,#probe-display,#polarity-picker,#workspace-hint';
+
+function marqueeXY(e, wsRect){
+  var p = e.touches ? e.touches[0] : (e.changedTouches ? e.changedTouches[0] : e);
+  return { x: p.clientX - wsRect.left, y: p.clientY - wsRect.top };
+}
+
+function startMarquee(e){
+  if(G.probeMode) return;                 /* โหมดเครื่องวัดใช้จิ้มอ่านค่า ไม่ใช่เลือกของ */
+  if(G.tapWireFrom || G.drawingFrom) return;   /* กำลังค้างต่อสายอยู่ */
+  if(e.target && e.target.closest && e.target.closest(MARQUEE_SKIP)) return;
+
+  var wsEl = document.getElementById('workspace');
+  var box  = document.getElementById('marquee');
+  if(!wsEl || !box) return;
+
+  var wsRect = wsEl.getBoundingClientRect();
+  var p0 = marqueeXY(e, wsRect);
+  var moved = false;
+  /* กดค้างพร้อมปุ่ม Shift/Ctrl = เพิ่มเข้าชุดเดิม ไม่ใช่เริ่มเลือกใหม่ */
+  var addTo = (e.shiftKey || e.ctrlKey || e.metaKey) ? (G.selectedIds || []).slice() : [];
+
+  function draw(ev){
+    var p = marqueeXY(ev, wsRect);
+    var w = Math.abs(p.x - p0.x), h = Math.abs(p.y - p0.y);
+    if(!moved && (w + h) < 6) return;     /* ยังนิ่งอยู่ ยังไม่ต้องวาดกรอบ */
+    if(!moved){ moved = true; box.style.display = 'block'; }
+    if(ev.cancelable) ev.preventDefault();
+    box.style.left   = Math.min(p.x, p0.x) + 'px';
+    box.style.top    = Math.min(p.y, p0.y) + 'px';
+    box.style.width  = w + 'px';
+    box.style.height = h + 'px';
+  }
+
+  function finish(ev){
+    document.removeEventListener('mousemove', draw);
+    document.removeEventListener('mouseup', finish);
+    document.removeEventListener('touchmove', draw);
+    document.removeEventListener('touchend', finish);
+    box.style.display = 'none';
+
+    if(!moved){ setSelection(addTo); return; }   /* คลิกพื้นว่าง = เลิกเลือก */
+
+    var p = marqueeXY(ev, wsRect);
+    var x1 = Math.min(p.x, p0.x), x2 = Math.max(p.x, p0.x);
+    var y1 = Math.min(p.y, p0.y), y2 = Math.max(p.y, p0.y);
+
+    /* "แตะกรอบ" ก็นับ ไม่ต้องคลุมทั้งกล่อง — เลือกของที่วางชิดกันจะง่ายกว่ามาก */
+    var hit = addTo.slice();
+    G.wsItems.forEach(function(it){
+      if(!it.el) return;
+      var r = it.el.getBoundingClientRect();
+      var ix1 = r.left - wsRect.left, iy1 = r.top    - wsRect.top;
+      var ix2 = r.right - wsRect.left, iy2 = r.bottom - wsRect.top;
+      if(ix2 < x1 || ix1 > x2 || iy2 < y1 || iy1 > y2) return;
+      if(hit.indexOf(it.id) < 0) hit.push(it.id);
+    });
+
+    setSelection(hit);
+    if(hit.length) showToast('เลือกไว้ ' + hit.length + ' ชิ้น — R หมุนทั้งหมด · Del ลบทั้งหมด','success');
+  }
+
+  document.addEventListener('mousemove', draw, {passive:false});
+  document.addEventListener('mouseup', finish);
+  document.addEventListener('touchmove', draw, {passive:false});
+  document.addEventListener('touchend', finish);
+}
+
+/* ผูกไว้ที่ #workspace ครั้งเดียวตอนโหลด — ตัวพื้นที่ทำงานไม่ถูกสร้างใหม่
+   เช็ค readyState ด้วย เพราะสคริปต์อยู่ท้าย body: ถ้าไฟล์ถูกโหลดช้ากว่าปกติ
+   DOMContentLoaded อาจยิงไปแล้ว แล้วตัวจัดการนี้จะไม่ถูกผูกเลย */
+function bindMarquee(){
+  var ws = document.getElementById('workspace');
+  if(!ws || ws.dataset.marqueeBound) return;
+  ws.dataset.marqueeBound = '1';
+  ws.addEventListener('mousedown', startMarquee);
+  ws.addEventListener('touchstart', startMarquee, {passive:false});
+}
+if(document.readyState === 'loading') document.addEventListener('DOMContentLoaded', bindMarquee);
+else bindMarquee();
 
 function showMobileToolbar(itemEl){
   var tb=document.getElementById('mobile-toolbar');
@@ -715,6 +984,8 @@ function rotateItem(itemId, quiet){
   var item = null;
   G.wsItems.forEach(function(i){ if(i.id===itemId) item=i; });
   if(!item) return;
+  /* ข้ามเองเมื่ออยู่ในคำสั่งกลุ่ม/กำลังกู้คืน (ดู pushHistory) */
+  if(typeof pushHistory === 'function') pushHistory('หมุน ' + DEVICES[item.deviceId].name);
 
   item.rotation = ((item.rotation||0) + 90) % 360;
   var deg = item.rotation;

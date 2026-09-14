@@ -120,6 +120,9 @@ function loadLevel(idx){
   clearWorkspace(true);
   cancelTapConnect();
   applyLevelToScreen(LEVELS[idx]);
+  /* ประวัติของด่านก่อนไม่เกี่ยวกับด่านนี้ — ถ้าไม่ล้าง กด Ctrl+Z จะดึงวงจร
+     ของด่านที่แล้วกลับมาทั้งชุด พร้อมอุปกรณ์ที่ด่านนี้ไม่ได้แจกให้ด้วย */
+  if(typeof clearHistory === 'function') clearHistory();
   saveGame();   /* บันทึกทุกครั้งที่เปลี่ยนด่าน */
 }
 
@@ -199,6 +202,18 @@ function ensureBreadboard(){
 }
 
 function tickTimer(){
+  /* หยุดนาฬิกาเมื่อมีกล่องบังจออยู่ — ตอนนั้นผู้เล่นกำลัง "อ่าน" ไม่ได้กำลังต่อวงจร
+
+     นี่คือต้นเหตุของการเสียชีวิตฟรี: สับสวิตช์ OFF ในด่าน 14-15 ตามที่โจทย์ชวน
+     แล้วกล่องรายงานแรงดันย้อนกลับเปิดขึ้นมา (สาเหตุ กลไก อันตราย วิธีป้องกัน
+     ยาวหลายย่อหน้า) นาฬิกาเดินต่อทั้งที่จออ่านไม่ได้ พออ่านจบเวลาก็หมด
+     → onTimeUp() หักชีวิตทันที ทั้งที่ผู้เล่นยังไม่ได้ลงมือทำอะไรผิดเลย
+     เรื่องเดียวกันเกิดกับกล่องคู่มือและกล่องผลการตรวจด้วย
+
+     ระหว่างฉากแสดงความเสียหายก็หยุดเหมือนกัน เพราะฉากนั้นกดอะไรไม่ได้อยู่แล้ว */
+  if(document.querySelector('.modal-overlay.open')) return;
+  if(G.hazardPlaying) return;
+
   G.timerSec--;
   updateTimerDisplay();
   if(G.timerSec<=30) document.getElementById('timer-display').classList.add('warning');
@@ -251,6 +266,12 @@ function checkCircuit(){
 
   var lv=currentLevel();
   var result=lv.check(G.wsItems,G.wires);
+
+  /* ชี้จุดที่ต่อไม่ครบบนจอไปด้วย ไม่ใช่บอกแต่ข้อความในกล่องผล
+     (markCircuitProblems ใน js/analyze.js — ขาที่ลอยจะกะพริบสีส้ม)
+     ต่อถูกแล้วก็ล้างเครื่องหมายทิ้ง */
+  if(result.ok) clearCircuitProblems();
+  else          markCircuitProblems(analyzeCircuit(G.wsItems, G.wires));
 
   /* ตัดสินจาก "ผลที่ออกมา" ไม่ใช่ "ต่อเหมือนเฉลยไหม"
      จ่ายไฟจำลองจริงแล้ววัดทีละข้อตามที่โจทย์กำหนด — ดู js/outcome.js
@@ -581,7 +602,10 @@ function hintWireTag(x, y, text, color){
 
 /* ── แผนภาพวงจรอนุกรม ── ตัดขึ้นบรรทัดใหม่ทุก PER_ROW ชิ้น */
 function buildSeriesDiagram(lv){
-  var seq  = solutionChain(lv.solution);
+  /* hintChain = ลำดับที่ด่านกำหนดเอง ใช้กับด่านที่เฉลยไม่ใช่โซ่เส้นเดียว
+     เช่นด่าน 15 ที่มีไดโอดคร่อมขามอเตอร์เป็นสาขาที่สอง — solutionChain()
+     ไล่เฉลยแบบโซ่ จะได้ลำดับเพี้ยนและวาดอุปกรณ์ซ้ำ */
+  var seq  = lv.hintChain || solutionChain(lv.solution);
   var B=HINT.BOX, S=HINT.STEP, P=HINT.PAD, RH=HINT.ROW_H;
   var perRow = Math.min(seq.length, HINT.PER_ROW);
   var rows   = Math.ceil(seq.length / HINT.PER_ROW);
@@ -713,7 +737,10 @@ function buildSolutionHint(){
   var diagram, note;
   try{
     diagram = isParallel ? buildParallelDiagram(lv) : buildSeriesDiagram(lv);
-    note = isParallel
+    /* hintNote = คำอธิบายของด่านนั้นเอง ใช้กับด่านที่ผังวาดไม่ครบทุกสาย
+       (เช่นด่าน 15 ที่มีไดโอดคร่อมขามอเตอร์เพิ่มอีก 2 เส้น) */
+    note = lv.hintNote ? lv.hintNote
+      : isParallel
       ? 'แยก ' + lv.topology.branches + ' สาขาจากขั้วแบตเตอรี่ แต่ละสาขาต่อชุดเดียวกัน'
       : 'ต่อเรียงกันเป็นวงเดียว ทุกจุดขั้วมีสายเส้นเดียว';
   }catch(e){
@@ -922,16 +949,17 @@ document.addEventListener('keydown',function(e){
       else showToast('คลิกเลือกอุปกรณ์ก่อน','error');
       return;
     }
+    if(isKey(e,'a')){ e.preventDefault(); selectAllItems(); return; }   /* Ctrl+A = เลือกทั้งหมด */
+    /* Ctrl+Z ย้อนกลับ · Ctrl+Shift+Z หรือ Ctrl+Y ทำซ้ำ (ทั้งสองแบบที่คนคุ้น) */
+    if(isKey(e,'z')){ e.preventDefault(); if(e.shiftKey) redoAction(); else undoAction(); return; }
+    if(isKey(e,'y')){ e.preventDefault(); redoAction(); return; }
     return;   /* Ctrl ค้างอยู่ = ไม่ใช่คีย์ลัดของเกม ปล่อยให้เบราว์เซอร์จัดการ */
   }
 
-  /* R = หมุนอุปกรณ์ที่เลือกอยู่ 90° */
+  /* R = หมุนทุกชิ้นที่เลือกอยู่ 90° (เลือกชิ้นเดียวหรือคุมดำหลายชิ้นก็ใช้ปุ่มเดียวกัน) */
   if(isKey(e,'r')){
-    if(G.selectedItemId){
-      rotateItem(G.selectedItemId);
-    } else {
-      showToast('คลิกเลือกอุปกรณ์ก่อน แล้วกด R เพื่อหมุน','error');
-    }
+    if((G.selectedIds || []).length) rotateSelection();
+    else showToast('คลิกเลือกอุปกรณ์ หรือลากกรอบคุมดำ แล้วกด R เพื่อหมุน','error');
     return;
   }
 
@@ -961,10 +989,9 @@ document.addEventListener('keydown',function(e){
     return;
   }
 
-  /* Delete / Backspace = ลบอุปกรณ์ที่เลือก */
-  if((isNamedKey(e,'Delete') || isNamedKey(e,'Backspace')) && G.selectedItemId){
-    var id=G.selectedItemId;
-    deselectAll();
-    removeWsItem(id);
+  /* Delete / Backspace = ลบทุกชิ้นที่เลือกอยู่
+     deleteSelection() ล้างชุดที่เลือกก่อนลบอยู่แล้ว จึงไม่ต้อง deselectAll() ซ้อน */
+  if((isNamedKey(e,'Delete') || isNamedKey(e,'Backspace')) && (G.selectedIds || []).length){
+    deleteSelection();
   }
 });

@@ -187,8 +187,110 @@ body.sandbox-mode #level-goal{border-color:rgba(0,255,136,.4);color:var(--accent
 #workspace{
   flex:1 1 auto;background:rgba(10,22,40,.82);border:2px dashed var(--border2);
   border-radius:var(--radius);position:relative;overflow:hidden;min-height:180px;
+  /* นิ้วลากบนพื้นว่าง = ลากกรอบคุมดำ ไม่ใช่เลื่อนจอ
+     ปลอดภัยเพราะ #screen-game.active เป็น overflow:hidden ไม่มีอะไรให้เลื่อนอยู่แล้ว */
+  touch-action:none;
 }
 #workspace.drag-over{border-color:var(--accent);background:rgba(0,212,255,.04);}
+
+/* ============================================================
+   กรอบคุมดำ + แถบคำสั่งของกลุ่มที่เลือก
+   (ดู startMarquee / showMultiToolbar ใน js/workspace.js)
+   ============================================================ */
+#marquee{
+  position:absolute;z-index:19;pointer-events:none;
+  border:1.5px dashed var(--accent);
+  background:rgba(0,212,255,.10);
+  border-radius:4px;
+}
+
+/* ============================================================
+   ปุ่มย้อนกลับ / ทำซ้ำ — มุมซ้ายบนของพื้นที่ทำงาน (ดู js/history.js)
+
+   z-index 22 สูงกว่าแถบเตือนอันตราย (18) กรอบคุมดำ (19) และแถบปุ่มลอย (20-21)
+   เพื่อให้ไม่มีอะไรมาทับจนกดไม่ได้ ปุ่มกู้คืนต้องกดได้เสมอทุกสถานการณ์
+   ============================================================ */
+#history-bar{
+  position:absolute;z-index:22;top:8px;left:8px;
+  display:flex;gap:6px;
+}
+/* *** ห้ามใช้ opacity บอกสถานะ disabled กับธีมมืดชุดนี้ ***
+
+   ของเดิมพลาดตรงนี้: พื้นปุ่มเป็น rgba(10,22,40,.95) ซึ่งเกือบเป็นสีเดียวกับ
+   พื้น #workspace ที่เป็น rgba(10,22,40,.82) ต่างกันแค่ความทึบ
+   พอใส่ opacity:.35 ตอน disabled ทั้งขอบ (#2d4a70) และตัวหนังสือ (#6e88a8)
+   ก็จางลงจนกลืนหายไปกับพื้นหลัง = ปุ่มหายไปเลยทั้งที่อยู่ตรงนั้น
+   และตอนเปิดเกมมาปุ่มทั้งสองยัง disabled อยู่ (ยังไม่มีอะไรให้ย้อน)
+   ผู้เล่นจึงไม่มีทางรู้ว่ามีปุ่มนี้อยู่
+
+   แก้โดยให้พื้นปุ่ม "สว่างกว่าพื้นแผงชัด ๆ" และไม่แตะ opacity เลย
+   สถานะ disabled บอกด้วยสีขอบกับสีตัวอักษรแทน */
+.hist-btn{
+  /* min-height 38px บนคอม / 48px บนมือถือ (ดู css/responsive.css)
+     touch-action:manipulation ตัดดีเลย์ 300ms ของการรอ double-tap zoom
+     ปุ่มจึงตอบสนองทันทีที่แตะ ไม่ใช่หน่วงแล้วผู้เล่นกดซ้ำ */
+  min-height:38px;padding:0 13px;border-radius:10px;cursor:pointer;
+  display:flex;align-items:center;gap:6px;
+  font-size:.8rem;font-weight:800;line-height:1;
+  background:#162b4c;                       /* สว่างกว่าพื้นแผงชัดเจน */
+  border:1.5px solid var(--accent);
+  color:var(--accent);
+  box-shadow:0 3px 14px rgba(0,0,0,.5), 0 0 10px rgba(0,212,255,.25);
+  touch-action:manipulation;
+  transition:border-color .15s,color .15s,background .15s,transform .1s,box-shadow .15s;
+}
+.hist-ico{font-size:1.2rem;line-height:1;}
+/* ข้อความไทยกำกับไอคอน — ไอคอน ↶ ↷ เพียว ๆ ผู้เรียนบางคนอ่านไม่ออกว่าคืออะไร
+   nowrap กันคำแตกบรรทัดจนปุ่มสูงผิดรูปบนจอแคบ */
+.hist-label{white-space:nowrap;}
+.hist-btn:hover:not(:disabled){
+  background:rgba(0,212,255,.22);
+  box-shadow:0 3px 14px rgba(0,0,0,.5), 0 0 16px rgba(0,212,255,.5);
+}
+.hist-btn:active:not(:disabled){transform:scale(.93);background:rgba(0,212,255,.34);}
+
+/* ปิดปุ่ม = ยังเห็นชัดว่ามีปุ่มอยู่ แต่รู้ว่ากดไม่ได้
+   พื้นยังทึบเท่าเดิม เปลี่ยนแค่ขอบกับสีอักษรเป็นโทนเทา ไม่ลด opacity */
+.hist-btn:disabled{
+  cursor:default;
+  background:#101f38;
+  border-color:var(--border2);
+  color:var(--text-dim);
+  box-shadow:0 2px 8px rgba(0,0,0,.45);
+}
+
+/* ลอยกลางขอบล่างของพื้นที่ทำงาน ไม่เกาะอุปกรณ์ตัวใดตัวหนึ่ง
+   เพราะกลุ่มที่เลือกกระจายอยู่หลายที่ ถ้าไปเกาะตัวเดียวจะดูเหมือนสั่งแค่ตัวนั้น */
+#multi-toolbar{
+  position:absolute;z-index:21;left:50%;bottom:10px;transform:translateX(-50%);
+  display:flex;align-items:center;gap:8px;flex-wrap:wrap;justify-content:center;
+  max-width:calc(100% - 16px);
+  background:rgba(10,22,40,.96);border:1px solid var(--accent);
+  border-radius:12px;padding:7px 10px;
+  box-shadow:0 6px 26px rgba(0,0,0,.55), 0 0 16px rgba(0,212,255,.18);
+}
+#multi-count{
+  font-size:.78rem;font-weight:800;color:var(--accent);
+  padding:0 4px;white-space:nowrap;
+}
+.mt-btn{
+  display:inline-flex;align-items:center;gap:6px;
+  border-radius:8px;padding:8px 12px;font-size:.82rem;font-weight:700;
+  cursor:pointer;white-space:nowrap;
+  background:var(--bg-card2);border:1px solid var(--border);color:var(--text);
+  transition:border-color .15s,color .15s,background .15s;
+}
+.mt-btn kbd{
+  font:inherit;font-size:.68rem;font-weight:800;
+  background:rgba(255,255,255,.10);border:1px solid var(--border2);
+  border-radius:4px;padding:0 4px;
+}
+.mt-rotate{color:var(--accent2);}
+.mt-rotate:hover{border-color:var(--accent2);background:rgba(255,215,0,.10);}
+.mt-del{background:var(--danger);border-color:transparent;color:#fff;}
+.mt-del:hover{filter:brightness(1.12);}
+.mt-cancel{color:var(--text-dim);}
+.mt-cancel:hover{color:#fff;border-color:var(--accent);}
 #workspace-hint{
   position:absolute;inset:0;display:flex;align-items:center;justify-content:center;
   color:var(--text-dim);font-size:.85rem;opacity:.45;pointer-events:none;

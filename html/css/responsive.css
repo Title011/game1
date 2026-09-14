@@ -28,6 +28,17 @@
   #action-bar{gap:6px;}
   .btn-action{padding:10px 14px;font-size:.8rem;}
 
+  /* ปุ่มย้อนกลับ/ทำซ้ำ บนมือถือ — 48px สูงกว่าเกณฑ์เป้าสัมผัสขั้นต่ำ 44px
+     ขอบเรืองฟ้ากับพื้นทึบเข้ม ให้อ่านออกแม้ทับอยู่บนอุปกรณ์หรือสายไฟ
+     เพราะนี่คือปุ่มที่ต้องหาเจอทันทีตอนกดพลาด ไม่ใช่ปุ่มที่ค่อย ๆ มองหา */
+  #history-bar{top:6px;left:6px;gap:8px;}
+  .hist-btn{
+    min-height:48px;padding:0 16px;font-size:.86rem;border-radius:12px;
+    border-width:2px;
+    box-shadow:0 3px 16px rgba(0,0,0,.65), 0 0 14px rgba(0,212,255,.35);
+  }
+  .hist-ico{font-size:1.45rem;}
+
   /* level bar จุดเล็กลง */
   .level-dot{width:24px;height:24px;font-size:.65rem;}
 
@@ -54,8 +65,15 @@
   .ws-item.has-port-bottom .ws-item-name{top:calc(100% + 26px);}
 
   /* mobile toolbar แสดงปุ่มหมุน/ลบ ใต้ item ที่เลือก */
-  .ws-item.selected::after{bottom:-44px;font-size:.62rem;padding:2px 8px;}
-  .ws-item.has-port-bottom.selected::after{bottom:-62px;}
+  /* ต้องมี :not(...) เหมือนใน components.css — ไฟล์นี้โหลดท้ายสุด
+     ถ้าเผลอตั้ง bottom ให้ป้ายสถานะที่มี top อยู่แล้ว ป้ายจะยืดเป็นแท่งสูง
+     คลุมทั้งอุปกรณ์ตอนกด/ลาก (เห็นเฉพาะตอนนั้น จึงหาต้นเหตุยาก) */
+  .ws-item.selected:not(.failed):not(.fuse-blown):not(.risk-warn)::after{
+    bottom:-44px;font-size:.62rem;padding:2px 8px;
+  }
+  .ws-item.has-port-bottom.selected:not(.failed):not(.fuse-blown):not(.risk-warn)::after{
+    bottom:-62px;
+  }
 
   /* ป้ายบนตัวอุปกรณ์ต้องใหญ่พอให้ปลายนิ้วกดโดน
      ของเดิมป้าย ON/OFF สูงราว 16px ซึ่งเล็กกว่าครึ่งหนึ่งของเป้าที่นิ้วกดแม่น

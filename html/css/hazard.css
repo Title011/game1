@@ -28,12 +28,12 @@
 }
 .ws-item.risk-warn::after{
   content:'เสี่ยง';
-  position:absolute;top:-11px;left:50%;transform:translateX(-50%);
+  position:absolute;top:-11px;bottom:auto;left:50%;transform:translateX(-50%);
   background:#ffc107;color:#2a2000;
   font-size:.55rem;font-weight:800;padding:1px 7px;border-radius:6px;
   white-space:nowrap;pointer-events:none;z-index:6;
 }
-.ws-item.has-port-top.risk-warn::after{top:-24px;}
+.ws-item.has-port-top.risk-warn::after{top:-24px;bottom:auto;}
 @keyframes risk-blink{
   0%,100%{box-shadow:0 0 0 2px rgba(255,193,7,.30), 0 0 14px rgba(255,193,7,.40)}
   50%    {box-shadow:0 0 0 3px rgba(255,193,7,.70), 0 0 26px rgba(255,193,7,.85)}
@@ -68,9 +68,11 @@
 .ws-item.failed .ws-item-svg,
 .ws-item.failed .ws-item-svg *,
 .ws-item.burned .ws-item-svg *{ animation:none!important; }
+/* bottom:auto ตรึงไว้กันป้ายยืดเป็นแท่งคลุมอุปกรณ์ตอนกด/ลาก
+   (ดูคำอธิบายเต็มที่ .ws-item.selected::after ใน css/components.css) */
 .ws-item.failed::after{
   content:'เสียหาย';
-  position:absolute;top:-11px;left:50%;transform:translateX(-50%);
+  position:absolute;top:-11px;bottom:auto;left:50%;transform:translateX(-50%);
   background:#7a2a1a;color:#ffd9cf;
   font-size:.55rem;font-weight:800;padding:1px 7px;border-radius:6px;
   white-space:nowrap;pointer-events:none;z-index:6;

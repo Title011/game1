@@ -170,6 +170,12 @@ function settleCircuit(){
 
 /* ยกเลิกการต่อสายที่ค้างอยู่ (มือถือแตะจุดแรกไว้แล้วเปลี่ยนใจ) */
 function cancelTapConnect(){
+  /* ล้างไฮไลต์ "กำลังกด/ลาก" ที่อาจค้างอยู่ทุกจุด — ถ้าการต่อสายถูกยกเลิก
+     กลางทาง (ลบอุปกรณ์ / กด Esc / เปลี่ยนโหมด) วงเรืองจะค้างอยู่บนขา
+     ทั้งที่ไม่มีอะไรกำลังต่ออยู่แล้ว ผู้เล่นจะเข้าใจผิดว่ายังค้างอยู่ */
+  document.querySelectorAll('.port.wire-from,.port.pressing').forEach(function(p){
+    p.classList.remove('wire-from','pressing');
+  });
   if(G.tapWireFrom){ G.tapWireFrom.classList.remove('tap-selected'); G.tapWireFrom=null; }
   G.tapFromForcedPol = null;
   G.tapToForcedPol   = null;
@@ -357,6 +363,7 @@ function onPortMouseDown(e){
   e.stopPropagation();
   if(e.cancelable) e.preventDefault();
   var port=e.currentTarget;
+  port.classList.add('pressing');   /* ตอบกลับทันที — ตัวถอดออกผูกไว้ที่ addWsItem */
 
   var isTouch = (e.type === 'touchstart');
 
@@ -369,6 +376,10 @@ function onPortMouseDown(e){
   /* ===== โหมด desktop: ลากต่อสาย ===== */
   var c=getPortCenter(port);
   G.drawingFrom={itemId:port.dataset.itemId,portEl:port,cx:c.x,cy:c.y};
+  /* ค้างไฮไลต์ไว้ที่ขาต้นทางตลอดการลาก + โชว์ป้ายชื่อขา
+     เดิมมีแค่เส้นประวิ่งตามเมาส์ ซึ่งบอกไม่ได้ว่า "ออกมาจากขาไหน"
+     พอลากไปไกลแล้วปล่อย ถ้าสายไปโผล่ผิดที่ก็ไม่รู้ว่าต้นทางพลาดหรือปลายทางพลาด */
+  port.classList.add('wire-from');
   showWirePreview(c.x,c.y,c.x,c.y);
   document.getElementById('wire-svg').classList.add('dragging');
 
@@ -384,6 +395,7 @@ function onPortMouseDown(e){
   }
   function wireOnUp(ev){
     hideWirePreview();
+    port.classList.remove('wire-from','pressing');
     document.getElementById('wire-svg').classList.remove('dragging');
     document.removeEventListener('mousemove',wireOnMove);
     document.removeEventListener('mouseup',wireOnUp);
@@ -610,6 +622,10 @@ function addWire(fromItemId,fromPort,fx,fy,toItemId,toPort,tx,ty,forcedFromPol,f
     return;
   }
 
+  /* ผ่านการตรวจทุกด่านแล้ว = สายเส้นนี้จะเกิดขึ้นจริง ค่อยคั่นประวัติตรงนี้
+     ถ้าคั่นไว้ตั้งแต่บรรทัดแรก การต่อสายซ้ำหรือต่อพลาดจะสร้างประวัติขยะ */
+  if(typeof pushHistory === 'function') pushHistory('ต่อสายไฟ');
+
   /* คำนวณตำแหน่งจาก port element จริงเสมอ (แก้ปัญหาสายไม่ตรงจุด)
      ไม่ใช้ค่า fx,fy,tx,ty ที่ส่งมาเพราะอาจคลาดเคลื่อน */
   clearWsRectCache();
@@ -687,6 +703,8 @@ function removeWire(wireId){
       : 'นี่คือรางในตัวแผง ลบไม่ได้ — ย้ายอุปกรณ์ออกจากรางแทน','error');
     return;
   }
+  /* ผ่านด่านกันสายระบบแล้ว = ลบจริง ค่อยคั่นประวัติ */
+  if(typeof pushHistory === 'function') pushHistory('ลบสายไฟ');
   found.pathEl.remove();
 
   /* จุดไฟวิ่งของสายเส้นนี้ต้องหายไปพร้อมกัน

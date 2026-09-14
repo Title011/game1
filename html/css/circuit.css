@@ -80,15 +80,26 @@ body.probe-mode .ws-item{cursor:crosshair;}
 /* ============================================================
    DAMAGE — ความเสียหายจากการต่อวงจรผิด (ดู js/damage.js)
    ============================================================ */
-/* อุปกรณ์ไหม้ — ซีดเป็นสีเทาไหม้ ขอบแดง มีควันลอย */
+/* อุปกรณ์ไหม้ — ซีดเป็นสีเทาไหม้ ขอบแดง มีควันลอย
+
+   *** พื้นต้องโปร่งแสง ไม่ใช่สีทึบ ***
+   ของเดิมเป็น #2a1410 ทึบสนิท กล่องจึงกลายเป็นบล็อกสีน้ำตาลที่บัง
+   ทุกอย่างที่อยู่ข้างหลัง — สายไฟวิ่งอยู่ชั้นล่าง (#wire-svg z-index 2
+   ต่ำกว่า .ws-item ที่ 3) ปลายสายทั้งสองเส้นจึงหายเข้าไปในบล็อก
+   มองไม่ออกว่าอะไรต่อกับอะไร และตัวอุปกรณ์ที่ไหม้ก็อ่านรูปไม่ได้เลย
+
+   โปร่ง 72% ยังเห็นชัดว่าไหม้ แต่สายกับขาที่อยู่ข้างหลังยังมองทะลุได้ */
 .ws-item.burned{
   border-color:#7a2a1a!important;
-  background:#2a1410!important;
-  box-shadow:0 0 18px rgba(255,60,0,.35)!important;
+  background:rgba(42,20,16,.72)!important;
+  box-shadow:0 0 14px rgba(255,60,0,.3)!important;
   animation:cg-burn-in .35s ease;
 }
 .ws-item.burned .ws-item-svg{filter:grayscale(1) brightness(.45) sepia(.6) hue-rotate(-20deg);}
 .ws-item.burned .ws-item-name{color:#ff8a70;border-color:#7a2a1a;}
+/* ขาต้องลอยเหนือคราบไหม้เสมอ ไม่งั้นหาจุดต่อสายใหม่ไม่เจอหลังอุปกรณ์พัง */
+.ws-item.burned .port,
+.ws-item.failed .port{z-index:7;}
 @keyframes cg-burn-in{0%{transform:scale(1.12)}100%{transform:scale(1)}}
 /* ควันลอยขึ้นจากอุปกรณ์ที่ไหม้ */
 .ws-item.burned::before{
@@ -110,9 +121,11 @@ body.probe-mode .ws-item{cursor:crosshair;}
   box-shadow:0 0 18px rgba(255,215,0,.45)!important;
 }
 .ws-item.fuse-blown .ws-item-svg{filter:grayscale(.7) brightness(.7);}
+/* bottom:auto ตรึงไว้กันป้ายยืดเป็นแท่ง ถ้ามีกฎอื่นเผลอตั้ง bottom ให้
+   (ดูคำอธิบายเต็มที่ .ws-item.selected::after ใน css/components.css) */
 .ws-item.fuse-blown::after{
   content:'ฟิวส์ขาด';
-  position:absolute;top:-11px;left:50%;transform:translateX(-50%);
+  position:absolute;top:-11px;bottom:auto;left:50%;transform:translateX(-50%);
   background:var(--accent2);color:#2a1a00;
   font-size:.55rem;font-weight:800;padding:1px 7px;border-radius:6px;
   white-space:nowrap;pointer-events:none;
@@ -149,6 +162,56 @@ body.probe-mode .ws-item{cursor:crosshair;}
 .port.port-joined{
   box-shadow:0 0 0 2px rgba(0,255,136,.9), 0 0 10px rgba(0,255,136,.65);
 }
+
+/* ============================================================
+   ชี้จุดที่ต่อไม่ครบ — ทำเครื่องหมายโดย markCircuitProblems (js/analyze.js)
+
+   ข้อความบอกชื่อขาใช้ได้ตอนวงจรมี 3-4 ชิ้น แต่วงจรใหญ่ในโหมดอิสระ
+   มีเป็นร้อยขา อ่านชื่อแล้วก็ยังต้องไล่หาทีละชิ้นทั้งแผง
+   เครื่องหมายกะพริบบนจอจึงเป็นตัวบอกจริง ส่วนข้อความเป็นแค่คำอธิบายประกอบ
+   ============================================================ */
+@keyframes cg-floating{
+  0%,100%{ box-shadow:0 0 0 2px rgba(255,150,40,.55), 0 0 8px rgba(255,150,40,.45); }
+  50%    { box-shadow:0 0 0 4px rgba(255,170,60,1),   0 0 18px rgba(255,150,40,.95); }
+}
+/* ขาที่ยังไม่มีสายต่อเลย — กะพริบส้มเพื่อให้กวาดตาหาเจอในแผงที่แน่นไปด้วยของ */
+.port.port-floating{
+  animation:cg-floating .85s ease-in-out infinite;
+  z-index:5;   /* เหนือขาอื่นที่อยู่ใกล้กัน ไม่ให้วงกะพริบถูกทับ */
+}
+
+/* อุปกรณ์ที่ลอยเป็นเกาะ ไม่ได้เชื่อมกับแหล่งจ่ายเลย */
+@keyframes cg-island{
+  0%,100%{ border-color:rgba(255,150,40,.5); }
+  50%    { border-color:rgba(255,180,70,1); }
+}
+.ws-item.item-island{
+  animation:cg-island 1.1s ease-in-out infinite;
+  box-shadow:0 0 14px rgba(255,150,40,.35);
+}
+.ws-item.item-island::before{
+  content:'ยังไม่เชื่อมเข้าวงจร';
+  position:absolute;top:-11px;left:50%;transform:translateX(-50%);
+  background:#5a3410;color:#ffd9a8;
+  font-size:.5rem;font-weight:800;padding:1px 6px;border-radius:6px;
+  white-space:nowrap;pointer-events:none;z-index:7;
+}
+
+/* อุปกรณ์ที่ถูกต่อคร่อมขาทั้งสองข้าง ไฟลัดผ่านไปหมดไม่ผ่านตัวมัน */
+.ws-item.item-shorted{
+  border-color:#ff7a2a!important;
+  box-shadow:0 0 0 2px rgba(255,122,42,.45), 0 0 16px rgba(255,122,42,.5);
+}
+.ws-item.item-shorted::before{
+  content:'ไฟลัดคร่อมตัวมัน';
+  position:absolute;top:-11px;left:50%;transform:translateX(-50%);
+  background:#6a2410;color:#ffd0bf;
+  font-size:.5rem;font-weight:800;padding:1px 6px;border-radius:6px;
+  white-space:nowrap;pointer-events:none;z-index:7;
+}
+/* ขาที่อยู่ขอบบนกินที่ป้ายพอดี ต้องเลื่อนป้ายขึ้นให้พ้น (เหมือนป้ายสถานะอื่น) */
+.ws-item.has-port-top.item-island::before,
+.ws-item.has-port-top.item-shorted::before{top:-24px;}
 
 /* ============================================================
    DEVICE ANIMATIONS — อุปกรณ์ทำงาน "ตามค่าไฟฟ้าจริง"
@@ -213,30 +276,46 @@ body.probe-mode .ws-item{cursor:crosshair;}
 /* หลอดไฟ: ไส้ร้อนก่อน แล้วแสงจึงกระจายออกมาเป็นวง
    ไล่ 3 ชั้นตามลำดับที่หลอดจริงสว่าง เพื่อให้เห็นความต่างของ "แรงพลังงาน"
    ไส้ (bulb-filament) ส้ม→ขาวร้อน · แก้ว (bulb-core) เรืองข้างใน · วงแสง (bulb-halo) ฟุ้งออกนอก */
-.ws-item.powered .bulb-glass{
-  filter:drop-shadow(0 0 calc(var(--glow,0) * 14px) #ffd700)
-         brightness(calc(1 + var(--glow,0) * .55));
+/* *** คุมด้วย --glow อย่างเดียว ไม่ผูกกับคลาส .powered ***
+
+   .powered ถูกใส่ให้ "ทุกชิ้นบนแผง" ตอนกดจ่ายไฟ (ดู checkCircuit ใน js/game.js)
+   ถ้าเอา .powered มาเป็นเงื่อนไข หลอดที่ยังไม่ได้ต่อเข้าวงจรจะติดตามไปด้วย
+   ทั้งที่ไม่มีกระแสไหลผ่านเลย และทุกดวงจะดูสว่างเท่ากันหมด
+
+   --glow เป็นค่าของอุปกรณ์แต่ละชิ้นจริง ๆ (applySimVisuals ใน js/probe.js)
+   จึงเป็นตัวคุมที่ถูกต้อง: ดวงไหนไม่มีไฟเข้าก็ดับอยู่แม้ทั้งวงจรจ่ายไฟแล้ว
+   และดวงที่ได้กำลังไฟต่างกันก็สว่างต่างกันตามจริง
+
+   ทุกชั้นที่ "อุ่น" ไล่ด้วย opacity ไม่ใช่ไล่สี เพราะ opacity รับค่าจาก
+   ตัวแปร CSS ได้ ส่วนการไล่สีในช่อง R,G,B ของ rgb() ทำไม่ได้ */
+.bulb-halo,.bulb-warm,.bulb-core,.bulb-filament{
+  opacity:0;
+  transition:opacity .3s ease;
+}
+.bulb-halo    { opacity:calc(var(--glow,0) * .30); }
+.bulb-warm    { opacity:calc(var(--glow,0) * .85); }
+.bulb-core    { opacity:calc(var(--glow,0) * .75); }
+/* ไส้หลอด: ชั้นส้มจางเข้ามาทับชั้นเทา แล้วเพิ่มความสว่างพร้อมลดความอิ่มสี
+   จึงไล่ เทาดับ → ส้มแดง → ขาวร้อน ได้ต่อเนื่องเหมือนทังสเตนจริง */
+.bulb-filament{
+  opacity:calc(var(--glow,0));
+  stroke-width:calc(2.2px + var(--glow,0) * .9px);
+  filter:drop-shadow(0 0 calc(var(--glow,0) * 9px) #ffcf50)
+         brightness(calc(1 + var(--glow,0) * 1.2))
+         saturate(calc(1 - var(--glow,0) * .6));
+  transition:opacity .3s ease, stroke-width .3s ease, filter .3s ease;
+}
+/* แสงฟุ้งออกนอกกระเปาะ วัดจากตัวแก้วเพราะเป็นชั้นที่มีขอบเขตชัด */
+.bulb-shell{
+  filter:drop-shadow(0 0 calc(var(--glow,0) * 14px) #ffd700);
   transition:filter .3s ease;
 }
-/* ไส้หลอดวาดไว้เป็นสีส้ม #ff8800 — เพิ่มความสว่างพร้อมลดความอิ่มสี
-   จึงไล่จาก "ส้มแดง" ไปเป็น "ขาวร้อน" ตามกำลังไฟ เหมือนทังสเตนจริง
-   (ทำด้วย brightness/saturate ไม่ใช่ calc ในช่อง R,G,B ของ rgb()
-    เพื่อให้รองรับเบราว์เซอร์ได้กว้างกว่า) */
-.ws-item.powered .bulb-filament{
-  stroke-width:calc(2.2px + var(--glow,0) * .9px);
-  filter:drop-shadow(0 0 calc(var(--glow,0) * 10px) #ffcf50)
-         brightness(calc(1 + var(--glow,0) * 1.35))
-         saturate(calc(1 - var(--glow,0) * .65));
-  transition:stroke-width .3s ease, filter .3s ease;
-}
-.ws-item.powered .bulb-core{
-  fill:rgba(255,190,20,calc(var(--glow,0) * .8));
-  transition:fill .3s ease;
-}
-.ws-item.powered .bulb-halo{
-  fill:rgba(255,205,40,calc(.06 + var(--glow,0) * .26));
-  transition:fill .3s ease;
-}
+
+/* ไอคอนในคลังอุปกรณ์กับในผังคำใบ้ไม่ได้อยู่ในวงจร จึงไม่มีใครตั้ง --glow ให้
+   ถ้าปล่อยเป็น 0 หลอดในคลังจะเป็นสีเทาทึม ๆ ดูไม่ออกว่าคืออะไร
+   ตั้งค่ากลาง ๆ ไว้ให้ดูเป็นหลอดไฟที่ติดอยู่ — ที่ต้องซื่อสัตย์คือหลอด
+   บนพื้นที่ทำงานซึ่ง applySimVisuals เขียน --glow จริงทับให้อยู่แล้ว */
+.inv-item-icon svg,.hint-svg{--glow:.55;}
 
 /* บัซเซอร์: สั่นแรงและถี่ขึ้นตามกระแส
    --buzz มาจาก js/probe.js (กระแสมาก = คาบสั้น = สั่นถี่) */

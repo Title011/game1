@@ -23,6 +23,10 @@ var G = {
   invCounts:{},
   drawingFrom:null,   /* จุดขั้วต้นทางระหว่างลากสายบนคอม */
   selectedItemId:null,
+  /* อุปกรณ์ที่เลือกไว้ทั้งหมด (ลากกรอบคุมดำบนพื้นที่ว่าง)
+     selectedItemId = ตัวล่าสุดในชุดนี้ เก็บไว้ให้คีย์ S / เครื่องวัด / คัดลอก
+     ที่ทำงานกับชิ้นเดียวใช้ต่อได้เหมือนเดิม (ดู setSelection ใน js/workspace.js) */
+  selectedIds:[],
   tapWireFrom:null,  /* มือถือ: port แรกที่แตะไว้ (แตะทีละจุด) */
   flowDots:[],  /* จุดกระแสไฟที่วิ่งตามสาย */
   probeMode:false,  /* โหมดเครื่องวัดกระแส */
