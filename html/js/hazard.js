@@ -177,7 +177,7 @@ var HAZ_TEXT = {
     cause:'ตัดไฟมอเตอร์กะทันหันขณะกำลังหมุน โดยไม่มีไดโอดคายพลังงานให้',
     mech:'ขดลวดของมอเตอร์เก็บพลังงานไว้ในสนามแม่เหล็ก พอตัดวงจร กระแสถูกบังคับให้หยุดในเวลาไม่กี่ไมโครวินาที สนามแม่เหล็กยุบตัวและเหนี่ยวนำแรงดันย้อนกลับตามสมการ V = L × (di/dt) ซึ่งสูงกว่าแรงดันแหล่งจ่ายได้หลายสิบเท่า',
     danger:'แรงดันหลายสิบถึงหลายร้อยโวลต์นี้พุ่งเข้าทำลายสารกึ่งตัวนำที่อยู่ใกล้ที่สุดในพริบตา และทำให้หน้าสัมผัสสวิตช์เกิดประกายไฟจนไหม้ติดกัน ของจริงเรามองไม่เห็นและวัดไม่ทัน จึงมักพังโดยไม่รู้สาเหตุ',
-    prevent:'ต่อไดโอดคายพลังงาน (flyback diode) ไว้กับขดลวดทุกครั้ง เพื่อเปิดทางให้กระแสวนกลับเข้าตัวมันเองจนหมดแรงไปเอง อุปกรณ์ที่เป็นขดลวดทุกชนิด — มอเตอร์ รีเลย์ โซลินอยด์ — ต้องมีไดโอดคู่กันเสมอ'
+    prevent:'ต่อไดโอดคายพลังงาน (flyback diode) "คร่อมขาของขดลวด" และ "กลับขั้ว" คือเอาขา − (ฝั่งขีด/คาโทด) ไปไว้ข้างเดียวกับขั้วบวกของขดลวด และขา + (ฝั่งสามเหลี่ยม/แอโนด) ไปไว้ข้างขั้วลบ ตอนทำงานปกติมันจะไม่นำกระแสเลย แต่พอตัดไฟจะเปิดเป็นวงปิดเล็ก ๆ ให้กระแสวนกลับเข้าขดลวดเองจนหมดแรง · ย้ำว่าไดโอดที่ต่อ "อนุกรม" ในวงหลักใช้แทนกันไม่ได้ เพราะมันขาดไปพร้อมวงจรตอนสวิตช์เปิด จึงไม่มีทางให้กระแสวน · อุปกรณ์ที่เป็นขดลวดทุกชนิด — มอเตอร์ รีเลย์ โซลินอยด์ — ต้องมีไดโอดคู่กันเสมอ'
   },
 
   '*:running_hot':{
@@ -345,6 +345,27 @@ function makeIncident(it, mode, sol, extra){
 
   var measured = extra && extra.measured ? extra.measured : buildMeasured(it, sp, r, mode);
 
+  /* ขดลวดไหม้เพราะกำลังไฟเกิน ≠ แรงดันย้อนกลับ — ต้องแยกให้ขาด
+
+     ผู้เรียนที่ผ่านด่าน 15 มาจะจำว่า "มอเตอร์ต้องมีไดโอดคายพลังงาน"
+     พอมอเตอร์ไหม้ทั้งที่ใส่ไดโอดไว้แล้ว ก็สรุปว่าไดโอดไม่ทำงานหรือเกมบั๊ก
+     ความจริงคือไดโอดคายพลังงานกันได้แค่ "แรงดันพุ่งตอนตัดไฟ" อย่างเดียว
+     ไม่ได้ลดแรงดันที่จ่ายเข้าไปตลอดเวลา สองเรื่องนี้คนละเรื่องกันสิ้นเชิง
+     ถ้าไม่บอกตรงนี้ ผู้เรียนจะเข้าใจผิดว่าใส่ไดโอดแล้วจ่ายไฟเท่าไรก็ได้ */
+  var extraPrevent = '';
+  if(sp.inductive && (mode === 'over_current' || mode === 'over_power')){
+    var hasDiode = false;
+    G.wsItems.forEach(function(x){
+      if(x.deviceId === 'diode' && !x.failed && inCircuit(x)) hasDiode = true;
+    });
+    var vsrc = (typeof sourceVoltage === 'function') ? sourceVoltage(G.wsItems) : 0;
+    extraPrevent = ' — กรณีนี้ไม่ใช่แรงดันย้อนกลับ (Back-EMF) จึงไม่เกี่ยวกับไดโอดคายพลังงาน' +
+      (hasDiode ? 'ที่ต่อไว้แล้ว' : '') + ' เลย: ไดโอดกันได้แค่แรงดันพุ่งตอนสับสวิตช์ OFF ' +
+      'ไม่ได้ลดแรงดันที่จ่ายเข้าตัวมอเตอร์ตลอดเวลา' +
+      (vsrc ? (' · ตอนนี้แหล่งจ่ายรวมกันได้ ' + fmtVolt(vsrc) +
+               ' ซึ่งมากเกินไปสำหรับมอเตอร์ตัวนี้ ต้องลดจำนวนถ่านลง หรือใส่ตัวต้านทานจำกัดกระแสคั่นไว้') : '');
+  }
+
   return {
     id: it.deviceId + ':' + mode,
     sev: txt.sev,
@@ -354,7 +375,7 @@ function makeIncident(it, mode, sol, extra){
     causeTh: txt.cause,
     mechTh: txt.mech,
     dangerTh: txt.danger,
-    preventTh: txt.prevent,
+    preventTh: txt.prevent + extraPrevent,
     measuredTh: measured,
     brokeTh: (mode === 'blow')
       ? (dev.name + ' ขาด — ตัดไฟทั้งวงจร อุปกรณ์ตัวอื่นรอด')
@@ -465,13 +486,13 @@ function checkBackEMF(sw){
     if(stillI > coilI * 0.5) return null;   /* สับแล้วขดลวดยังเดินอยู่ = คนละสาขากัน */
   }
 
-  /* มีไดโอดคายพลังงาน "ที่ต่ออยู่ในวงจร" ไหม (เกมสอนแบบนี้ในด่าน 15)
-     ไดโอดที่วางทิ้งไว้เฉย ๆ ไม่ได้ป้องกันอะไร */
-  var protectedByDiode = false;
-  G.wsItems.forEach(function(it){
-    if(it.deviceId === 'diode' && !it.failed && inCircuit(it)) protectedByDiode = true;
-  });
-  if(protectedByDiode) return null;
+  /* มีไดโอดคายพลังงาน "ต่อถูกตำแหน่ง" ไหม
+
+     เดิมนับแค่ "มีไดโอดอยู่ในวงจร" ก็ถือว่าป้องกันได้แล้ว ซึ่งผิด:
+     ไดโอดที่ต่ออนุกรมในวงหลักขาดไปพร้อมวงจรตอนสวิตช์เปิด
+     ไม่มีทางให้กระแสในขดลวดวนเลย จึงไม่ได้ป้องกันอะไรแม้แต่นิดเดียว
+     ต้องคร่อมขดลวดและกลับขั้วเท่านั้น (ดู findFlybackDiode ใน js/analyze.js) */
+  if(findFlybackDiode(G.wsItems, G.wires, coil).ok) return null;
 
   /* V = L × di/dt  — ขดลวดมอเตอร์เล็ก ๆ ราว 20 mH ตัดไฟในราว 15 ไมโครวินาที */
   var L = 0.02, topen = 15e-6;
@@ -509,7 +530,23 @@ function checkBackEMF(sw){
     t: HAZARD.t
   };
 
-  if(victim){ victim.failed = true; victim.failMode = 'back_emf'; victim.heat = 1; }
+  /* ทำลายของจริงเฉพาะในโหมดอิสระ ซึ่งไม่มีชีวิตให้เสีย
+
+     ในโหมดด่าน/โหมดวัดความเร็ว การสับสวิตช์คือการ "ลองดู" ตามที่โจทย์ชวน
+     (ด่าน 14-15 บอกให้ลองสับ OFF เทียบกันตรง ๆ) ถ้าสับแล้วอุปกรณ์พังทันที
+     แล้วรอบตรวจถัดไปตกเพราะของพัง = เสียชีวิตจากการทำตามที่โจทย์บอก
+     บทเรียนอยู่ที่ "คำอธิบายว่าทำไม" ซึ่งขึ้นกล่องรายงานให้อ่านครบอยู่แล้ว
+     ไม่ได้อยู่ที่การถูกลงโทษ จึงโชว์ประกายไฟกับรายงานแต่ไม่พังของ */
+  var destructive = (typeof G !== 'undefined' && G.sandbox);
+  if(victim && destructive){
+    victim.failed = true; victim.failMode = 'back_emf'; victim.heat = 1;
+  } else if(victim){
+    inc.brokeTh = DEVICES[victim.deviceId].name +
+      ' รับแรงดันย้อนเต็ม ๆ — ของจริงพังทันทีตรงนี้ ' +
+      '(ในโหมดด่านยังไม่พังให้ เพื่อให้ลองสับสวิตช์เรียนรู้ได้โดยไม่เสียชีวิต ' +
+      'ลองอีกครั้งในโหมดอิสระจะเห็นมันพังจริง)';
+    inc.cascadeTh = '';
+  }
   HAZARD.incidents.push(inc);
   return inc;
 }
@@ -761,30 +798,105 @@ function setHazardBar(html){
   bar.innerHTML = html || '';
 }
 
+/* เวลาที่เหลือก่อนพัง (วินาที) — คืน null ถ้าไม่ได้กำลังร้อนขึ้น
+
+   แบบจำลองความร้อนใน hazardStep():  heat += dt × (stress − 1) / tburn
+   ความร้อนวิ่งจาก 0 ถึง 1 แล้วพัง จึงแก้สมการย้อนได้ตรง ๆ
+       เวลาที่เหลือ = (1 − heat) × tburn / (stress − 1)
+   (stress ถูกจำกัดเพดานที่ HAZARD.CAP เหมือนในตัวจำลอง ตัวเลขจะได้ตรงกัน) */
+function timeToFail(stress, heat, tburn){
+  var s = Math.min(stress || 0, HAZARD.CAP);
+  if(s <= 1) return null;
+  return (1 - (heat || 0)) * (tburn || 4) / (s - 1);
+}
+
+/* เวลาที่เหลือก่อนสายไฟไหม้ */
+function wireTimeToFail(sol){
+  if(!sol || !sol.ok) return null;
+  return timeToFail(sol.supplyI / WIRE_IMAX, HAZARD.wireHeat, WIRE_TBURN);
+}
+
 function renderHazardBar(){
   var bar = document.getElementById('hazard-bar');
   if(!bar) return;
   var rows = [];
 
+  /* ============================================================
+     *** ตัวเลขที่โชว์ต้องเป็นตัวที่ขยับจริง ***
+
+     ของเดิมโชว์ it.stress ("เริ่มร้อน 167% ของพิกัด") ซึ่งเป็น "ภาระ"
+     = เกินพิกัดกี่เท่า ค่านี้นิ่งอยู่กับที่ในวงจรไฟตรงที่ไม่มีอะไรเปลี่ยน
+     ข้อความจึงค้างเป็นประโยคเดิมตลอด แล้วอุปกรณ์ก็พังขึ้นมาเฉย ๆ
+     ผู้เล่นไม่เห็นว่ามันกำลังเดินเข้าใกล้จุดพังอยู่
+
+     ตัวที่ขยับทุกก้าวเวลาคือ it.heat (ความร้อนสะสม 0→1) และเวลาที่เหลือ
+     ก่อนพัง จึงเอาสองตัวนั้นมาเป็นตัวเอก แล้วให้ภาระเป็นข้อมูลประกอบ
+     ============================================================ */
   G.wsItems.forEach(function(it){
     if(!it.el) return;
+    var sp   = ESPEC[it.deviceId];
     var name = DEVICES[it.deviceId].name;
-    var pct = Math.round((it.stress || 0) * 100);
+    var heat = it.heat || 0;
+    var load = Math.round((it.stress || 0) * 100);
+
     if(it.failed){
-      rows.push({ cls:'hz-fail', txt:(it.failMode === 'blow' ? 'ฟิวส์ขาด ตัดไฟแล้ว' : name + ' เสียหาย') });
-    } else if((it.heat || 0) >= HAZARD.HOT){
-      rows.push({ cls:'hz-hot', txt:name + ' ร้อนจัด ' + pct + '% ของพิกัด' });
-    } else if((it.heat || 0) >= HAZARD.WARN){
-      rows.push({ cls:'hz-warn', txt:name + ' เริ่มร้อน ' + pct + '% ของพิกัด' });
+      rows.push({ p:0, cls:'hz-fail',
+        txt:(it.failMode === 'blow' ? 'ฟิวส์ขาด ตัดไฟแล้ว' : name + ' เสียหายแล้ว') });
+      return;
+    }
+    if(it.blown){ rows.push({ p:0, cls:'hz-fail', txt:'ฟิวส์ขาด ตัดไฟแล้ว' }); return; }
+
+    var left = timeToFail(it.stress, heat, sp && sp.tburn);
+    var pct  = Math.round(heat * 100);
+
+    if(left !== null){
+      /* กำลังร้อนขึ้น — นับถอยหลังให้เห็น ตัวเลขขยับทุกเสี้ยววินาที */
+      rows.push({
+        p: left,                                  /* เรียงตัวที่จะพังก่อนขึ้นหน้า */
+        cls: (heat >= HAZARD.HOT) ? 'hz-fail' : (heat >= HAZARD.WARN ? 'hz-hot' : 'hz-warn'),
+        txt: name + ' ร้อน ' + pct + '% · พังใน ' + left.toFixed(1) + ' วิ' +
+             ' (ภาระ ' + load + '% ของพิกัด)'
+      });
+    } else if(heat > 0.02){
+      /* ภาระกลับมาอยู่ในพิกัดแล้ว ความร้อนกำลังไหลลง — บอกด้วยว่ารอดแล้ว */
+      rows.push({ p: 9e9, cls:'hz-warn',
+        txt: name + ' กำลังเย็นลง ' + pct + '% (ภาระ ' + load + '% อยู่ในพิกัดแล้ว)' });
     }
   });
-  if(HAZARD.wiresBurned) rows.push({ cls:'hz-fail', txt:'สายไฟไหม้' });
-  else if(HAZARD.wireHeat >= HAZARD.WARN) rows.push({ cls:'hz-hot', txt:'สายไฟร้อน กระแสรวมเกินพิกัด' });
+
+  /* ---- สายไฟทั้งวง ---- */
+  if(HAZARD.wiresBurned){
+    rows.push({ p:0, cls:'hz-fail', txt:'สายไฟไหม้ ฉนวนละลายแล้ว' });
+  } else {
+    var sim = (typeof PowerSim !== 'undefined') ? PowerSim : null;
+    var wl  = wireTimeToFail(sim && sim.sol);
+    var wpc = Math.round(HAZARD.wireHeat * 100);
+    if(wl !== null){
+      rows.push({ p: wl, cls:(HAZARD.wireHeat >= HAZARD.WARN ? 'hz-fail' : 'hz-hot'),
+        txt:'สายไฟร้อน ' + wpc + '% · ไหม้ใน ' + wl.toFixed(1) + ' วิ (กระแสรวมเกินพิกัด)' });
+    } else if(HAZARD.wireHeat > 0.02){
+      rows.push({ p: 9e9, cls:'hz-warn', txt:'สายไฟกำลังเย็นลง ' + wpc + '%' });
+    }
+  }
+
+  /* ตัวที่จะพังก่อนอยู่หน้าสุดเสมอ — แถบมีที่แค่ 4 ช่อง
+     ถ้าเรียงตามลำดับอุปกรณ์ ตัวที่ใกล้พังที่สุดอาจตกอยู่นอกช่องที่แสดง */
+  rows.sort(function(a, b){ return a.p - b.p; });
+
+  /* จ่ายไฟอยู่แต่ไม่มีอะไรร้อน — ต้องบอกว่า "ปลอดภัย" ไม่ใช่เงียบไป
+     แถบว่างเปล่าอ่านได้สองอย่าง: ปลอดภัยจริง หรือระบบเตือนไม่ทำงาน
+     โชว์กระแสรวมไปด้วยเพื่อให้เห็นว่าตัวเลขยังเดินอยู่ (ขยับจริงตอนมีตัวเก็บประจุ) */
+  var live = (typeof PowerSim !== 'undefined') ? PowerSim : null;
+  if(!rows.length && live && live.on && live.sol && live.sol.ok){
+    rows.push({ p:0, cls:'hz-safe',
+      txt:'ปลอดภัย — ทุกอย่างอยู่ในพิกัด · กระแสรวม ' + fmtCurrent(live.sol.supplyI) });
+  }
 
   var html = rows.slice(0, 4).map(function(r){
     return '<span class="hz-chip ' + r.cls + '">' + r.txt + '</span>';
   }).join('');
-  /* เขียน DOM เฉพาะตอนข้อความเปลี่ยนจริง — ลูปนี้เดิน 20 ครั้งต่อวินาที */
+  /* เขียน DOM เฉพาะตอนข้อความเปลี่ยนจริง — ลูปนี้เดิน 20 ครั้งต่อวินาที
+     ตัวเลขปัด 1 ตำแหน่ง ข้อความจึงเปลี่ยนราว 10 ครั้ง/วินาที ไม่ใช่ 20 */
   if(html === _hzBarCache) return;
   _hzBarCache = html;
   bar.style.display = html ? 'flex' : 'none';

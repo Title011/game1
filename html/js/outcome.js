@@ -181,9 +181,16 @@ function checkOutcome(items, wires, req, inventory){
 
   /* ทุกชิ้นที่วางต้องถูกใช้งานจริง */
   if(req.useAll !== false){
+    /* ยกเว้นไดโอดคายพลังงานที่ต่อถูกตำแหน่ง — มันต้อง "ไม่นำกระแส"
+       ตอนทำงานปกติ นั่นคือหน้าที่ของมันเลย (ไบแอสย้อนอยู่)
+       ถ้าไม่ยกเว้น ด่านที่สอน flyback diode จะไม่มีทางผ่านได้
+       เพราะจะถูกฟ้องว่า "วางไว้เฉย ๆ ไม่มีกระแสไหลผ่าน" ทุกครั้ง */
+    var fb   = findFlybackDiode(items, wires);
+    var fbId = (fb.ok && fb.el) ? fb.el.item.id : null;
     var idle = null;
     items.forEach(function(it){
       if(idle) return;
+      if(it.id === fbId) return;
       var sp = ESPEC[it.deviceId];
       if(!sp || sp.kind === 'source') return;
       if(sp.kind === 'bus'){
@@ -276,6 +283,14 @@ function checkOutcome(items, wires, req, inventory){
           ok ? '' : 'ถอดฟิวส์ออกแล้วไฟยังไหลได้ ' + fmtCurrent(leak) +
                     ' — มีทางให้ไฟเลี่ยงฟิวส์ ต้องให้กระแสทั้งหมดผ่านฟิวส์');
     }
+  }
+
+  /* ---------- 6.5) ไดโอดคายพลังงานต่อถูกตำแหน่งไหม ----------
+     ตรวจตำแหน่งจริง ไม่ใช่แค่ "มีไดโอดในวงจร" — ดู findFlybackDiode
+     ในไฟล์ js/analyze.js ว่าทำไมไดโอดอนุกรมใช้แทนกันไม่ได้ */
+  if(req.flyback){
+    var fb = findFlybackDiode(items, wires);
+    add('ไดโอดคายพลังงานต่อคร่อมขามอเตอร์แบบกลับขั้ว', fb.ok, fb.ok ? '' : fb.why);
   }
 
   /* ---------- 7) วงจรหน่วงเวลา: ต้องสว่างแล้วค่อย ๆ หรี่จนดับ ---------- */

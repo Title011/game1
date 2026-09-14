@@ -126,15 +126,30 @@ function labPreview(){
     setHazardBar(chips.join('')); return;
   }
 
-  /* วงจรยังไม่ครบวง — บอกว่าติดตรงไหน ไม่ใช่บอกว่าผิด */
+  /* วงจรยังไม่ครบวง — บอกว่าติดตรงไหน ไม่ใช่บอกว่าผิด
+
+     ทำเครื่องหมายบนขา/อุปกรณ์ที่เป็นปัญหาไปด้วยเลย ไม่ต้องรอให้กดตรวจวงจร
+     โหมดนี้คือโต๊ะทดลอง เห็นปัญหาระหว่างต่อย่อมดีกว่าเห็นตอนจบ
+     (วงจรใหญ่ ๆ มีเป็นร้อยขา ข้อความอย่างเดียวหาจุดไม่เจอ) */
   if(!hasClosedLoop(G.wsItems, G.wires)){
-    if(an.floating.length){
-      chip('hz-info', 'ยังไม่ได้ต่อ ' + termName(an.net, an.floating[0].el.item, an.floating[0].port) +
-           (an.floating.length > 1 ? ' (และอีก ' + (an.floating.length-1) + ' ขา)' : ''));
+    var m = markCircuitProblems(an);
+    if(m.floating){
+      chip('hz-info', 'มีขาที่ยังไม่ได้ต่อ ' + m.floating + ' ขา (กะพริบสีส้ม) — เช่น ' +
+           termName(an.net, an.floating[0].el.item, an.floating[0].port));
+    } else if(m.islands){
+      chip('hz-info', 'มีอุปกรณ์ที่ยังไม่เชื่อมเข้าวงจร ' + m.islands +
+           ' ชิ้น (ขอบกะพริบสีส้ม) — เช่น ' + DEVICES[an.islands[0].deviceId].name);
     } else {
       chip('hz-info', 'วงจรยังไม่ครบวง — ไฟยังกลับเข้าขั้วลบไม่ได้');
     }
     setHazardBar(chips.join('')); return;
+  }
+
+  /* ครบวงแล้ว — เครื่องหมายเตือนเก่าต้องหายไป ยกเว้นตัวที่ถูกต่อคร่อมขา
+     ซึ่งเป็นปัญหาคนละเรื่องกับวงจรไม่ครบ และยังผิดอยู่แม้วงจรจะครบวงแล้ว */
+  clearCircuitProblems();
+  if(an.shorted.length){
+    markCircuitProblems({floating:[], islands:[], shorted:an.shorted});
   }
 
   /* ครบวงแล้ว — ทำนายว่าจ่ายไฟไปจะเกิดอะไร */
@@ -202,6 +217,7 @@ function sandboxCheck(){
   }
 
   if(c.ok){
+    clearCircuitProblems();   /* ครบวงแล้ว เครื่องหมายเตือนต้องหาย */
     G.wsItems.forEach(function(it){ it.el.classList.add('powered'); });
     startCurrentFlow();
     if(fault.warnings.length){
@@ -213,6 +229,9 @@ function sandboxCheck(){
   } else {
     G.wsItems.forEach(function(it){ it.el.classList.remove('powered'); });
     stopCurrentFlow();
+    /* ชี้จุดที่ติดบนจอด้วย ไม่ใช่บอกแต่ข้อความ
+       วงจรใหญ่ ๆ อ่านชื่อขาแล้วก็ยังหาไม่เจอว่าขาไหนในเกือบร้อยขา */
+    markCircuitProblems(analyzeCircuit(G.wsItems, G.wires));
     showToast(c.msg,'error');
   }
 }

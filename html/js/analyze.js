@@ -185,6 +185,100 @@ function analyzeCircuit(items, wires){
 }
 
 /* ============================================================
+   3.4) ไดโอดคายพลังงาน (flyback diode) ต่อถูกตำแหน่งหรือยัง
+
+   *** นี่คือจุดที่เกมเคยสอนผิด ***
+   ของเดิมนับว่า "มีไดโอดอยู่ในวงจร" = ป้องกันแรงดันย้อนกลับได้แล้ว
+   ซึ่งไม่จริงเลย ไดโอดที่ต่ออนุกรมในวงหลักไม่ได้ทำหน้าที่นี้แม้แต่นิดเดียว
+   เพราะมันขาดไปพร้อมวงจรตอนสวิตช์เปิด จึงไม่มีทางให้กระแสวน
+
+   ของจริงต้องต่อ "คร่อมขดลวด" และ "กลับขั้ว":
+     คาโทด (ขา − ฝั่งขีด)        → ไปฝั่งขั้วบวกของขดลวด
+     แอโนด (ขา + ฝั่งสามเหลี่ยม) → ไปฝั่งขั้วลบของขดลวด
+
+   ตอนทำงานปกติไดโอดจึงถูกไบแอสย้อน ไม่นำกระแสเลย ไม่กินไฟ ไม่กวนวงจร
+   พอสับสวิตช์ตัดไฟ แรงดันคร่อมขดลวดกลับขั้วทันที (สนามแม่เหล็กยุบตัว)
+   ไดโอดจึงนำกระแส เปิดเป็นวงปิดเล็ก ๆ ให้กระแสในขดลวดวนกลับเข้าตัวมันเอง
+   แล้วค่อย ๆ หมดแรงไปกับความต้านทานของขดลวดเอง
+
+   หมายเหตุเรื่องขา: deviceTerminals() (js/solver.js) คืน a = ขาที่ทำเครื่องหมาย +
+   ของอุปกรณ์นั้นเสมอ ดังนั้น e.a ของไดโอดคือแอโนด และ ce.a ของขดลวดคือขั้วบวก
+   ต่อถูก = แอโนดของไดโอดไปอยู่โหนดเดียวกับขั้วลบของขดลวด (e.a === ce.b)
+   ============================================================ */
+function findFlybackDiode(items, wires, coil){
+  var net = circuitNetlist(items, wires);
+
+  var ce = (coil && net.byItem[coil.id]) ? net.byItem[coil.id] : null;
+  if(!ce){
+    for(var i=0;i<net.els.length;i++){
+      if(net.els[i].spec && net.els[i].spec.inductive){ ce = net.els[i]; break; }
+    }
+  }
+  if(!ce)          return { ok:false, why:'วงจรนี้ยังไม่มีอุปกรณ์ที่เป็นขดลวด (มอเตอร์)' };
+  if(ce.a === ce.b) return { ok:false, why:'ขดลวดถูกต่อคร่อมขาตัวเอง ไฟจึงลัดผ่านไปหมด' };
+
+  var right = null, flipped = null;
+  net.els.forEach(function(e){
+    if(e.deviceId !== 'diode' || e.item.failed) return;
+    var across = (e.a === ce.a && e.b === ce.b) || (e.a === ce.b && e.b === ce.a);
+    if(!across) return;
+    if(e.a === ce.b) right = e;      /* แอโนดอยู่ฝั่งลบ = กลับขั้วถูกต้อง */
+    else             flipped = e;    /* แอโนดอยู่ฝั่งบวก = นำกระแสคร่อมตลอดเวลา */
+  });
+
+  if(right)   return { ok:true, el:right };
+  if(flipped) return { ok:false, el:flipped,
+    why:'ไดโอดคร่อมขดลวดอยู่แล้ว แต่หันขั้วผิดด้าน — ตอนนี้มันนำกระแสคร่อมขดลวด' +
+        'ตลอดเวลา กลายเป็นลัดวงจร คลิกเลือกไดโอดแล้วกด R หมุนให้ขา − ' +
+        '(ฝั่งขีด) ไปอยู่ข้างเดียวกับขั้วบวกของมอเตอร์' };
+  return { ok:false,
+    why:'ยังไม่มีไดโอดคร่อมขาของมอเตอร์ — ไดโอดที่ต่ออนุกรมอยู่ในวงหลัก' +
+        'ไม่ได้ทำหน้าที่คายพลังงาน เพราะมันขาดไปพร้อมวงจรตอนสวิตช์เปิด ' +
+        'ต้องต่อสายเพิ่ม 2 เส้นคร่อมขามอเตอร์: ขา − ของไดโอดไปขั้วบวกของมอเตอร์ ' +
+        'และขา + ของไดโอดไปขั้วลบของมอเตอร์' };
+}
+
+/* ============================================================
+   3.5) ชี้จุดที่ยังต่อไม่ครบ "บนจอ" ไม่ใช่บอกเป็นข้อความเฉย ๆ
+
+   ข้อความอย่าง "ขาซ้ายของถ่านไฟฉาย AA ยังไม่ได้ต่อสาย (ยังมีอีก 5 ขาที่ลอยอยู่)"
+   ใช้ได้ตอนมีอุปกรณ์ 3-4 ชิ้น แต่พอผู้เล่นต่อวงจรใหญ่ ๆ ในโหมดอิสระ
+   เช่น ถ่าน 24 ก้อนกับหลอด 24 ดวง = เกือบร้อยขา ชื่อขาเดียวหาไม่เจอเลย
+   ต้องไล่ดูทีละชิ้นทั้งแผง
+
+   จึงทำเครื่องหมายลงบนตัวขาและตัวอุปกรณ์จริง ผู้เล่นจะเห็นทันทีว่าติดที่ไหน
+     .port-floating   ขาที่ยังไม่มีสายต่อเลย (กะพริบสีส้ม)
+     .item-island     อุปกรณ์ที่ลอยเป็นเกาะ ไม่เชื่อมกับแหล่งจ่าย
+     .item-shorted    อุปกรณ์ที่ถูกต่อคร่อมขาทั้งสองข้าง ไฟลัดผ่านไปหมด
+   ============================================================ */
+function clearCircuitProblems(){
+  document.querySelectorAll('.port.port-floating').forEach(function(p){
+    p.classList.remove('port-floating');
+  });
+  document.querySelectorAll('.ws-item.item-island,.ws-item.item-shorted').forEach(function(el){
+    el.classList.remove('item-island','item-shorted');
+  });
+}
+
+/* คืนจำนวนที่ทำเครื่องหมายไว้ {floating, islands, shorted} */
+function markCircuitProblems(an){
+  clearCircuitProblems();
+  if(!an) return {floating:0, islands:0, shorted:0};
+
+  an.floating.forEach(function(f){
+    if(f.port && f.port.classList) f.port.classList.add('port-floating');
+  });
+  an.islands.forEach(function(e){
+    if(e.item && e.item.el) e.item.el.classList.add('item-island');
+  });
+  an.shorted.forEach(function(e){
+    if(e.item && e.item.el) e.item.el.classList.add('item-shorted');
+  });
+
+  return { floating:an.floating.length, islands:an.islands.length, shorted:an.shorted.length };
+}
+
+/* ============================================================
    4) อธิบายวงจรที่ผู้เล่นต่อ ออกมาเป็นภาษาคน
    ============================================================ */
 function describeCircuit(an){

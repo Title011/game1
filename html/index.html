@@ -91,23 +91,54 @@
           <span class="hint-free" style="font-size:.75rem">เดินสายเชื่อมวงจร: ลาก (หรือแตะ) จากขาหนึ่งไปอีกขาหนึ่ง &nbsp;|&nbsp; คลิกที่สายเพื่อลบสายเส้นนั้น</span>
           <span class="hint-board" style="font-size:.75rem">ขาอุปกรณ์ที่อยู่ในรางเดียวกันจะต่อถึงกันเอง (รางเรืองแสง = เชื่อมแล้ว) &nbsp;|&nbsp; เดินสายเพิ่ม: ลาก/แตะจากขาหนึ่งไปอีกขาหนึ่ง</span>
           <span class="hint-board" style="font-size:.75rem">แถว A-E และ F-J แยกกันด้วยร่องกลาง &nbsp;·&nbsp; รางแดง (+) และรางน้ำเงิน (−) ต่อถึงกันตลอดแนว</span>
-          <span style="font-size:.72rem;opacity:.75">คีย์ลัด: R หมุน &nbsp;·&nbsp; S สับสวิตช์ &nbsp;·&nbsp; C ตรวจวงจร &nbsp;·&nbsp; M เครื่องวัด &nbsp;·&nbsp; H คู่มือ &nbsp;·&nbsp; Del ลบอุปกรณ์</span>
+          <span style="font-size:.75rem">เลือกหลายชิ้นพร้อมกัน: ลากกรอบคุมดำบนพื้นที่ว่าง (Shift ค้าง = เพิ่มเข้าชุดเดิม) แล้วกด R หมุนทั้งหมด หรือ Del ลบทั้งหมด</span>
+          <span style="font-size:.72rem;opacity:.75">คีย์ลัด: R หมุน &nbsp;·&nbsp; S สับสวิตช์ &nbsp;·&nbsp; C ตรวจวงจร &nbsp;·&nbsp; M เครื่องวัด &nbsp;·&nbsp; H คู่มือ &nbsp;·&nbsp; Del ลบ &nbsp;·&nbsp; Ctrl+A เลือกทั้งหมด &nbsp;·&nbsp; Ctrl+D คัดลอก</span>
         </div>
 
         <!-- แถบสถานะความปลอดภัย — ขึ้นเองเมื่อมีอุปกรณ์เริ่มร้อนหรือพัง -->
         <div id="hazard-bar" style="display:none;"></div>
+
+        <!-- ย้อนกลับ / ทำซ้ำ — ต้องมีปุ่มจริง ไม่ใช่มีแต่คีย์ลัด
+             เพราะบนมือถือไม่มีแป้นพิมพ์ และผู้เล่นมือถือคือกลุ่มที่กดพลาดบ่อยสุด
+
+             วางมุมซ้ายบนของพื้นที่ทำงาน: มุมขวาบนไม่ได้เพราะชนปุ่มลบ (x)
+             ของอุปกรณ์ที่วางไว้แถวนั้น · ขอบล่างก็ไม่ได้เพราะมีแถบคุมดำ
+             กับจอเครื่องวัดจองไว้แล้ว · ไม่ใส่ในแถบปุ่มคำสั่งด้านล่าง
+             เพราะบนจอ 400px ปุ่มสี่ตัวเดิมเต็มแถวพอดี เพิ่มอีกสองตัวจะตกบรรทัด
+             แล้วไปกินความสูงของพื้นที่ต่อวงจร (ดู js/history.js) -->
+        <div id="history-bar">
+          <button id="btn-undo" class="hist-btn" onclick="undoAction()" disabled>
+            <span class="hist-ico">&#x21B6;</span><span class="hist-label">ย้อน</span>
+          </button>
+          <button id="btn-redo" class="hist-btn" onclick="redoAction()" disabled>
+            <span class="hist-ico">&#x21B7;</span><span class="hist-label">ทำซ้ำ</span>
+          </button>
+        </div>
         <!-- Mobile floating toolbar -->
         <div id="mobile-toolbar" style="display:none;position:absolute;z-index:20;background:rgba(10,22,40,.95);border:1px solid var(--border2);border-radius:10px;padding:6px 8px;gap:8px;flex-direction:row;box-shadow:0 4px 20px rgba(0,0,0,.5);">
           <button onclick="G.selectedItemId&&rotateItem(G.selectedItemId)" style="background:var(--bg-card2);border:1px solid var(--border);color:var(--accent2);border-radius:8px;padding:8px 14px;font-size:.85rem;cursor:pointer;">&#x21BA; หมุน</button>
           <button onclick="var id=G.selectedItemId;if(id){deselectAll();removeWsItem(id);hideMobileToolbar();}" style="background:var(--danger);border:none;color:#fff;border-radius:8px;padding:8px 14px;font-size:.85rem;cursor:pointer;">&#x2715; ลบ</button>
           <button onclick="deselectAll();hideMobileToolbar();" style="background:var(--bg-card);border:1px solid var(--border);color:var(--text-dim);border-radius:8px;padding:8px 14px;font-size:.85rem;cursor:pointer;">ยกเลิก</button>
         </div>
+        <!-- กรอบคุมดำ — ลากบนพื้นที่ว่างเพื่อเลือกอุปกรณ์หลายชิ้นพร้อมกัน
+             (ดู startMarquee ใน js/workspace.js) -->
+        <div id="marquee" style="display:none;"></div>
+
+        <!-- แถบคำสั่งของกลุ่มที่เลือกไว้ — โผล่เองเมื่อเลือกตั้งแต่ 2 ชิ้นขึ้นไป
+             ใช้ได้ทั้งคอมและมือถือ (คอมกด R / Del ก็ได้ผลเดียวกัน) -->
+        <div id="multi-toolbar" style="display:none;">
+          <span id="multi-count">เลือกไว้ 0 ชิ้น</span>
+          <button class="mt-btn mt-rotate" onclick="rotateSelection()">&#x21BA; หมุนทั้งหมด <kbd>R</kbd></button>
+          <button class="mt-btn mt-del"    onclick="deleteSelection()">&#x2715; ลบทั้งหมด <kbd>Del</kbd></button>
+          <button class="mt-btn mt-cancel" onclick="deselectAll()">ยกเลิก</button>
+        </div>
+
         <svg id="wire-svg" xmlns="http://www.w3.org/2000/svg">
           <path id="wire-preview"/>
         </svg>
       </div>
       <div id="action-bar">
-        <button class="btn-action btn-clear" onclick="clearWorkspace()"><span id="ic-clear"></span> ล้างพื้นที่</button>
+        <button class="btn-action btn-clear" onclick="clearWorkspaceByUser()"><span id="ic-clear"></span> ล้างพื้นที่</button>
         <button class="btn-action" style="background:var(--bg-card);color:var(--accent2);border:1px solid var(--border);" onclick="G.selectedItemId?rotateItem(G.selectedItemId):showToast('คลิกเลือกอุปกรณ์ก่อน','error')"><span id="ic-rotate"></span> หมุน <small>(R)</small></button>
         <button class="btn-action" id="btn-probe" style="background:linear-gradient(135deg,#059669,#047857);color:#fff;" onclick="toggleProbeMode()"><span id="ic-probe"></span> เครื่องวัด</button>
         <button class="btn-action btn-check" onclick="checkCircuit()"><span id="ic-check"></span> ตรวจวงจร</button>
@@ -356,6 +387,10 @@
 <script src="js/inventory.js"></script>
 <script src="js/workspace.js"></script>
 <script src="js/wires.js"></script>
+<!-- ย้อนกลับ/ทำซ้ำ — ต้องอยู่หลัง workspace.js กับ wires.js
+     เพราะ restoreCircuit() เรียก addWsItem / addWire / clearWorkspace ของสองไฟล์นั้น
+     (เรียกตอนรันไทม์ ลำดับจึงไม่บังคับ แต่วางไว้ให้อ่านง่ายว่าพึ่งใคร) -->
+<script src="js/history.js"></script>
 <script src="js/solver.js"></script>
 <script src="js/breadboard.js"></script>
 <script src="js/probe.js"></script>

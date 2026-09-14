@@ -197,15 +197,23 @@ var DEVICE_SYMBOLS_SVG = `
 
   <!-- หลอดไฟ -->
 <symbol id="dev-bulb" viewBox="0 0 52 60">
-  <!-- outer glow ring (powered) -->
-  <circle cx="26" cy="20" r="18" fill="rgba(255,200,0,0.06)" class="bulb-glass bulb-halo"/>
-  <!-- glass globe -->
-  <circle cx="26" cy="20" r="15" fill="#fffde7" stroke="#ddc060" stroke-width="1.5" class="bulb-glass"/>
-  <!-- glass tint -->
-  <circle cx="26" cy="20" r="14" fill="rgba(255,245,150,0.3)" class="bulb-glass"/>
-  <!-- inner glow when powered -->
-  <circle cx="26" cy="20" r="10" fill="rgba(255,180,0,0.0)" class="bulb-glass bulb-core"/>
-  <!-- shine spots -->
+  <!-- *** รูปนี้วาดเป็น "หลอดที่ดับอยู่" เป็นค่าตั้งต้น ***
+       ของเดิมวาดแก้วสีครีมสว่าง (#fffde7) ทับด้วยฝ้าเหลือง และไส้สีส้มสด
+       หลอดจึงดูติดอยู่ตลอดเวลาแม้ยังไม่มีไฟเข้า และทุกดวงดูเหมือนกันหมด
+       แยกไม่ออกว่าดวงไหนได้ไฟจริง
+
+       ตอนนี้ชั้นที่ "อุ่น" ทุกชั้นคุมความทึบด้วย --glow ของอุปกรณ์ชิ้นนั้น
+       (ไม่ผูกกับคลาส .powered เพราะคลาสนั้นถูกใส่ให้ทุกชิ้นบนแผงตอนจ่ายไฟ
+        หลอดที่ยังไม่ได้ต่อเข้าวงจรก็จะติดตามไปด้วย ซึ่งไม่ควรเป็นอย่างนั้น) -->
+  <!-- วงแสงฟุ้งรอบหลอด — โปร่งใสสนิทตอนดับ -->
+  <circle cx="26" cy="20" r="18" fill="#ffcd28" class="bulb-halo"/>
+  <!-- แก้วตอนเย็น: ขุ่นอมเทา เหมือนหลอดฝ้าที่ยังไม่ติด -->
+  <circle cx="26" cy="20" r="15" fill="#d7d9de" stroke="#9aa1ac" stroke-width="1.5" class="bulb-shell"/>
+  <!-- แก้วตอนร้อน: ซ้อนทับให้อมเหลืองขึ้นตามกำลังไฟ -->
+  <circle cx="26" cy="20" r="14" fill="#fff3ae" class="bulb-warm"/>
+  <!-- ไฟเรืองข้างในกระเปาะ -->
+  <circle cx="26" cy="20" r="10" fill="#ffb400" class="bulb-core"/>
+  <!-- จุดสะท้อนแสงบนผิวแก้ว (มีทั้งตอนดับและตอนติด) -->
   <ellipse cx="19" cy="12" rx="5" ry="3.5" fill="rgba(255,255,255,0.45)" class="bulb-glass"/>
   <ellipse cx="32" cy="25" rx="2" ry="3"   fill="rgba(255,255,255,0.2)"  class="bulb-glass"/>
   <!-- filament support wires -->
@@ -213,9 +221,14 @@ var DEVICE_SYMBOLS_SVG = `
   <line x1="30" y1="33" x2="30" y2="24" stroke="#bbb" stroke-width="1"/>
   <!-- filament anchor bars -->
   <line x1="21" y1="27" x2="31" y2="27" stroke="#aaa" stroke-width=".8"/>
-  <!-- tungsten filament coil -->
+  <!-- ไส้ทังสเตน วาดซ้อนสองชั้น: ชั้นเย็นเป็นเทาเข้ม (สีจริงของทังสเตนที่ไม่ร้อน)
+       ชั้นร้อนเป็นสีส้มทับอยู่บน คุมความทึบด้วย --glow
+       ไล่จาก "เทาดับสนิท" → "ส้มแดง" → "ขาวร้อน" ได้ต่อเนื่องด้วย opacity
+       ซึ่งเปลี่ยนตามตัวแปร CSS ได้ ต่างจากการไล่สี stroke ที่ทำไม่ได้ -->
+  <path d="M21,25 Q23,19 26,25 Q29,19 31,25" fill="none" stroke="#6f7278" stroke-width="2.2"
+        stroke-linecap="round" class="bulb-cold"/>
   <path d="M21,25 Q23,19 26,25 Q29,19 31,25" fill="none" stroke="#ff8800" stroke-width="2.2"
-        stroke-linecap="round" class="bulb-glass bulb-filament"/>
+        stroke-linecap="round" class="bulb-filament"/>
   <!-- glass neck -->
   <path d="M19,34 Q18,36 18,38 L34,38 Q34,36 33,34 Z" fill="#e8d880" stroke="#c8b850" stroke-width=".8"/>
   <!-- brass base sections -->

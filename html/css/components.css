@@ -26,10 +26,32 @@
   border-color:var(--accent2);
   box-shadow:0 0 0 2px rgba(255,215,0,.3), 0 0 18px rgba(255,215,0,.45);
 }
-/* ป้ายบอกใบ้ "R หมุน" ใต้อุปกรณ์ที่เลือกอยู่ (ต่ำกว่าชื่อ + จุด port-bottom) */
-.ws-item.selected::after{
+/* คุมดำหลายชิ้น = ซ่อนป้ายใบ้ "R หมุน" ที่ลอยใต้ทุกกล่อง
+   เลือกไว้ 8 ชิ้นแล้วมีป้ายเดียวกัน 8 อันซ้อนกันคือรกจนอ่านชื่ออุปกรณ์ไม่ออก
+   คำสั่งย้ายไปอยู่ที่แถบรวม #multi-toolbar ซึ่งบอกจำนวนที่เลือกไว้ด้วย */
+body.multi-select .ws-item.selected::after{content:none;}
+
+/* ============================================================
+   ป้ายบอกใบ้ "R หมุน" ใต้อุปกรณ์ที่เลือกอยู่ (ต่ำกว่าชื่อ + จุด port-bottom)
+
+   *** อิลิเมนต์หนึ่งตัวมี ::after ได้แค่อันเดียว ***
+   ป้ายสถานะของอุปกรณ์ก็ใช้ ::after ตัวเดียวกันนี้:
+     .fuse-blown::after  'ฟิวส์ขาด'  top:-11px
+     .failed::after      'เสียหาย'   top:-11px
+     .risk-warn::after   'เสี่ยง'     top:-11px
+   พอกดหรือลากอุปกรณ์ที่พังอยู่ คลาส .selected เข้ามาด้วย ::after จึงได้
+   ทั้ง top:-11px จากป้ายสถานะ และ bottom:-55px จากป้ายนี้พร้อมกัน
+   absolute + มีทั้ง top และ bottom + height:auto = "ยืดเต็มช่วง"
+   ป้ายเล็ก ๆ จึงกลายเป็นแท่งสีน้ำตาลสูง 11+65+55 = 131px
+   บังตัวอุปกรณ์ ขา และป้ายชื่อทั้งหมด (เห็นเฉพาะตอนกด/ลาก จึงหาต้นเหตุยาก)
+
+   แก้โดยไม่ให้สองหน้าที่มาใช้ ::after พร้อมกันเลย — อุปกรณ์ที่มีป้ายสถานะ
+   จะไม่แสดงป้ายใบ้ เพราะสถานะ "พังแล้ว/เสี่ยง" สำคัญกว่าคำใบ้ปุ่มหมุน
+   และเติม top:auto ไว้เป็นกันชนชั้นที่สองด้วย
+   ============================================================ */
+.ws-item.selected:not(.failed):not(.fuse-blown):not(.risk-warn)::after{
   content:'R หมุน';
-  position:absolute; bottom:-40px; left:50%; transform:translateX(-50%);
+  position:absolute; top:auto; bottom:-40px; left:50%; transform:translateX(-50%);
   font-size:.58rem; color:var(--accent2); background:var(--bg-dark);
   border:1px solid var(--accent2); border-radius:6px;
   padding:1px 7px; white-space:nowrap; pointer-events:none;
@@ -101,6 +123,55 @@
   animation:tap-pulse .8s ease-in-out infinite;
 }
 
+/* ============================================================
+   "กำลังกด/ลากอันไหนอยู่" — สัญญาณตอบกลับทันทีที่นิ้วหรือเมาส์ลง
+
+   ปัญหาเดิม: จุดขั้วกว้างแค่ 12-16px และมีเป้ารับสัมผัสใสครอบอีก 30px
+   กดลงไปแล้วไม่มีอะไรเปลี่ยนเลยจนกว่าจะปล่อยมือ ผู้เล่นจึงไม่รู้ว่า
+   โดนขาที่ต้องการหรือโดนขาข้างเคียง ยิ่งบนมือถือที่นิ้วบังจุดอยู่พอดี
+   ยิ่งไม่เห็นอะไรเลย ต้องปล่อยมือแล้วมาลุ้นว่าสายไปโผล่ที่ไหน
+
+   ทำ 3 ชั้น:
+     .pressing  แตะลงอยู่ตอนนี้ — วงขาวรอบนอก โตขึ้นทันที
+     .wire-from ขาต้นทางของสายที่กำลังลาก — วงฟ้าเต้น ค้างไว้ตลอดการลาก
+     ::after    ป้ายชื่อขาลอยข้าง ๆ บอกว่ากำลังจับ "ขาบวกของถ่าน" หรืออะไร
+   ============================================================ */
+.port.pressing{
+  box-shadow:0 0 0 4px rgba(255,255,255,.85), 0 0 16px rgba(255,255,255,.6)!important;
+  z-index:6;
+}
+.port.wire-from{
+  background:var(--accent)!important;
+  box-shadow:0 0 0 3px rgba(0,212,255,.55), 0 0 18px rgba(0,212,255,.9)!important;
+  animation:tap-pulse .7s ease-in-out infinite;
+  z-index:6;
+}
+/* ป้ายชื่อขา — ใช้ title ที่ JS ใส่ไว้แล้ว ("ขั้วบวก (+)" ฯลฯ)
+   ลอยเหนือจุดเล็กน้อย จะได้ไม่ถูกนิ้วบนมือถือบัง */
+.port.wire-from::after,
+.port.tap-selected::after{
+  content:attr(data-label);
+  position:absolute;bottom:calc(100% + 8px);left:50%;transform:translateX(-50%);
+  background:var(--bg-dark);color:var(--accent);
+  border:1px solid var(--accent);border-radius:6px;
+  padding:1px 6px;font-size:.55rem;font-weight:800;line-height:1.6;
+  white-space:nowrap;pointer-events:none;z-index:8;
+}
+.port.tap-selected::after{color:var(--accent2);border-color:var(--accent2);}
+
+/* ป้ายบนตัวอุปกรณ์ตอนถูกกด — ยุบลงเล็กน้อยเหมือนปุ่มจริง
+   ใช้คลาสจาก JS ไม่ใช่ :active เพราะบนมือถือ :active ไม่น่าเชื่อถือ
+   (บางเบราว์เซอร์ไม่ติดเลย บางตัวติดค้างหลังปล่อยนิ้ว) */
+.ws-switch-state.pressing,
+.ws-ohm-state.pressing,
+.ws-item-dup.pressing{
+  filter:brightness(1.35);
+  box-shadow:0 0 0 2px rgba(255,255,255,.75), 0 1px 4px rgba(0,0,0,.5);
+}
+.ws-switch-state:active,
+.ws-ohm-state:active,
+.ws-item-dup:active{filter:brightness(1.35);}
+
 /* จุดขั้วที่วางตามตำแหน่งขาจริงของอุปกรณ์ (ดู PORT_ANCHORS ใน js/devices.js)
    ตำแหน่ง left/top มาเป็นพิกเซลจาก JS แบบ inline style ส่วน right/bottom
    ถูกล้างเป็น auto ไปแล้วที่นั่น ที่นี่จึงเหลือแค่เรื่อง transform อย่างเดียว
@@ -119,9 +190,11 @@
 .ws-item.has-port-bottom .ws-item-name{top:calc(100% + 22px);}
 /* ป้ายชื่อเลื่อนลงไปแล้ว ป้ายใบ้ "R หมุน" ที่อยู่ใต้ชื่อก็ต้องเลื่อนตาม
    ไม่งั้นสองป้ายทับกันจนอ่านชื่ออุปกรณ์ไม่ออกตอนเลือกอยู่ */
-.ws-item.has-port-bottom.selected::after{bottom:-55px;}
+.ws-item.has-port-bottom.selected:not(.failed):not(.fuse-blown):not(.risk-warn)::after{bottom:-55px;}
+/* ป้ายสถานะต้องตรึง bottom:auto ไว้เสมอ — ถ้าหลุดไปมี bottom ด้วย
+   ป้ายจะยืดเป็นแท่งสูงคลุมอุปกรณ์ (ดูคำอธิบายที่ .ws-item.selected::after) */
 .ws-item.has-port-top.failed::after,
-.ws-item.has-port-top.fuse-blown::after{top:-24px;}
+.ws-item.has-port-top.fuse-blown::after{top:-24px;bottom:auto;}
 @keyframes tap-pulse{0%,100%{box-shadow:0 0 0 3px rgba(255,215,0,.4),0 0 14px rgba(255,215,0,.8)}50%{box-shadow:0 0 0 5px rgba(255,215,0,.6),0 0 20px rgba(255,215,0,1)}}
 
 /* ขั้วบวก/ลบ — สีแดง(+) น้ำเงิน(−) พร้อมป้ายกำกับ +/− ที่อ่านออกชัด
