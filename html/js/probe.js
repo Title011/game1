@@ -80,7 +80,23 @@ function stopCurrentFlow(){
 function powerStep(dt){
   var sol = solveCircuit(G.wsItems, G.wires, {dt:dt, capV:PowerSim.capV});
   PowerSim.sol = sol;
-  if(!sol.ok) return;
+
+  /* วงจรเปิด — สับสวิตช์ OFF, ฟิวส์ขาด, หรือลบสายทิ้งกลางทาง
+     โหนดหลุดจากกัน เมทริกซ์เอกฐาน ตัวแก้สมการจึงคืน ok=false
+
+     *** ของเดิม return ทิ้งตรงนี้ ซึ่งเป็นต้นเหตุของบั๊ก ***
+     ทุกอย่างค้างอยู่ที่ค่าก่อนตัดไฟ: ความร้อนไม่ลด หลอดยังเรืองแสงค้าง
+     จุดไฟยังวิ่งตามสาย และแถบเตือนค้างนับถอยหลังอยู่กลางทาง
+     สับสวิตช์กลับมา ON ความร้อนก็เดินต่อจากเดิมแล้วไหม้อยู่ดี
+
+     ตัดไฟแล้วต้อง "ไม่มีกระแสที่ไหนเลย" จริง ๆ ทั้งการเย็นลงและภาพ */
+  if(!sol.ok){
+    if(dt > 0 && typeof hazardCool === 'function') hazardCool(dt);
+    clearSimVisuals();
+    if(G.probeMode) refreshProbeReading();
+    return;
+  }
+
   PowerSim.capV = sol.capV;
 
   if(dt > 0 && typeof hazardStep === 'function'){
@@ -90,7 +106,14 @@ function powerStep(dt){
   }
 
   applySimVisuals(sol);
-  updateFlowSpeed(sol);
+
+  /* ไฟกลับมาหลังวงจรเคยเปิด (สับสวิตช์ ON อีกครั้ง) — จุดไฟถูกลบไปตอนตัดไฟ
+     updateFlowSpeed() อัปเดตได้เฉพาะจุดที่มีอยู่แล้ว (มันคืนค่าทันทีถ้า
+     G.flowDots ว่าง) ถ้าไม่สร้างชุดใหม่ที่นี่ สับสวิตช์กลับมาแล้วไฟจะไหล
+     และหลอดจะติด แต่ไม่มีจุดวิ่งตามสายให้เห็นอีกเลยจนกว่าจะกดตรวจวงจรใหม่ */
+  if(PowerSim.on && (!G.flowDots || !G.flowDots.length)) buildFlowDots();
+  else updateFlowSpeed(sol);
+
   if(G.probeMode) refreshProbeReading();
 }
 
@@ -109,6 +132,30 @@ function onLiveIncident(events){
    ตั้งไว้ที่กล่อง .ws-item แล้วชิ้นส่วนในรูป SVG สืบทอดค่าลงไปใช้
    (ดู css/circuit.css หมวด DEVICE ANIMATIONS)
    ============================================================ */
+/* ดับภาพทั้งหมดให้เหมือน "ไม่มีกระแสที่ไหนเลย" — ใช้ตอนวงจรเปิด
+
+   ต่างจาก stopCurrentFlow() ตรงที่ "ไม่หยุดตัวจับเวลา" ของการจำลอง
+   เพราะการจำลองยังต้องเดินต่อ (ความร้อนต้องเย็นลง และถ้าสับสวิตช์
+   กลับมา ON วงจรต้องกลับมาทำงานเองทันทีโดยไม่ต้องกดตรวจวงจรใหม่)
+
+   ล้าง _lastGlow/_lastSpin ด้วย ไม่งั้นตัวกันเขียนซ้ำจะมองว่า "ค่าไม่เปลี่ยน"
+   ตอนไฟกลับมาแล้วได้ค่าเท่าเดิมพอดี แล้วไม่เขียนกลับ = อุปกรณ์ไม่ติด */
+function clearSimVisuals(){
+  G.wsItems.forEach(function(it){
+    if(!it.el) return;
+    it.el.style.setProperty('--glow', '0');
+    it.el.classList.remove('lit');
+    it._lastGlow = null;
+    it._lastSpin = null;
+  });
+  /* จุดไฟวิ่งตามสายต้องหายไปด้วย ไม่มีกระแสแล้วยังมีจุดวิ่งอยู่ไม่ได้ */
+  if(G.flowDots && G.flowDots.length){
+    G.flowDots.forEach(function(d){ d.remove(); });
+    G.flowDots = [];
+  }
+  if(typeof PowerSim !== 'undefined') PowerSim.dotDur = {};
+}
+
 function applySimVisuals(sol){
   G.wsItems.forEach(function(it){
     var el = it.el;
@@ -381,9 +428,10 @@ function refreshProbeReading(){
     var r = sol.byItem[it.id];
     var dev = DEVICES[it.deviceId];
     label = dev.name;
-    /* ตัวต้านทานตั้งค่าเองได้ในโหมดอิสระ ต้องบอกด้วยว่าที่วัดอยู่คือค่าไหน
-       ไม่งั้นวางหลายชิ้นคนละค่าแล้วอ่านตัวเลขไม่รู้ว่าของชิ้นไหน */
-    if(it.ohms != null) label += ' ' + fmtOhm(it.ohms);
+    /* บอกค่าจริงของชิ้นที่วัดอยู่ด้วย — ตัวต้านทานตั้งค่าเองได้ในโหมดอิสระ
+       และตัวเก็บประจุมีค่าความจุที่ต้องรู้เวลาคิดค่าคงตัวเวลา
+       ไม่งั้นวางหลายชิ้นแล้วอ่านตัวเลขไม่รู้ว่าของชิ้นไหน (ดู deviceSpecLabel) */
+    label += deviceSpecLabel(it);
     if(r){
       V = r.V; I = r.I; P = r.P;
       var sp = r.spec;
@@ -450,7 +498,7 @@ function buildCircuitReport(){
       var pct = Math.round(deviceIntensity(r) * 100);
       extra = '<span class="rep-bar"><i style="width:' + pct + '%"></i></span>';
     }
-    rows += '<tr><td>' + dev.name + (it.ohms != null ? ' ' + fmtOhm(it.ohms) : '') + '</td>'
+    rows += '<tr><td>' + dev.name + deviceSpecLabel(it) + '</td>'
           + '<td>' + fmtVolt(r.V) + '</td>'
           + '<td>' + fmtCurrent(r.I) + '</td>'
           + '<td>' + fmtPower(r.P) + '</td>'

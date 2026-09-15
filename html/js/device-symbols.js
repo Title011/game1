@@ -377,7 +377,13 @@ var DEVICE_SYMBOLS_SVG = `
   <!-- body shine -->
   <rect x="18" y="10" width="4" height="22" rx="2" fill="rgba(255,255,255,0.12)"/>
   <!-- capacitance label -->
-  <text x="24" y="28" text-anchor="middle" fill="#88ccff" font-size="5.5" transform="rotate(90,24,28)">100µF 16V</text>
+  <!-- ค่าบนตัวถังต้องตรงกับ ESPEC.capacitor เป๊ะ ๆ
+       c = 0.010 F = 10,000 µF · vmax = 16 V
+       ของเดิมพิมพ์ "100µF" ซึ่งผิดไป 100 เท่า (บั๊กชนิดเดียวกับที่ตัวต้านทาน
+       เคยวาดแถบสี 1kΩ ไว้ทั้งที่ค่าจริงเป็น 220Ω)
+       ค่านี้สำคัญ เพราะ R 220Ω × C 0.01F = ค่าคงตัวเวลา 2.2 วินาที
+       ซึ่งเป็นตัวกำหนดว่าไฟหน่วงเวลาในด่าน 18 หรี่ดับเร็วแค่ไหน -->
+  <text x="24" y="28" text-anchor="middle" fill="#88ccff" font-size="5" transform="rotate(90,24,28)">10000µF 16V</text>
   <!-- plus symbol -->
   <text x="28" y="30" text-anchor="middle" fill="#ffd700" font-size="10" font-weight="bold">+</text>
   <!-- leads -->

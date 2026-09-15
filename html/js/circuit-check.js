@@ -39,10 +39,13 @@ function isClosedCircuit(items, wires, requiredDeviceIds){
   if(an.floating.length){
     var f = an.floating[0];
     var n = an.floating.length;
+    /* บนแผงเบรดบอร์ดต้องอธิบายให้ลึกกว่า "ยังไม่ได้ต่อสาย" เพราะขาลงรูแล้ว
+       แต่ถ้าอยู่ในรางคนเดียวก็ยังไม่ถึงใคร (ดู bbPinDiagnosis ใน js/breadboard.js) */
+    var why = (typeof bbPinDiagnosis === 'function') ? bbPinDiagnosis(f.port) : '';
+    var name = termName(net, f.el.item, f.port);
     return { ok:false, msg: (n > 1
-      ? ('มีขาที่ยังไม่ได้ต่อสาย ' + n + ' ขา — ดูขาที่กะพริบสีส้มบนแผง (เช่น ' +
-         termName(net, f.el.item, f.port) + ')')
-      : (termName(net, f.el.item, f.port) + ' ยังไม่ได้ต่อสาย — ขานั้นกะพริบสีส้มอยู่')) };
+      ? ('ยังมีขาที่ไม่ถึงใคร ' + n + ' ขา (กะพริบสีส้มบนแผง) — เช่น ' + name + why)
+      : (name + (why || ' ยังไม่ได้ต่อสาย') + ' — ขานั้นกะพริบสีส้มอยู่')) };
   }
 
   /* 2) อุปกรณ์ที่ถูกต่อสายคร่อมตัวเอง — ความผิดพลาดคลาสสิกที่ระบบเดิมจับไม่ได้

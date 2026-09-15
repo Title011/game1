@@ -134,8 +134,10 @@ function labPreview(){
   if(!hasClosedLoop(G.wsItems, G.wires)){
     var m = markCircuitProblems(an);
     if(m.floating){
-      chip('hz-info', 'มีขาที่ยังไม่ได้ต่อ ' + m.floating + ' ขา (กะพริบสีส้ม) — เช่น ' +
-           termName(an.net, an.floating[0].el.item, an.floating[0].port));
+      var f0 = an.floating[0];
+      chip('hz-info', 'ยังมีขาที่ไม่ถึงใคร ' + m.floating + ' ขา (กะพริบสีส้ม) — เช่น ' +
+           termName(an.net, f0.el.item, f0.port) +
+           (typeof bbPinDiagnosis === 'function' ? bbPinDiagnosis(f0.port) : ''));
     } else if(m.islands){
       chip('hz-info', 'มีอุปกรณ์ที่ยังไม่เชื่อมเข้าวงจร ' + m.islands +
            ' ชิ้น (ขอบกะพริบสีส้ม) — เช่น ' + DEVICES[an.islands[0].deviceId].name);
@@ -209,8 +211,18 @@ function sandboxCheck(){
   var fault = analyzeCircuitFaults(G.wsItems, G.wires);
   if(!fault.ok){
     playHazardSequence(fault, function(){
-      showToast(fault.msg,'error');
-      showIncidentModal(fault.incidents.concat(fault.warnings));
+      /* รายงาน "สิ่งที่เกิดขึ้นจริง" ไม่ใช่คำทำนายตอนกดตรวจวงจร
+         ผู้เล่นอาจสับสวิตช์ตัดไฟทันระหว่างฉาก แล้วอุปกรณ์รอดมาได้
+         HAZARD.incidents คือรายการที่ applyDamage() กรองแล้ว (ดู js/damage.js)
+         ถ้าใช้ fault.incidents ตรง ๆ กล่องรายงานจะบอกว่าหลอดไหม้
+         ทั้งที่บนแผงมันยังดีอยู่ — ขัดกันเองในหน้าจอเดียว */
+      var real = (HAZARD.incidents || []).concat(fault.warnings || []);
+      if(real.length){
+        showToast((HAZARD.incidents[0] || fault.warnings[0]).titleTh, 'error');
+        showIncidentModal(real);
+      } else {
+        showToast('ตัดไฟทันก่อนอะไรจะพัง — ลองปรับวงจรแล้วจ่ายไฟใหม่ได้เลย','success');
+      }
       scheduleLabPreview();
     });
     return;

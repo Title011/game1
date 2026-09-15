@@ -296,6 +296,8 @@ function clearWorkspace(silent){
   if(typeof setHazardBar === 'function') setHazardBar('');
   hideMobileToolbar();   /* ปุ่มลอยของอุปกรณ์ที่กำลังจะหายไป ต้องหายตาม */
   if(typeof clearCircuitProblems === 'function') clearCircuitProblems();
+  /* สายหายไปหมดแล้ว จุดยึดบนรูเบรดบอร์ดก็ไม่มีสายเสียบอยู่อีก */
+  if(typeof bbClearAnchors === 'function') bbClearAnchors();
   G.wsItems=[]; G.wires=[]; G.wsCounter=0; G.wireCounter=0;
   G.selectedItemId=null; G.selectedIds=[];
   document.body.classList.remove('multi-select');
@@ -876,6 +878,22 @@ function startMarquee(e){
   if(G.tapWireFrom || G.drawingFrom) return;   /* กำลังค้างต่อสายอยู่ */
   if(e.target && e.target.closest && e.target.closest(MARQUEE_SKIP)) return;
 
+  /* กดลงตรง "รูเบรดบอร์ด" พอดี = เริ่มเสียบสายจากรูนั้น ไม่ใช่ลากกรอบคุมดำ
+
+     แผงเบรดบอร์ด (#bb-layer) เป็น pointer-events:none อีเวนต์จึงมาถึง
+     #workspace ตรงนี้เสมอ ต้องแปลงพิกัดเป็นรูที่ใกล้ที่สุดเอง
+     กดห่างจากรู = ลากกรอบตามปกติ กฎจึงเรียนรู้ได้ง่าย: ตรงรู=สาย, นอกรู=คุมดำ */
+  if(typeof bbAnchorAtClient === 'function'){
+    var pt = e.touches ? e.touches[0] : e;
+    var anchor = bbAnchorAtClient(pt.clientX, pt.clientY);
+    if(anchor){
+      if(e.cancelable) e.preventDefault();
+      anchor.classList.add('pressing');
+      beginWireFrom(anchor, e.type === 'touchstart');
+      return;
+    }
+  }
+
   var wsEl = document.getElementById('workspace');
   var box  = document.getElementById('marquee');
   if(!wsEl || !box) return;
@@ -906,6 +924,14 @@ function startMarquee(e){
     box.style.display = 'none';
 
     if(!moved){ setSelection(addTo); return; }   /* คลิกพื้นว่าง = เลิกเลือก */
+
+    /* บอกตัวจัดการ click ของ #workspace ว่า "อีเวนต์ถัดไปมาจากการลากกรอบ"
+       ไม่ใช่การคลิกพื้นว่าง — ไม่งั้นมันจะ deselectAll() ล้างสิ่งที่เพิ่งเลือก
+       ทิ้งทันที (ดูคำอธิบายเต็มที่ตัวจัดการนั้นใน js/game.js)
+       ธงถูกล้างโดยตัวจัดการ click เอง และมี setTimeout กันค้างเผื่อ
+       เบราว์เซอร์ไม่ยิง click ตามมา (เช่นลากออกไปปล่อยนอกพื้นที่ทำงาน) */
+    G._marqueeDidSelect = true;
+    setTimeout(function(){ G._marqueeDidSelect = false; }, 0);
 
     var p = marqueeXY(ev, wsRect);
     var x1 = Math.min(p.x, p0.x), x2 = Math.max(p.x, p0.x);
