@@ -298,7 +298,17 @@ function checkCircuit(){
     /* จ่ายไฟจริงให้ดูก่อน แล้วปล่อยให้มันค่อย ๆ ร้อนจนพังต่อหน้า
        ค่อยสรุปเป็นรายงานเหตุการณ์ — ผู้เรียนจะได้เห็น "กระบวนการ"
        ไม่ใช่แค่ผลลัพธ์ว่าผิด */
-    playHazardSequence(fault, function(){
+    playHazardSequence(fault, function(res){
+      /* ตัดไฟทันก่อนอะไรจะพัง = ไม่ถือว่าวงจรพัง จึงไม่หักชีวิต
+
+         คำทำนายบอกว่าจะไหม้ แต่ผู้เล่นสับสวิตช์ OFF ทันกลางฉาก
+         ของจริงจึงไม่มีอะไรเสียหายเลย (applyDamage กรองให้แล้ว)
+         หักชีวิตพร้อมขึ้นกล่อง "วงจรพัง" ตรงนี้คือลงโทษคนที่แก้ทัน
+         ซึ่งขัดกับบทเรียนทั้งหมดที่ด่านพวกนี้พยายามสอน */
+      if(res && !res.committed){
+        showToast('ตัดไฟทันก่อนอะไรจะพัง — แก้วงจรแล้วกดตรวจอีกครั้งได้เลย','success');
+        return;
+      }
       var bad = { ok:false, msg:fault.msg };
       if(G.endless){ endlessResult(bad, elapsed); return; }
       G.lives--;
@@ -399,8 +409,11 @@ function playHazardSequence(fault, done){
     PowerSim.onIncident = null;
     G.hazardPlaying = false;
     document.body.classList.remove('hazard-live');
-    applyDamage(fault);
-    if(typeof done === 'function') done();
+    /* ส่งผลจริงต่อให้ผู้เรียก — applyDamage() กรองแล้วว่าอะไรพังจริง
+       ผู้เล่นอาจสับสวิตช์ตัดไฟทันกลางฉาก แล้วไม่มีอะไรพังเลย
+       ผู้เรียกต้องรู้ เพื่อไม่ตัดสินจากคำทำนายที่ไม่เป็นจริงแล้ว */
+    var res = applyDamage(fault);
+    if(typeof done === 'function') done(res);
   }, Math.round(dur * 1000));
 }
 
@@ -877,7 +890,19 @@ document.addEventListener('DOMContentLoaded', function(){
 
   var ws = document.getElementById('workspace');
   if(ws){
+    /* คลิกพื้นว่าง = เลิกเลือก
+
+       *** ต้องข้ามถ้าเพิ่งลากกรอบคุมดำจบ ***
+       การลากกรอบคือ mousedown → mousemove → mouseup บน #workspace ตัวเดียวกัน
+       เบราว์เซอร์จึงยิง click ตามมาอีกหนึ่งอีเวนต์เสมอ ตัวจัดการนี้เห็น
+       e.target.id === 'workspace' แล้ว deselectAll() ทิ้งทันที
+       = คุมดำเลือกของได้จริง แต่ถูกล้างในเสี้ยววินาทีถัดมา
+
+       ที่ผู้เล่นเห็นคือ "คุมดำไม่ค่อยติด" — ติดเฉพาะตอนที่ปล่อยเมาส์ลงบน
+       ตัวอุปกรณ์พอดี (target ไม่ใช่ #workspace ตัวจัดการนี้จึงไม่ทำงาน)
+       จึงดูเหมือนติดบ้างไม่ติดบ้าง ทั้งที่ระบบเลือกทำงานถูกทุกครั้ง */
     ws.addEventListener('click', function(e){
+      if(G._marqueeDidSelect){ G._marqueeDidSelect = false; return; }
       if(e.target.id==='workspace'||e.target.id==='workspace-hint'||e.target.tagName==='svg'){
         deselectAll();
       }

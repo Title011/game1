@@ -178,6 +178,7 @@ function bbDestroy(){
    bbRefresh() ช่วยไม่ได้เพราะมันคืนค่าทันทีเมื่อ BB.on เป็นเท็จ */
 function bbTurnOff(){
   bbClearLinks();
+  bbClearAnchors();   /* ไม่มีแผง = ไม่มีรู จุดยึดต้องหายไปพร้อมกัน */
   bbDestroy();
   BB.on = false;
   BB.liveG = null;
@@ -451,6 +452,42 @@ function bbStripName(hole){
 }
 
 /* ============================================================
+   วินิจฉัยขาหนึ่งขาบนแผง — "ทำไมขานี้ยังไม่ถึงใคร"
+
+   บนแผงเบรดบอร์ด คำว่า "ขายังไม่ได้ต่อสาย" ทำให้ผู้เล่นงงมาก
+   เพราะเขาเสียบขาลงรูแล้วเห็น ๆ อยู่ ปัญหาจริงมีสองแบบซึ่งแก้ต่างกันสุดขั้ว:
+
+     ก. ขาไม่ได้ลงรูเลย (ลอยอยู่บนพลาสติกระหว่างรู)  → ต้องเลื่อนอุปกรณ์
+     ข. ขาลงรูแล้ว แต่ "อยู่ในรางคนเดียว"            → ต้องเอาอะไรมาต่อร่วมราง
+
+   แบบ ข. คือกรณีที่คนพลาดบ่อยสุด และข้อความเดิมไม่ได้บอกเลย
+   ผู้เล่นจึงไล่เลื่อนอุปกรณ์ไปมาทั้งที่มันเสียบถูกอยู่แล้ว
+   ============================================================ */
+function bbPinDiagnosis(port){
+  if(!BB.on || !port) return '';
+  var h = BB.portHole && BB.portHole.get(port);
+  if(!h) return ' — ขานี้ยังไม่ได้ลงรู (ค้างอยู่บนพลาสติกระหว่างรู) เลื่อนอุปกรณ์ให้ขาตรงรู';
+
+  /* มีอะไรอยู่รางเดียวกันอีกไหม (ไม่นับตัวมันเอง) */
+  var mates = [];
+  BB.portStrip.forEach(function(strip, p){
+    if(p === port || strip !== h.strip) return;
+    if(p.classList && p.classList.contains('bb-anchor')){ mates.push('สายที่เสียบรู'); return; }
+    var id = p.dataset.itemId;
+    var it = null;
+    G.wsItems.forEach(function(x){ if(x.id === id) it = x; });
+    if(it) mates.push(DEVICES[it.deviceId].name);
+  });
+
+  if(!mates.length){
+    return ' — เสียบอยู่' + bbStripName(h) + ' แต่ในรางนั้นไม่มีอะไรอยู่ร่วมด้วยเลย ' +
+           'ขาจึงไม่ถึงใคร · เอาขาของอุปกรณ์ตัวถัดไปมาเสียบรางเดียวกัน ' +
+           'หรือลากสายจากรูนั้นไปหาปลายทาง';
+  }
+  return ' — เสียบอยู่' + bbStripName(h) + ' ร่วมกับ ' + mates.join(' · ');
+}
+
+/* ============================================================
    อ่านว่าขาไหนเสียบอยู่รูไหน
    ============================================================ */
 function bbPortBaseTitle(p){
@@ -485,6 +522,133 @@ function bbUpdatePlugs(){
       BB.portStrip.set(o.port, h.strip);
       BB.portHole.set(o.port, h);
     });
+  });
+
+  /* จุดยึดสายที่เสียบรูไว้ก็ต้องลงทะเบียนกลับเข้าตารางด้วย
+     ไม่งั้น bbSyncLinks() จะไม่เห็นมัน สายที่เสียบรูจะไม่ต่อถึงรางเลย */
+  bbRegisterAnchors();
+}
+
+/* ============================================================
+   JUMPER ANCHORS — เสียบสายลงรูเบรดบอร์ดได้ตรง ๆ
+
+   ของเดิมสายไฟต่อได้เฉพาะ "ขาอุปกรณ์" อุปกรณ์เชื่อมกันผ่านแผงได้
+   ทางเดียวคือเสียบขาลงรางเดียวกัน แต่แผงจริงเราเสียบสายจัมเปอร์
+   ลงรูได้ตรง ๆ เพื่อโยงรางหนึ่งไปอีกราง หรือโยงออกไปหาอุปกรณ์
+
+   วิธีทำ: รูที่มีสายมาเสียบจะได้ "จุดยึด" เป็น element .port ตัวจริง
+   ระบบสายไฟทั้งหมดจึงใช้งานได้เหมือนขาอุปกรณ์ทุกอย่าง (ลาก ลบ ลงสี วาดเส้น)
+   และลงทะเบียนใน BB.portStrip เหมือนขาที่เสียบรู จึงต่อถึงทุกอย่าง
+   ในรางเดียวกันผ่าน bbSyncLinks() ให้เอง — ตรงตามพฤติกรรมของรูจริง
+
+   จุดยึดไม่ใช่อุปกรณ์ จึงไม่สร้าง "กิ่ง" ในสมการวงจร (ดู deviceTerminals)
+   มันเป็นแค่จุดต่อ เหมือนรูบนแผงที่ไม่ได้เพิ่มความต้านทานอะไรเลย
+   ============================================================ */
+function bbAnchorLayer(){
+  var ws = document.getElementById('workspace');
+  if(!ws) return null;
+  var L = document.getElementById('bb-anchors');
+  if(!L){
+    L = document.createElement('div');
+    L.id = 'bb-anchors';
+    ws.appendChild(L);
+  }
+  return L;
+}
+
+/* จุดยึดของรูหนึ่ง — คืนตัวเดิมถ้ามีแล้ว ไม่สร้างซ้ำ */
+function bbAnchorAt(hole){
+  var L = bbAnchorLayer();
+  if(!L || !hole) return null;
+  var key = hole.col + '-' + hole.row;
+  var a = L.querySelector('.bb-anchor[data-hole="' + key + '"]');
+  if(a) return a;
+
+  a = document.createElement('div');
+  a.className = 'port port-anchored bb-anchor plugged';
+  /* itemId 'bb' = ไม่ใช่อุปกรณ์ชิ้นไหน (ดู pruneOrphanWires ใน js/wires.js
+     กับ buildNodes ใน js/solver.js ที่รู้จักค่านี้เป็นกรณีพิเศษ) */
+  a.dataset.itemId   = 'bb';
+  a.dataset.hole     = key;
+  a.dataset.origPos  = 'hole' + key;
+  a.dataset.polarity = 'none';
+  a.dataset.label    = 'รู' + bbStripName(hole);
+  a.title = a.dataset.label;
+  a.style.left = hole.x + 'px';
+  a.style.top  = hole.y + 'px';
+
+  a.addEventListener('mousedown', onPortMouseDown);
+  a.addEventListener('touchstart', onPortMouseDown, {passive:false});
+  ['mouseup','mouseleave','touchend','touchcancel'].forEach(function(ev){
+    a.addEventListener(ev, function(){ a.classList.remove('pressing'); });
+  });
+
+  L.appendChild(a);
+  BB.portStrip.set(a, hole.strip);
+  BB.portHole.set(a, hole);
+  return a;
+}
+
+/* หารูจากพิกัดบนจอ แล้วคืนจุดยึด (สร้างใหม่ถ้ายังไม่มี)
+   tol กว้างกว่าการเสียบขาอุปกรณ์เล็กน้อย เพราะนี่คือการเล็งด้วยปลายนิ้ว/เมาส์
+   ไม่ใช่การดีดตำแหน่งให้อัตโนมัติแบบ bbSnapItem */
+function bbAnchorAtClient(clientX, clientY){
+  if(!BB.on) return null;
+  var ws = document.getElementById('workspace');
+  if(!ws) return null;
+  var r = ws.getBoundingClientRect();
+  var h = bbHoleNear(clientX - r.left - ws.clientLeft,
+                     clientY - r.top  - ws.clientTop, BB.pitch * 0.5);
+  return h ? bbAnchorAt(h) : null;
+}
+
+/* ลงทะเบียนจุดยึดกลับเข้าตารางหลัง bbResetPlugs() และย้ายตามแผงที่สร้างใหม่
+   (ย่อ/ขยายจอแล้วระยะรูเปลี่ยน จุดยึดต้องเลื่อนไปอยู่รูเดิมตามพิกัดใหม่) */
+function bbRegisterAnchors(){
+  var L = document.getElementById('bb-anchors');
+  if(!L) return;
+  Array.prototype.slice.call(L.querySelectorAll('.bb-anchor')).forEach(function(a){
+    var p = (a.dataset.hole || '').split('-');
+    var h = BB.holeGrid[p[0] + ',' + p[1]];
+    if(!h){ a.remove(); return; }    /* แผงใบใหม่ไม่มีรูนี้แล้ว */
+    a.style.left = h.x + 'px';
+    a.style.top  = h.y + 'px';
+    a.dataset.label = 'รู' + bbStripName(h);
+    a.title = a.dataset.label;
+    a.classList.add('plugged');   /* bbResetPlugs() ถอดคลาสนี้ออกทุกรอบ ต้องใส่คืน */
+    BB.portStrip.set(a, h.strip);
+    BB.portHole.set(a, h);
+  });
+}
+
+/* ล้างจุดยึดทั้งหมด — ใช้ตอนปิดแผงหรือล้างพื้นที่ทำงาน
+   ไม่มีแผงก็ไม่มีรู จุดยึดที่ค้างอยู่จะกลายเป็นจุดต่อลอยที่ลบไม่ออก */
+function bbClearAnchors(){
+  var L = document.getElementById('bb-anchors');
+  if(!L) return;
+  L.querySelectorAll('.bb-anchor').forEach(function(a){
+    if(BB.portStrip) BB.portStrip.delete(a);
+    if(BB.portHole)  BB.portHole.delete(a);
+  });
+  L.innerHTML = '';
+}
+
+/* เก็บจุดยึดที่ไม่มีสายเสียบอยู่แล้วทิ้ง — รูเปล่าไม่ใช่จุดเชื่อม
+   ข้ามระหว่างที่กำลังลาก/ค้างแตะอยู่ ไม่งั้นจะลบต้นทางทิ้งกลางทาง */
+function bbPruneAnchors(){
+  if(G.drawingFrom || G.tapWireFrom) return;
+  var L = document.getElementById('bb-anchors');
+  if(!L) return;
+  Array.prototype.slice.call(L.querySelectorAll('.bb-anchor')).forEach(function(a){
+    var used = false;
+    G.wires.forEach(function(w){
+      if(w.virtual) return;                 /* เส้นในรางไม่นับว่า "มีสายเสียบ" */
+      if(w.fromPort === a || w.toPort === a) used = true;
+    });
+    if(used) return;
+    BB.portStrip.delete(a);
+    BB.portHole.delete(a);
+    a.remove();
   });
 }
 

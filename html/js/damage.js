@@ -171,10 +171,75 @@ function clearDamage(){
   resetHazards();
 }
 
+/* ============================================================
+   ลงมือทำให้พัง — "เฉพาะตัวที่ผู้เล่นไม่ได้ช่วยไว้ทัน"
+
+   *** นี่คือจุดที่เคยพังทั้งที่ตัดไฟทันแล้ว ***
+   ลำดับเดิมเป็นแบบนี้:
+     1. กดตรวจวงจร → predictHazards(6) ทำนายว่า "หลอดจะไหม้ใน 4.5 วิ"
+     2. playHazardSequence() เล่นฉาก จ่ายไฟจริงให้ดูตามเวลา
+     3. ครบเวลา → applyDamage(fault) → commitHazards() บังคับตั้ง
+        it.failed = true, it.heat = 1 ให้เป้าหมายที่ทำนายไว้ "ทุกตัวไม่มีเงื่อนไข"
+
+   ผู้เล่นที่สับสวิตช์ OFF กลางฉากจึงเห็นความร้อนลดลงจริง (ระบบจำลองทำถูก)
+   แต่พอครบเวลาตัวนับ อุปกรณ์ก็พังอยู่ดีเพราะขั้นที่ 3 ไม่ได้ดูของจริงเลย
+   = "ปิดแล้วลดลงใช่ แต่ก็พังพอรอแปปหนึ่ง"
+
+   สวิตช์มีไว้เพื่อตัดไฟให้ทัน ถ้าตัดทันแล้วยังพัง สวิตช์ก็ไม่มีความหมาย
+   ตรงนี้จึงต้องเชื่อ "ผลการจำลองสด" ไม่ใช่คำทำนายที่คิดไว้ก่อนฉากเริ่ม
+   ============================================================ */
 function applyDamage(fault){
-  commitHazards(fault.incidents || []);
-  /* วงจรพังแล้วไม่มีอะไรทำงานต่อ */
-  G.wsItems.forEach(function(it){ if(it.el) it.el.classList.remove('powered','lit'); });
-  stopCurrentFlow();
+  var all   = fault.incidents || [];
+  var keep  = [], saved = [];
+
+  all.forEach(function(inc){
+    var ids = inc.targets || [];
+
+    /* เหตุการณ์ระดับวงจร (สายไฟไหม้ / ลัดวงจร) ไม่มีเป้าหมายเป็นชิ้น ๆ
+       ตัดสินจากความร้อนของสายที่สะสมได้จริงระหว่างฉาก */
+    if(!ids.length){
+      if(inc.wires){
+        if(HAZARD.wiresBurned || HAZARD.wireHeat > 0.5) keep.push(inc);
+        else saved.push('สายไฟ');
+      } else {
+        keep.push(inc);      /* เช่นรายงานลัดวงจร ไม่ได้ทำอะไรพัง เก็บไว้อ่าน */
+      }
+      return;
+    }
+
+    /* เก็บเหตุการณ์นี้ไว้ถ้ามีเป้าหมายอย่างน้อยหนึ่งตัวที่ "สมควรพังจริง"
+         พังไปแล้วระหว่างฉาก        → ของจริงถึงจุดพังแล้ว
+         ยังโดนโหลดเกินพิกัดอยู่     → ไฟยังจ่ายอยู่ อีกเดี๋ยวก็พัง
+       ถ้าทุกตัวเย็นลงและไม่มีโหลดเกินแล้ว = ผู้เล่นตัดไฟทัน ต้องรอด */
+    var doomed = false;
+    ids.forEach(function(id){
+      var it = null;
+      G.wsItems.forEach(function(x){ if(x.id === id) it = x; });
+      if(!it) return;
+      if(it.failed || (it.stress || 0) > 1) doomed = true;
+      else saved.push(DEVICES[it.deviceId].name);
+    });
+    if(doomed) keep.push(inc);
+  });
+
+  commitHazards(keep);
+
+  /* ตัดไฟทิ้ง "เฉพาะตอนมีอะไรพังจริง" — วงจรที่พังแล้วไม่มีอะไรทำงานต่อ
+
+     ถ้าไม่มีอะไรพัง (ผู้เล่นสับสวิตช์ตัดไฟทัน) วงจรยังดีอยู่ทั้งวง
+     ต้องปล่อยให้จ่ายไฟต่อ จะได้สับสวิตช์กลับมา ON ทดลองต่อได้ทันที
+     ของเดิม stopCurrentFlow() ทุกกรณี ผู้เล่นจึงต้องไปกดตรวจวงจรใหม่
+     ทั้งที่ไม่ได้ทำอะไรผิดและวงจรก็ไม่ได้เสียหายอะไรเลย */
+  if(keep.length){
+    G.wsItems.forEach(function(it){ if(it.el) it.el.classList.remove('powered','lit'); });
+    stopCurrentFlow();
+  }
   applyHazardVisuals();
+
+  /* บอกให้รู้ว่าการตัดไฟได้ผล — ไม่งั้นผู้เล่นไม่มีทางรู้ว่าตัวเองช่วยไว้ได้ */
+  if(saved.length && keep.length < all.length){
+    var uniq = saved.filter(function(n, i){ return saved.indexOf(n) === i; });
+    showToast('ตัดไฟทัน! ' + uniq.join(' · ') + ' รอดมาได้', 'success');
+  }
+  return { committed: keep.length, saved: saved.length };
 }

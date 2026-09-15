@@ -284,6 +284,25 @@ function ohmBands(v){
           OHM_BAND_COLORS[Math.min(9, exp)]];
 }
 
+/* ค่าความจุเป็นไมโครฟารัด — 0.010 F → "10000µF" */
+function fmtFarad(c){
+  var uf = (c || 0) * 1e6;
+  return (uf >= 1000 ? Math.round(uf) : +uf.toFixed(1)) + 'µF';
+}
+
+/* "ค่าจริงของชิ้นนี้" แบบสั้น สำหรับต่อท้ายชื่ออุปกรณ์ในเครื่องวัดและรายงาน
+
+   ชื่อในคลังกับป้ายใต้กล่องต้องสั้น (ป้ายเป็น nowrap ยาวแล้วไปทับตัวอื่น)
+   แต่ตอนอ่านค่าหรือดูรายงาน ผู้เรียนต้องรู้ว่ากำลังดูของค่าเท่าไร
+   จึงแยกสองอย่างออกจากกัน: ชื่อสั้นไว้บนแผง ค่าจริงไว้ตอนรายงาน */
+function deviceSpecLabel(it){
+  if(!it) return '';
+  if(it.ohms != null) return ' ' + fmtOhm(it.ohms);
+  var sp = ESPEC[it.deviceId];
+  if(sp && sp.kind === 'cap') return ' ' + fmtFarad(sp.c) + ' ' + sp.vmax + 'V';
+  return '';
+}
+
 /* 220 → "220Ω" · 4700 → "4.7kΩ" (ตัดศูนย์ท้ายทิ้ง ไม่เขียน 4.70k) */
 function fmtOhm(v){
   if(v >= 1000){

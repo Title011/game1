@@ -23,6 +23,11 @@ function portUnusable(p){
 function pruneOrphanWires(){
   var alive = {};
   G.wsItems.forEach(function(it){ alive[it.id] = true; });
+  /* จุดยึดสายบนรูเบรดบอร์ดใช้ itemId 'bb' ซึ่งไม่ใช่อุปกรณ์ชิ้นไหน
+     ถ้าไม่นับว่า "ยังอยู่" สายที่เสียบรูจะถูกกวาดทิ้งทันทีที่สร้างเสร็จ
+     การตรวจว่าจุดยึดยังใช้ได้จริงอาศัย portUnusable() ด้านล่างอยู่แล้ว
+     (เช็คว่า element ยังอยู่ในหน้าและวัดขนาดได้) ซึ่งครอบคลุมกว่า */
+  alive['bb'] = true;
   var dead = G.wires.filter(function(w){
     return !alive[w.fromItemId] || !alive[w.toItemId]
         || portUnusable(w.fromPort) || portUnusable(w.toPort);
@@ -162,6 +167,9 @@ function syncAutoJoins(){
    เพราะการสร้าง/ลบสายกลางการลากจะทำให้เส้นกะพริบ และระบบคำนวณวงจร
    กับแผงพยากรณ์ของโหมดอิสระจะถูกเรียกรัว ๆ ทุกเฟรมโดยไม่จำเป็น */
 function settleCircuit(){
+  /* เก็บจุดยึดบนรูเบรดบอร์ดที่ไม่มีสายเสียบแล้วทิ้งก่อน
+     (เช่นผู้เล่นลบสายเส้นนั้นไป รูก็ควรกลับเป็นรูเปล่า) */
+  if(typeof bbPruneAnchors === 'function') bbPruneAnchors();
   var made = syncAutoJoins();
   refreshWires();
   recolorWires();
@@ -364,9 +372,16 @@ function onPortMouseDown(e){
   if(e.cancelable) e.preventDefault();
   var port=e.currentTarget;
   port.classList.add('pressing');   /* ตอบกลับทันที — ตัวถอดออกผูกไว้ที่ addWsItem */
+  beginWireFrom(port, e.type === 'touchstart');
+}
 
-  var isTouch = (e.type === 'touchstart');
+/* เริ่มเดินสายจากจุดหนึ่ง
 
+   แยกออกมาจาก onPortMouseDown เพราะ "รูบนเบรดบอร์ด" ต้องเรียกใช้ได้ด้วย
+   รูไม่มี element อยู่ก่อนที่จะมีสายมาเสียบ จึงไม่มีอีเวนต์ของตัวเอง
+   ตัวจัดการของพื้นที่ทำงานจะสร้างจุดยึดให้แล้วเรียกฟังก์ชันนี้แทน
+   (ดู bbAnchorAtClient ใน js/breadboard.js และ startMarquee ใน js/workspace.js) */
+function beginWireFrom(port, isTouch){
   /* ===== โหมดมือถือ: แตะทีละจุด ===== */
   if(isTouch){
     handleTapConnect(port);
@@ -404,9 +419,23 @@ function onPortMouseDown(e){
     G.drawingFrom=null;
     var p=getUpXY(ev);
     var target=document.elementFromPoint(p.x,p.y);
+
+    /* ปล่อยลงบน "รูเบรดบอร์ด" ก็นับว่าเสียบสายลงรูนั้น
+       รูยังไม่มี element จนกว่าจะมีสายมาเสียบ elementFromPoint จึงคืนพื้นแผง
+       (หรือ #workspace) ต้องแปลงพิกัดเป็นรูที่ใกล้ที่สุดเอง */
+    if(!(target && target.classList.contains('port')) &&
+       typeof bbAnchorAtClient === 'function'){
+      target = bbAnchorAtClient(p.x, p.y) || target;
+    }
+
     if(target&&target.classList.contains('port')&&target!==port){
       var toId=target.dataset.itemId;
-      if(toId!==from.itemId){
+      /* ขาสองขาของอุปกรณ์ตัวเดียวกันห้ามต่อถึงกัน (ลัดวงจรคร่อมตัวมันเอง)
+         แต่จุดยึดบนแผงใช้ itemId 'bb' ร่วมกันทุกตัว จึงต้องยกเว้น
+         ไม่งั้นจะเสียบสายจากรูหนึ่งไปอีกรูไม่ได้เลย ซึ่งเป็นการต่อที่ถูกต้อง */
+      var sameItem = (toId === from.itemId) &&
+                     !(toId === 'bb' && target.dataset.hole !== port.dataset.hole);
+      if(!sameItem){
         /* ถ้าจุดต้นทางหรือปลายทางมี 2 สี → ให้เลือกขั้วก่อน */
         var needFrom = portHasMultipleColors(port);
         var needTo   = portHasMultipleColors(target);

@@ -55,6 +55,15 @@ function buildNodes(items, wires){
     ps.forEach(function(p){ parent.set(p, p); });
   });
 
+  /* จุดยึดสายที่เสียบรูเบรดบอร์ดไว้ ก็เป็นจุดต่อเหมือนขาอุปกรณ์
+     ต่างกันแค่ไม่ได้สังกัดอุปกรณ์ชิ้นไหน จึงไม่ถูกเก็บในลูปด้านบน
+     ถ้าไม่ใส่เข้ามา union() ข้างล่างจะข้ามสายที่ปลายเสียบรูทั้งหมด
+     (ดู bbAnchorAt ใน js/breadboard.js — จุดยึดไม่สร้าง "กิ่ง" ในสมการ
+      มันเป็นแค่โหนด เหมือนรูจริงที่ไม่เพิ่มความต้านทานอะไร) */
+  document.querySelectorAll('#workspace .bb-anchor').forEach(function(p){
+    if(!parent.has(p)) parent.set(p, p);
+  });
+
   /* สายไฟ (รวมรางในเบรดบอร์ดที่ระบบสร้างให้เอง) = ต่อถึงกัน */
   wires.forEach(function(w){
     if(parent.has(w.fromPort) && parent.has(w.toPort)) union(w.fromPort, w.toPort);

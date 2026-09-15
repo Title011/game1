@@ -10,6 +10,32 @@
   pointer-events:none;z-index:1;overflow:visible;
 }
 .bb-body{filter:drop-shadow(0 6px 18px rgba(0,0,0,.45));}
+
+/* ============================================================
+   JUMPER ANCHORS — จุดยึดสายที่เสียบลงรูเบรดบอร์ด
+   (สร้างโดย bbAnchorAt ใน js/breadboard.js เมื่อมีสายมาเสียบรูนั้น)
+
+   ชั้นนี้ต้องอยู่เหนือแผง (z-index 1) และเหนือสาย (2) แต่ต่ำกว่าอุปกรณ์ (3)
+   จุดยึดจึงกดได้ แต่ไม่ไปแย่งการกดของอุปกรณ์ที่วางคร่อมรูนั้นอยู่
+   ตัวชั้นเองต้อง pointer-events:none ไม่งั้นมันจะคลุมทั้งแผงแล้วกิน
+   การลากกรอบคุมดำกับการลากย้ายอุปกรณ์ไปหมด
+   ============================================================ */
+#bb-anchors{
+  position:absolute;top:0;left:0;width:100%;height:100%;
+  pointer-events:none;z-index:2;
+}
+#bb-anchors .bb-anchor{pointer-events:auto;}
+
+/* หน้าตาต่างจากขาอุปกรณ์ชัดเจน — วงแหวนกลวงเหมือน "สายเสียบอยู่ในรู"
+   ไม่ใช่จุดทึบแบบขาอุปกรณ์ ผู้เล่นจะได้แยกออกว่าอันไหนขา อันไหนรู */
+.bb-anchor{
+  width:13px;height:13px;
+  background:radial-gradient(circle, #0a1628 0 32%, var(--accent) 38% 100%);
+  border:1.5px solid #05202c;
+  box-shadow:0 0 7px rgba(0,212,255,.75);
+  cursor:crosshair;
+}
+.bb-anchor:hover{box-shadow:0 0 12px rgba(0,212,255,1);}
 .bb-silk{font-family:'Segoe UI',Arial,sans-serif;letter-spacing:.3px;}
 
 /* รางที่มีขาเสียบตั้งแต่ 2 ขา = กำลังต่อถึงกันจริง
