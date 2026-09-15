@@ -717,6 +717,10 @@ function addWire(fromItemId,fromPort,fx,fy,toItemId,toPort,tx,ty,forcedFromPol,f
     buildFlowDots();
   }
 
+  /* เสียงตอบรับ — วางไว้บรรทัดสุดท้ายโดยตั้งใจ เพราะทุกทางออกก่อนหน้านี้
+     (ต่อซ้ำ / ปลายสายหลุด DOM) คือการต่อที่ "ไม่เกิดขึ้นจริง" ต้องไม่มีเสียง
+     ไม่งั้นผู้เล่นจะได้ยินเสียงสำเร็จทั้งที่ไม่มีสายเพิ่ม (ดู js/sfx.js) */
+  if(typeof sfxConnect === 'function') sfxConnect();
   showToast('ต่อสายสำเร็จ!','success');
 }
 
@@ -760,6 +764,10 @@ function removeWire(wireId){
   if(typeof PowerSim !== 'undefined' && PowerSim.on && typeof buildFlowDots === 'function'){
     buildFlowDots();
   }
+
+  /* สายหลุดออกจริงแล้วค่อยมีเสียง — เหมือน addWire คือทางออกก่อนหน้า
+     (สายระบบที่ลบไม่ได้) ต้องเงียบ เพราะไม่มีอะไรถูกลบ */
+  if(typeof sfxDisconnect === 'function') sfxDisconnect();
 }
 
 /*

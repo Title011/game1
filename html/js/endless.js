@@ -257,6 +257,8 @@ function updateEndlessButton(){
   if(!b) return;
   b.innerHTML = G.endless ? ICON('trophy',15) + ' จบรัน' : ICON('trophy',15) + ' วัดความเร็ว';
   b.classList.toggle('active', !!G.endless);
+  /* เหตุผลเดียวกับใน updateSandboxButton — ดู js/bgm.js */
+  if(typeof bgmRefresh === 'function') bgmRefresh();
 }
 
 /* ============================================================
