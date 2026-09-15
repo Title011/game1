@@ -442,7 +442,12 @@ function makeDraggable(el){
         /* ตำแหน่งนิ่งแล้ว — เชื่อม/ตัดขาที่แตะกันตามตำแหน่งจริงรอบนี้
            แล้ววาดสายใหม่ทั้งหมด (settleCircuit อยู่ใน js/wires.js) */
         var joined = settleCircuit();
-        if(joined) showToast('ขาแตะกัน ' + joined + ' จุด — ต่อถึงกันแล้วโดยไม่ต้องเดินสาย','success');
+        if(joined){
+          showToast('ขาแตะกัน ' + joined + ' จุด — ต่อถึงกันแล้วโดยไม่ต้องเดินสาย','success');
+          /* ดังครั้งเดียวต่อการลากหนึ่งครั้ง ไม่ใช่ครั้งละจุด — ลากอุปกรณ์ชิ้นเดียว
+             ไปชนแถวที่วางไว้อาจเชื่อมทีเดียวหลายจุด ถ้าดังทุกจุดจะเป็นเสียงรัว */
+          if(typeof sfxSnap === 'function') sfxSnap();
+        }
       }
       document.removeEventListener('mousemove',dragOnMove);
       document.removeEventListener('mouseup',dragOnUp);

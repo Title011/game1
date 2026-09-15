@@ -53,6 +53,9 @@ function currentLevel(){
 function showScreen(id){
   document.querySelectorAll('.screen').forEach(function(s){s.classList.remove('active');});
   document.getElementById(id).classList.add('active');
+  /* เพลงพื้นหลังเปลี่ยนตามหน้าจอ — ฮุกไว้ที่นี่ที่เดียวเพราะทุกการเปลี่ยนหน้า
+     ผ่านฟังก์ชันนี้หมด ไม่ต้องไปเติมทีละจุด (ดู js/bgm.js) */
+  if(typeof bgmRefresh === 'function') bgmRefresh();
 }
 
 /* ด่านสุดท้ายคือเงื่อนไขปลดล็อกโหมดพิเศษ — กันไว้เผื่อเรียกฟังก์ชันตรง ๆ

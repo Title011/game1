@@ -50,6 +50,32 @@
 }
 .btn-tutorial:hover{transform:translateY(-1px);}
 
+/* ปุ่มเปิด/ปิดเสียง — ไอคอนล้วน ไม่มีข้อความ
+   เป็นปุ่มเดียวในแถบหัวที่ไม่มีคำกำกับ เพราะรูปลำโพงเป็นสัญลักษณ์สากล
+   และแถบหัวบนจอ 400px แน่นอยู่แล้ว เพิ่มคำอีกคำจะดันปุ่มอื่นตกบรรทัด
+   ขนาด 36px เป็นขั้นต่ำที่นิ้วกดติดบนมือถือ (ทั้งแถบใช้ปุ่มสูงราว 34px อยู่แล้ว) */
+.btn-sound{
+  display:inline-flex;align-items:center;justify-content:center;
+  width:36px;height:36px;flex-shrink:0;
+  background:var(--bg-card);border:1px solid var(--border2);
+  border-radius:8px;cursor:pointer;line-height:1;
+  transition:transform .15s,border-color .15s,opacity .15s;
+}
+.btn-sound .sound-ico{font-size:1rem;pointer-events:none;}
+.btn-sound:hover{transform:translateY(-1px);border-color:var(--accent);}
+/* ตอนปิดเสียงต้องดู "ถูกปิดอยู่" ชัดในแวบเดียว ไม่ใช่แค่ไอคอนเปลี่ยนรูป
+   เพราะลำโพงมีขีดกับลำโพงมีคลื่นต่างกันแค่ไม่กี่พิกเซลบนมือถือ */
+.btn-sound.muted{opacity:.5;border-color:var(--border);}
+.btn-sound.muted .sound-ico{filter:grayscale(1);}
+
+/* แถบเลื่อนระดับเสียงเพลง — เพลงพื้นหลังคือเสียงที่คนอยากปรับมากที่สุด
+   ปุ่มเปิด/ปิดอย่างเดียวไม่พอ เพราะ "ดังไป" กับ "ไม่อยากฟัง" คนละเรื่องกัน
+   ใช้ accent-color ให้ตัวเลื่อนเป็นสีธีมโดยไม่ต้องเขียน ::-webkit-slider-thumb เอง */
+.bgm-vol{
+  width:74px;flex-shrink:0;cursor:pointer;
+  accent-color:var(--accent);background:transparent;
+}
+
 /* โหมดพิเศษทั้งสองซ่อนไว้ก่อน จะโผล่เมื่อเล่นครบทุกด่านแล้วเท่านั้น
    (JS สลับคลาส modes-unlocked บน body — ดู updateModeButtons() ใน game.js) */
 .btn-sandbox,.btn-endless{display:none;}

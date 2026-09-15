@@ -67,6 +67,18 @@
     <button class="btn-endless" id="btn-endless" onclick="toggleEndless()">วัดความเร็ว</button>
     <button class="btn-sandbox" id="btn-sandbox" onclick="toggleSandbox()">โหมดอิสระ</button>
     <button class="btn-tutorial" onclick="openTutorial()"><span id="btn-book-ic"></span> คู่มือ</button>
+    <!-- ปิดเสียง — เกมที่มีเสียงต้องมีปุ่มปิดเสมอ และต้องหาเจอโดยไม่ต้องเปิดเมนู
+         เพราะคนที่อยากปิดคือคนที่กำลังรำคาญอยู่พอดี (ดู js/sfx.js) -->
+    <button class="btn-sound" id="btn-sound" onclick="toggleSfx()"
+            title="ปิดเสียง" aria-label="เปิด/ปิดเสียง" aria-pressed="true"><span class="sound-ico">&#x1F50A;</span></button>
+    <!-- เพลงพื้นหลัง — ปุ่มเปิด/ปิด + แถบเลื่อนระดับเสียง
+         แถบเลื่อนซ่อนบนจอเล็ก (ดู responsive.css) เพราะแถบหัวแน่นเกินไป
+         วิธีใส่ไฟล์ .mp3 อธิบายไว้ที่หัวไฟล์ js/bgm.js -->
+    <button class="btn-sound" id="btn-music" onclick="toggleBgm()"
+            title="ปิดเพลงพื้นหลัง" aria-label="เปิด/ปิดเพลงพื้นหลัง" aria-pressed="true"><span class="sound-ico">&#x1F3B5;</span></button>
+    <input type="range" class="bgm-vol" id="bgm-vol" min="0" max="100" step="5" value="35"
+           title="ระดับเสียงเพลง" aria-label="ระดับเสียงเพลง"
+           oninput="bgmSetVolume(this.value/100)">
   </header>
   <div id="level-bar"><span id="level-bar-label">ด่าน:</span></div>
   <div id="game-main">
@@ -382,6 +394,8 @@
 <script src="js/outcome.js"></script>
 <script src="js/circuit-check.js"></script>
 <script src="js/save.js"></script>
+<script src="js/sfx.js"></script>
+<script src="js/bgm.js"></script>
 <script src="js/state.js"></script>
 <script src="js/ui.js"></script>
 <script src="js/inventory.js"></script>
