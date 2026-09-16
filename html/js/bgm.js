@@ -13,12 +13,12 @@
         audio/bgm-endless   เพลงโหมดวัดความเร็ว
         (หน้าแบบทดสอบตั้งให้เงียบไว้ — เหตุผลอยู่ที่ BGM.tracks ด้านล่าง)
 
-      เพลงเริ่มดังตอนกด "เข้าสู่เกมเรียนรู้" และไฟล์ถูกโหลดรอไว้ตั้งแต่
-      เปิดหน้าเว็บแล้ว เพลงจึงมาทันทีไม่มีช่วงเงียบรอโหลด
-
       นามสกุลใช้ได้ทั้ง .mp3 .m4a .ogg .wav — ไม่ต้องแปลงไฟล์เอง
       ระบบจะไล่ลองให้ทีละนามสกุลจนกว่าจะเจอ (ดู BGM.exts ด้านล่าง)
       และข้ามนามสกุลที่เบราว์เซอร์ตัวนั้นเล่นไม่ได้ไปเลย
+
+      เพลงเริ่มดังตอนกด "เข้าสู่เกมเรียนรู้" และไฟล์ถูกโหลดรอไว้ตั้งแต่
+      เปิดหน้าเว็บแล้ว เพลงจึงมาทันทีไม่มีช่วงเงียบรอโหลด
 
    3. รีเฟรชหน้าเว็บ แล้วกดปุ่มโน้ตดนตรีบนแถบหัวเกม
 
@@ -26,21 +26,47 @@
    ถ้าไม่มีสักไฟล์เดียวก็แค่เงียบ เกมเล่นได้ตามปกติ
    (อยากเปลี่ยนชื่อไฟล์หรือเพิ่มเพลง แก้ที่ BGM.tracks ด้านล่างได้เลย)
 
-   ---------- ข้อควรรู้เรื่องไฟล์ ----------
-   • .mp3 ปลอดภัยที่สุด เล่นได้ทุกเบราว์เซอร์
-     .m4a ก็ได้ทุกที่เหมือนกัน · .ogg ใช้ไม่ได้บน iPhone/Safari
-     .wav เล่นได้ แต่ไฟล์ใหญ่กว่า mp3 ราวสิบเท่า (เพลง 3 นาที ~30 MB)
-     ถ้าทำเพลงเองแล้วได้ .wav ออกมา ควรแปลงเป็น .mp3 ก่อนใช้จริง
-   • ไฟล์ควรเป็นเพลงที่ "วนแล้วต่อเนียน" (seamless loop) เพราะระบบตั้ง loop
-     ไว้ตลอด เพลงที่มีท่อนจบชัด ๆ จะสะดุดทุกครั้งที่วนกลับ
-   • ขนาดไฟล์มีผลกับเวลาโหลด แนะนำบิตเรต 96–128 kbps สำหรับเพลงพื้นหลัง
-     (เพลงพื้นหลังดังเบาอยู่แล้ว 320 kbps แทบไม่ต่างแต่ไฟล์ใหญ่กว่าสามเท่า)
-   • ใช้เพลงที่มีสิทธิ์ใช้จริง — งานโรงเรียนก็ยังเป็นงานเผยแพร่
+
+   ---------- ทำไมต้องมีเครื่องเล่นสองทาง ----------
+   ทางหลัก  Web Audio : โหลดไฟล์ทั้งก้อนมาถอดรหัสเป็นคลื่นเสียงในหน่วยความจำ
+                        แล้ววนซ้ำที่ระดับ "ตัวอย่างเสียง" ตรง ๆ
+   ทางสำรอง <audio>   : ปล่อยให้แท็ก audio เล่นและวนเองด้วย loop=true
+
+   ที่ต้องมีทางหลักเป็น Web Audio เพราะปัญหานี้:
+
+     ไฟล์ .mp3 **วนซ้ำแบบไร้รอยต่อไม่ได้** โดยธรรมชาติของรูปแบบไฟล์เอง
+     ตัวเข้ารหัส MP3 ทำงานเป็นบล็อกละ 1152 ตัวอย่าง เพลงที่ยาวไม่ลงตัวพอดี
+     กับบล็อกจะถูก "เติมความเงียบ" ต่อท้ายให้เต็มบล็อกสุดท้ายเสมอ
+     และยังเติมความเงียบนำหน้าอีกราว 1100 ตัวอย่างเป็นช่วงอุ่นเครื่องตัวถอดรหัส
+     รวมแล้วราว 50-100 มิลลิวินาที ซึ่งได้ยินชัดเจนว่าเป็น "ช่องว่าง" ทุกรอบที่วน
+     ยิ่งเพลงสั้น (ของเกมนี้ราว 9 วินาที) ยิ่งเจอบ่อย ยิ่งรู้สึกว่าเพลงสะดุด
+
+     loop=true ของแท็ก <audio> วนกลับไปที่ "จุดเริ่มไฟล์" ซึ่งรวมความเงียบ
+     ที่ถูกเติมเข้ามาด้วย จึงแก้ด้วยการตั้งค่าไม่ได้เลย
+
+   ทาง Web Audio แก้ได้จริง เพราะกำหนดจุดวนซ้ำเองได้ (loopStart/loopEnd)
+   โค้ดจึงไล่หาว่าเสียงจริงเริ่มและจบที่ตัวอย่างที่เท่าไร แล้ววนเฉพาะช่วงนั้น
+   ความเงียบที่ตัวเข้ารหัสเติมมาจึงถูกข้ามไปทั้งหมด (ดู bgmLoopPoints)
+
+   ทางสำรองยังต้องมีไว้ เพราะ Web Audio ต้องอ่านไฟล์ด้วย fetch ซึ่งถูกบล็อก
+   ถ้าเปิด index.html ตรง ๆ แบบ file:// (ไม่ได้ผ่าน Live Server)
+   ในกรณีนั้นเสียงยังดังอยู่ แค่มีช่องว่างตอนวนซ้ำเท่านั้น
+
 
    ---------- ทำไมถึงไม่ดังทันทีที่เปิดหน้าเว็บ ----------
    เบราว์เซอร์ทุกตัวสมัยนี้ห้ามเล่นเสียงก่อนที่ผู้ใช้จะกดอะไรสักอย่าง
    (นโยบายกัน autoplay) ระบบจึงจำไว้ว่า "จะเล่นเพลงไหน" แล้วรอจังหวะที่
    ผู้เล่นแตะจอครั้งแรกค่อยเริ่ม — ไม่ใช่บั๊ก และแก้ด้วยโค้ดไม่ได้
+
+
+   ---------- ข้อควรรู้เรื่องไฟล์ ----------
+   • .mp3 ปลอดภัยที่สุด เล่นได้ทุกเบราว์เซอร์
+     .m4a ก็ได้ทุกที่เหมือนกัน · .ogg ใช้ไม่ได้บน iPhone/Safari
+     .wav เล่นได้ แต่ไฟล์ใหญ่กว่า mp3 ราวสิบเท่า (เพลง 3 นาที ~30 MB)
+   • ระบบตัดความเงียบหัวท้ายให้เองแล้ว แต่ถ้าอยากให้วนเนียนที่สุด
+     ตัวเพลงเองก็ควรจบแล้วต่อกับต้นเพลงได้พอดีด้วย (จังหวะ/คีย์ต่อเนื่องกัน)
+   • บิตเรต 96-128 kbps พอสำหรับเพลงพื้นหลัง ไฟล์เล็กกว่า โหลดเร็วกว่า
+   • ใช้เพลงที่มีสิทธิ์ใช้จริง — งานโรงเรียนก็ยังเป็นงานเผยแพร่
    ============================================================ */
 
 var BGM = {
@@ -68,15 +94,26 @@ var BGM = {
      ก่อนถึงจะใส่ได้ คือขั้นตอนที่พังได้ง่ายที่สุดในทั้งกระบวนการ */
   exts: ['.mp3', '.m4a', '.ogg', '.wav'],
   fallback: 'game',      /* ไฟล์ไหนหาย ให้ถอยมาใช้เพลงนี้ */
-  el: null,
-  key: null,             /* คีย์เพลงที่กำลังเล่นอยู่ */
+
+  key: null,             /* คีย์เพลงที่กำลังเล่น/กำลังเตรียมอยู่ */
   missing: {},           /* คีย์ที่ลองครบทุกนามสกุลแล้วไม่เจอ จะไม่ลองซ้ำอีก */
   _found: {},            /* คีย์ → นามสกุลที่เจอจริง จะได้ไม่ต้องไล่ลองซ้ำ */
   _exts: null,
+  _wantPlay: false,      /* false = กำลังโหลดเตรียมไว้เฉย ๆ ยังไม่ต้องดัง */
+
+  /* ---- ทางหลัก: Web Audio (วนซ้ำไร้รอยต่อ) ---- */
+  actx: null,
+  gain: null,
+  node: null,            /* AudioBufferSourceNode ที่กำลังเล่นอยู่ */
+  buf: {},               /* คีย์ → { buffer, start, end } */
+  loading: {},           /* คีย์ → รายการ callback ที่รอผลโหลดอยู่ */
+  _waitT: null,
+
+  /* ---- ทางสำรอง: แท็ก <audio> ---- */
+  el: null,
   _ext: 0,
   _curExt: '',
-  _curSrc: '',           /* ที่อยู่ไฟล์ที่ใส่ให้ <audio> ไปแล้ว — กันการสั่งโหลดซ้ำ */
-  _wantPlay: false,      /* false = กำลังโหลดเตรียมไว้เฉย ๆ ยังไม่ต้องดัง */
+  _curSrc: '',
   _fadeInt: null,
   _pending: null,
   _armed: false
@@ -101,22 +138,201 @@ function bgmSave(){
 
 
 /* ============================================================
-   ตัวเล่นเพลง — ใช้ <audio> ตัวเดียวแล้วสลับ src เอา
+   นามสกุลไฟล์ที่เบราว์เซอร์ตัวนี้เล่นได้จริง
+   ============================================================ */
+function bgmExts(){
+  if(BGM._exts) return BGM._exts;
+  var mime = { '.mp3':'audio/mpeg', '.m4a':'audio/mp4', '.ogg':'audio/ogg', '.wav':'audio/wav' };
+  var probe = document.createElement('audio'), list = [];
+  for(var i=0;i<BGM.exts.length;i++){
+    var e = BGM.exts[i];
+    /* ถามเบราว์เซอร์ก่อนดีกว่ายิงไฟล์ไปลองแล้วรอ error — บน iPhone การขอไฟล์
+       .ogg ที่ยังไงก็เล่นไม่ได้ คือการเสียเวลาและเสียเน็ตฟรี ๆ หนึ่งรอบ */
+    if(!probe.canPlayType || !mime[e] || probe.canPlayType(mime[e]) !== '') list.push(e);
+  }
+  BGM._exts = list.length ? list : ['.mp3'];
+  return BGM._exts;
+}
 
-   ทำไมไม่สร้างตัวละเพลง: เพลงพื้นหลังเล่นทีละเพลงเสมอ การมีหลายตัว
-   แปลว่าทุกตัวโหลดไฟล์ค้างไว้ในหน่วยความจำพร้อมกันโดยไม่ได้ใช้
+function bgmUrl(key, ext){
+  return BGM.dir + BGM.tracks[key] + ext;
+}
+
+
+/* ============================================================
+   ทางหลัก — Web Audio
+   ============================================================ */
+
+/* ใช้เครื่องเสียงตัวเดียวกับ js/sfx.js
+   เบราว์เซอร์จำกัดจำนวน AudioContext ต่อหน้าไว้ไม่กี่ตัว และการมีสองตัว
+   แปลว่าต้องคอยปลุกจากสถานะ suspended กันคนละที ซึ่งพลาดง่าย */
+function bgmAudioCtx(){
+  if(BGM.actx) return BGM.actx;
+  if(typeof sfxCtx === 'function') BGM.actx = sfxCtx();
+  if(!BGM.actx){
+    var AC = window.AudioContext || window.webkitAudioContext;
+    if(AC){ try{ BGM.actx = new AC(); }catch(e){ BGM.actx = null; } }
+  }
+  return BGM.actx;
+}
+
+function bgmGain(){
+  var ctx = bgmAudioCtx();
+  if(!ctx) return null;
+  if(!BGM.gain){
+    BGM.gain = ctx.createGain();
+    BGM.gain.gain.value = 0;      /* เริ่มเงียบเสมอ แล้วค่อยไล่ระดับขึ้น */
+    BGM.gain.connect(ctx.destination);
+  }
+  return BGM.gain;
+}
+
+/* ไล่ระดับเสียงของทาง Web Audio
+   ใช้ linearRamp ได้ (ไม่เหมือน sfxTone ที่ต้องใช้ exponential) เพราะนี่คือ
+   การหรี่เสียงยาวเป็นวินาที ไม่ใช่ซองเสียงสั้น ๆ ที่หูจับความโค้งได้ */
+function bgmGainTo(v, sec){
+  var ctx = bgmAudioCtx(), g = bgmGain();
+  if(!ctx || !g) return;
+  var t = ctx.currentTime, p = g.gain;
+  try{
+    p.cancelScheduledValues(t);
+    p.setValueAtTime(p.value, t);
+    p.linearRampToValueAtTime(v, t + (sec || 0.5));
+  }catch(e){ p.value = v; }
+}
+
+/* หาจุดวนซ้ำ — ตัวอย่างเสียงแรกและสุดท้ายที่ "ไม่เงียบ"
+
+   นี่คือหัวใจของการวนแบบไร้รอยต่อ: ความเงียบที่ตัวเข้ารหัส MP3 เติมไว้
+   หัวท้ายไฟล์จะถูกข้ามทั้งหมด จุดวนจึงตกที่เสียงจริงพอดี
+
+   เกณฑ์ 0.0015 ≈ -56 dB ต่ำพอที่จะไม่กินเสียงจริงแม้เป็นท่อนเบา ๆ
+   แต่สูงพอที่จะไม่ติดสัญญาณรบกวนพื้นหลังจาง ๆ ของไฟล์ที่บีบอัดมา
+
+   วนหาแบบ break ทันทีที่เจอ จึงอ่านแค่ช่วงความเงียบหัวท้าย ไม่ใช่ทั้งเพลง */
+function bgmLoopPoints(buffer){
+  var TH = 0.0015;
+  var n = buffer.length, ch = buffer.numberOfChannels;
+  var first = n, last = -1, c, i, d;
+  for(c=0;c<ch;c++){
+    d = buffer.getChannelData(c);
+    for(i=0;i<n;i++){
+      if(d[i] > TH || d[i] < -TH){ if(i < first) first = i; break; }
+    }
+    for(i=n-1;i>=0;i--){
+      if(d[i] > TH || d[i] < -TH){ if(i > last) last = i; break; }
+    }
+  }
+  /* ทั้งไฟล์เงียบหมด หรือหาไม่เจอ = อย่าไปยุ่งกับมัน วนทั้งไฟล์ตามเดิม */
+  if(first >= n || last <= first) return { start:0, end:buffer.duration };
+  var sr = buffer.sampleRate;
+  return { start: first / sr, end: (last + 1) / sr };
+}
+
+function bgmDecode(ab){
+  var ctx = bgmAudioCtx();
+  return new Promise(function(resolve, reject){
+    /* decodeAudioData มีสองแบบตามยุค — แบบคืน Promise (ใหม่) และแบบรับ
+       callback (เก่า) เรียกแบบมี callback ครบแล้วรับ Promise ด้วย
+       จึงใช้ได้ทั้งสองแบบโดยไม่ต้องดักรุ่นเบราว์เซอร์ */
+    var p;
+    try{ p = ctx.decodeAudioData(ab, resolve, reject); }
+    catch(e){ reject(e); return; }
+    if(p && p.then) p.then(resolve, reject);
+  });
+}
+
+/* โหลด+ถอดรหัสไฟล์เพลง ไล่ทีละนามสกุลจนกว่าจะสำเร็จ */
+function bgmFetchTry(key, i){
+  var list = bgmExts();
+  if(i >= list.length){ bgmBufferDone(key, false); return; }
+  var ext = list[i];
+  fetch(bgmUrl(key, ext)).then(function(r){
+    if(!r.ok) throw new Error('http ' + r.status);
+    return r.arrayBuffer();
+  }).then(function(ab){
+    return bgmDecode(ab);
+  }).then(function(buffer){
+    var lp = bgmLoopPoints(buffer);
+    BGM._found[key] = ext;
+    BGM.buf[key] = { buffer:buffer, start:lp.start, end:lp.end };
+    bgmBufferDone(key, true);
+  })['catch'](function(){
+    bgmFetchTry(key, i + 1);
+  });
+}
+
+function bgmBufferDone(key, ok){
+  var cbs = BGM.loading[key] || [];
+  delete BGM.loading[key];
+  /* ตั้งใจไม่ตั้ง BGM.missing ตรงนี้ — fetch ถูกบล็อกตอนเปิดแบบ file://
+     ทั้งที่ไฟล์มีอยู่จริง ให้ทาง <audio> เป็นคนตัดสินว่าไฟล์หายจริงไหม */
+  for(var i=0;i<cbs.length;i++) if(cbs[i]) cbs[i](ok);
+}
+
+function bgmLoadBuffer(key, cb){
+  if(BGM.buf[key]){ if(cb) cb(true); return; }
+  if(BGM.loading[key]){ if(cb) BGM.loading[key].push(cb); return; }
+  if(!bgmAudioCtx() || !window.fetch || !window.Promise){ if(cb) cb(false); return; }
+  BGM.loading[key] = cb ? [cb] : [];
+  bgmFetchTry(key, 0);
+}
+
+function bgmStopNode(fadeSec){
+  if(!BGM.node) return;
+  var n = BGM.node;
+  BGM.node = null;
+  if(fadeSec){
+    bgmGainTo(0, fadeSec);
+    setTimeout(function(){ try{ n.stop(); n.disconnect(); }catch(e){} }, fadeSec * 1000 + 60);
+  }else{
+    try{ n.stop(); n.disconnect(); }catch(e){}
+  }
+}
+
+function bgmStartNode(key){
+  var ctx = bgmAudioCtx(), rec = BGM.buf[key], g = bgmGain();
+  if(!ctx || !rec || !g) return false;
+
+  bgmStopElement();          /* เคยตกไปเล่นด้วย <audio> ก็ต้องหยุดก่อน ไม่งั้นซ้อนกัน */
+  bgmStopNode();
+  if(ctx.state === 'suspended'){ try{ ctx.resume(); }catch(e){} }
+
+  var s = ctx.createBufferSource();
+  s.buffer    = rec.buffer;
+  s.loop      = true;
+  s.loopStart = rec.start;
+  s.loopEnd   = rec.end;
+  s.connect(g);
+  /* เริ่มที่ต้นเสียงจริง ไม่ใช่ศูนย์ — ไม่งั้นรอบแรกจะมีความเงียบนำหน้า
+     อยู่รอบเดียว แล้วรอบต่อ ๆ ไปไม่มี ซึ่งฟังแปลกกว่าไม่มีเลยทั้งหมด */
+  try{ s.start(0, rec.start); }catch(e){ try{ s.start(0); }catch(e2){ return false; } }
+
+  BGM.node = s;
+  bgmGainTo(BGM.volume, 0.9);
+  return true;
+}
+
+
+/* ============================================================
+   ทางสำรอง — แท็ก <audio>
    ============================================================ */
 function bgmEl(){
   if(BGM.el) return BGM.el;
   var a = document.createElement('audio');
   a.id = 'bgm-audio';
   a.loop = true;
-  a.preload = 'none';    /* ยังไม่ต้องโหลดจนกว่าจะสั่งเล่นจริง */
-  a.volume = 0;          /* เริ่มเงียบเสมอ แล้วค่อยไล่ระดับขึ้น ไม่ให้เพลงตูมเข้ามา */
+  a.preload = 'none';
+  a.volume = 0;
   a.style.display = 'none';
-  a.addEventListener('error', bgmOnError);
-  /* โหลดไฟล์ติดแล้ว — จำนามสกุลที่ใช้ได้ไว้ ครั้งหน้าจะยิงตรงไฟล์นั้นเลย
-     ไม่ต้องไล่ลองตั้งแต่ .mp3 ใหม่ทุกครั้งที่สลับเพลงไปแล้วสลับกลับมา */
+  a.addEventListener('error', bgmOnElError);
+  /* กันเหนียวเรื่องการวนซ้ำ — loop=true ควรพอ แต่ถ้าเบราว์เซอร์อ่านความยาว
+     เพลงจากไฟล์ไม่ได้ (ไฟล์ VBR ที่ไม่มีหัวบอกความยาว) มันจะเล่นจบแล้วหยุด
+     ตัวนี้จับเหตุการณ์ "จบเพลง" แล้วสั่งเริ่มใหม่เอง เพลงจึงไม่มีทางหยุดค้าง */
+  a.addEventListener('ended', function(){
+    if(!BGM._wantPlay || !BGM.enabled) return;
+    try{ a.currentTime = 0; a.play(); }catch(e){}
+  });
   a.addEventListener('loadeddata', function(){
     if(BGM.key) BGM._found[BGM.key] = BGM._curExt;
   });
@@ -125,86 +341,47 @@ function bgmEl(){
   return a;
 }
 
-/* นามสกุลที่เบราว์เซอร์ตัวนี้เล่นได้จริง กรองครั้งเดียวแล้วจำไว้
-
-   ถามเบราว์เซอร์ก่อนด้วย canPlayType ดีกว่ายิงไฟล์ไปลองแล้วรอ error
-   เพราะบน iPhone การขอไฟล์ .ogg ที่เล่นไม่ได้อยู่แล้วคือการเสียเวลา
-   และเสียเน็ตฟรี ๆ หนึ่งรอบ */
-function bgmExts(){
-  if(BGM._exts) return BGM._exts;
-  var mime = { '.mp3':'audio/mpeg', '.m4a':'audio/mp4', '.ogg':'audio/ogg', '.wav':'audio/wav' };
-  var a = bgmEl(), list = [];
-  for(var i=0;i<BGM.exts.length;i++){
-    var e = BGM.exts[i];
-    if(!a.canPlayType || !mime[e] || a.canPlayType(mime[e]) !== '') list.push(e);
-  }
-  BGM._exts = list.length ? list : ['.mp3'];
-  return BGM._exts;
-}
-
-/* ที่อยู่ไฟล์ของเพลงนี้ ณ ตอนนี้ — นามสกุลที่เคยเจอแล้วชนะเสมอ
-   ถ้ายังไม่เคยเจอ ใช้ตัวที่การไล่ลองเดินมาถึง (BGM._ext) */
-function bgmSrc(key){
+/* ใส่ไฟล์ให้ <audio> โดยไม่สั่งโหลดซ้ำถ้าเป็นไฟล์เดิม
+   การกำหนด a.src ทับด้วยค่าเดิมเป๊ะ ๆ ก็ยังนับเป็น "เริ่มโหลดสื่อใหม่"
+   ตามสเปก สิ่งที่โหลดเตรียมไว้แล้วจะถูกทิ้ง */
+function bgmElSetSrc(a, key){
   var ext = BGM._found[key];
   if(!ext){
     var list = bgmExts();
     ext = list[Math.min(BGM._ext, list.length - 1)];
   }
   BGM._curExt = ext;
-  return BGM.dir + BGM.tracks[key] + ext;
+  var want = bgmUrl(key, ext);
+  if(BGM._curSrc === want) return;
+  BGM._curSrc = want;
+  a.src = want;
 }
 
-/* ไล่ระดับเสียงขึ้น/ลง — เพลงที่เริ่มและจบทันทีฟังเหมือนของเสีย
-   ใช้ setInterval แทน Web Audio เพราะ <audio>.volume คุมตรง ๆ ได้อยู่แล้ว
-   และไม่ต้องลาก element เข้าไปอยู่ในกราฟเสียงให้ซับซ้อนขึ้นโดยไม่จำเป็น */
-function bgmFadeTo(a, to, ms, done){
-  clearInterval(BGM._fadeInt);
-  var from = a.volume, t0 = Date.now();
-  BGM._fadeInt = setInterval(function(){
-    var k = Math.min(1, (Date.now() - t0) / ms);
-    a.volume = Math.max(0, Math.min(1, from + (to - from) * k));
-    if(k >= 1){
-      clearInterval(BGM._fadeInt);
-      BGM._fadeInt = null;
-      if(done) done();
-    }
-  }, 40);
-}
-
-/* โหลดไฟล์ไม่ได้ (ยังไม่ได้วางไฟล์ / พิมพ์ชื่อผิด / นามสกุลที่เบราว์เซอร์ไม่รองรับ) */
-function bgmOnError(){
+function bgmOnElError(){
   var k = BGM.key;
   if(!k || BGM.missing[k]) return;
 
-  /* นามสกุลที่เคยเจอกลับใช้ไม่ได้แล้ว (ลบไฟล์ทิ้ง/เปลี่ยนชื่อ) — ลืมมันแล้วไล่ใหม่ */
   if(BGM._found[k]){ delete BGM._found[k]; BGM._ext = 0; }
 
-  /* ยังเหลือนามสกุลให้ลอง — ลองตัวถัดไปกับเพลงเดิมก่อน
-     นี่คือทางที่เกิดบ่อยที่สุดตอนคนใส่ไฟล์ .wav หรือ .m4a แทน .mp3 */
   var list = bgmExts();
   if(BGM._ext < list.length - 1){
     BGM._ext++;
     var el = bgmEl();
-    bgmSetSrc(el, k);
-    /* ตอนโหลดรอไว้เฉย ๆ ห้ามสั่งเล่น ไม่งั้นเพลงจะดังขึ้นมาตั้งแต่หน้าแบบทดสอบ */
+    bgmElSetSrc(el, k);
     if(!BGM._wantPlay){ try{ el.load(); }catch(e){} return; }
     var pr = el.play();
     if(pr && pr['catch']) pr['catch'](function(){ BGM._pending = k; bgmArmGesture(); });
     return;
   }
 
-  /* ลองครบทุกนามสกุลแล้วยังไม่เจอ = ไฟล์เพลงนี้ไม่มีจริง */
   BGM.missing[k] = true;
   BGM.key = null;
   BGM._ext = 0;
   if(window.console && console.info){
     console.info('[BGM] ไม่พบไฟล์เพลง ' + BGM.dir + BGM.tracks[k] +
                  ' (ลองแล้วทุกนามสกุล: ' + list.join(' ') + ') — ' +
-                 'ยังไม่ได้วางไฟล์ หรือชื่อไม่ตรง ' +
-                 'ดูวิธีใส่เพลงที่หัวไฟล์ js/bgm.js');
+                 'ยังไม่ได้วางไฟล์ หรือชื่อไม่ตรง ดูวิธีใส่เพลงที่หัวไฟล์ js/bgm.js');
   }
-  /* ถอยไปเพลงสำรอง — คนที่ใส่ไฟล์เดียวชื่อ bgm-game.mp3 จะได้ยินครบทุกหน้าจอ
-     ถ้าเพลงสำรองก็หายไปด้วย จะไม่วนซ้ำ เพราะตรงนี้เช็ค missing ไว้แล้ว */
   if(k === BGM.fallback || BGM.missing[BGM.fallback]) return;
   if(BGM._wantPlay) bgmPlay(BGM.fallback);
   else              bgmPreload(BGM.fallback);
@@ -226,76 +403,113 @@ function bgmArmGesture(){
   document.addEventListener('keydown', go, true);
 }
 
-/* ใส่ไฟล์ให้ <audio> โดยไม่สั่งโหลดซ้ำถ้าเป็นไฟล์เดิม
-
-   สำคัญกว่าที่คิด: การกำหนด a.src ทับด้วยค่าเดิมเป๊ะ ๆ ก็ยังนับเป็น
-   "เริ่มกระบวนการโหลดสื่อใหม่" ตามสเปก สิ่งที่โหลดเตรียมไว้แล้วจะถูกทิ้ง
-   เพลงที่อุตส่าห์โหลดรอไว้ตอนหน้าแบบทดสอบก็จะต้องโหลดใหม่ตอนเข้าเกมพอดี */
-function bgmSetSrc(a, key){
-  var want = bgmSrc(key);
-  if(BGM._curSrc === want) return;
-  BGM._curSrc = want;
-  a.src = want;
+function bgmElFadeTo(a, to, ms, done){
+  clearInterval(BGM._fadeInt);
+  var from = a.volume, t0 = Date.now();
+  BGM._fadeInt = setInterval(function(){
+    var k = Math.min(1, (Date.now() - t0) / ms);
+    a.volume = Math.max(0, Math.min(1, from + (to - from) * k));
+    if(k >= 1){
+      clearInterval(BGM._fadeInt);
+      BGM._fadeInt = null;
+      if(done) done();
+    }
+  }, 40);
 }
 
-/* โหลดเพลงรอไว้เงียบ ๆ ตั้งแต่เปิดหน้าเว็บ ยังไม่เล่น
+function bgmPlayElement(key){
+  var a = bgmEl();
+  if(BGM.key === key && !a.paused) return;
+  function start(){
+    BGM.key = key;
+    BGM._wantPlay = true;
+    a.loop = true;            /* ย้ำทุกครั้ง เผื่อมีอะไรไปเผลอปิดไว้ */
+    bgmElSetSrc(a, key);
+    a.volume = 0;
+    var p = a.play();
+    if(p && p['catch']){
+      p['catch'](function(){ BGM._pending = key; bgmArmGesture(); });
+    }
+    bgmElFadeTo(a, BGM.volume, 900);
+  }
+  if(!a.paused) bgmElFadeTo(a, 0, 400, function(){ a.pause(); start(); });
+  else start();
+}
 
-   มีไว้เพื่อให้ "กดเข้าสู่เกมแล้วเพลงมาทันที" เป็นจริง
-   ถ้าเริ่มโหลดตอนกดปุ่มเข้าเกม จะมีช่องว่างเงียบ ๆ ระหว่างรอไฟล์
-   ซึ่งบนมือถือหรือเน็ตช้าอาจกินเวลาหลายวินาที
-   ตอนนี้พอถึงจังหวะนั้นไฟล์พร้อมอยู่แล้ว เหลือแค่สั่งเล่น */
-function bgmPreload(key){
-  if(!BGM.tracks[key] || BGM.missing[key]) return;
+function bgmStopElement(fade){
+  if(!BGM.el || BGM.el.paused) return;
+  if(fade) bgmElFadeTo(BGM.el, 0, 350, function(){ BGM.el.pause(); });
+  else { clearInterval(BGM._fadeInt); BGM._fadeInt = null; BGM.el.pause(); }
+}
+
+function bgmPreloadElement(key){
   var a = bgmEl();
   BGM.key = key;
   BGM._ext = 0;
   BGM._wantPlay = false;
   a.preload = 'auto';
   a.volume = 0;
-  bgmSetSrc(a, key);
+  bgmElSetSrc(a, key);
   try{ a.load(); }catch(e){}
+}
+
+
+/* ============================================================
+   คำสั่งที่ส่วนอื่นของเกมเรียกใช้
+   ============================================================ */
+
+/* โหลดเพลงรอไว้เงียบ ๆ ตั้งแต่เปิดหน้าเว็บ ยังไม่เล่น
+
+   มีไว้เพื่อให้ "กดเข้าสู่เกมแล้วเพลงมาทันที" เป็นจริง
+   ถ้าเริ่มโหลดตอนกดปุ่มเข้าเกม จะมีช่องว่างเงียบ ๆ ระหว่างรอไฟล์และรอถอดรหัส
+   ซึ่งบนมือถือหรือเน็ตช้าอาจกินเวลาหลายวินาที */
+function bgmPreload(key){
+  if(!BGM.tracks[key] || BGM.missing[key]) return;
+  if(bgmAudioCtx() && window.fetch && window.Promise){ bgmLoadBuffer(key); return; }
+  bgmPreloadElement(key);
 }
 
 function bgmPlay(key){
   if(!BGM.enabled) return;
   if(!BGM.tracks[key]) key = BGM.fallback;
-  if(!BGM.tracks[key]) return;              /* ไม่ได้ตั้งชื่อไฟล์ไว้เลย = หน้านี้เงียบ */
+  if(!BGM.tracks[key]) return;              /* หน้านี้ตั้งใจให้เงียบ */
   if(BGM.missing[key]){
     if(key === BGM.fallback || BGM.missing[BGM.fallback]) return;
     key = BGM.fallback;
   }
-  var a = bgmEl();
   /* เพลงเดิมเล่นอยู่แล้ว ห้ามสั่งเริ่มใหม่ — ไม่งั้นทุกครั้งที่สลับหน้าจอ
      เพลงจะย้อนกลับไปเริ่มต้นท่อนแรก ฟังเหมือนเพลงกระตุก */
-  if(BGM.key === key && !a.paused) return;
+  if(BGM.key === key && BGM.node) return;
+  if(BGM.key === key && BGM.el && !BGM.el.paused) return;
 
-  function start(){
-    BGM.key = key;
-    BGM._wantPlay = true;
-    /* ไฟล์ที่โหลดรอไว้แล้วจะผ่านตรงนี้โดยไม่ถูกสั่งโหลดใหม่ (ดู bgmSetSrc) */
-    if(BGM._curSrc !== bgmSrc(key)) BGM._ext = 0;
-    bgmSetSrc(a, key);
-    a.volume = 0;
-    var p = a.play();
-    if(p && p.catch){
-      p['catch'](function(){
-        /* ยังกดอะไรไม่ครบตามที่เบราว์เซอร์ต้องการ — จำไว้แล้วลองใหม่ตอนแตะจอ */
-        BGM._pending = key;
-        bgmArmGesture();
-      });
-    }
-    bgmFadeTo(a, BGM.volume, 900);
-  }
+  BGM.key = key;
+  BGM._wantPlay = true;
+  clearTimeout(BGM._waitT);
 
-  if(!a.paused) bgmFadeTo(a, 0, 400, function(){ a.pause(); start(); });
-  else start();
+  /* ถอดรหัสไว้แล้ว = เริ่มได้ทันทีแบบวนไร้รอยต่อ */
+  if(BGM.buf[key]){ bgmStartNode(key); return; }
+
+  bgmLoadBuffer(key, function(ok){
+    if(!BGM._wantPlay || BGM.key !== key) return;   /* เปลี่ยนใจไปแล้วระหว่างรอ */
+    clearTimeout(BGM._waitT);
+    if(ok && bgmStartNode(key)) return;
+    bgmPlayElement(key);                            /* Web Audio ใช้ไม่ได้ → ทางสำรอง */
+  });
+
+  /* กันเหนียว: ถ้าโหลด/ถอดรหัสนานผิดปกติ อย่าปล่อยให้เงียบรอไปเรื่อย ๆ
+     ให้ <audio> เล่นไปก่อน (มีช่องว่างตอนวนซ้ำ แต่ดีกว่าไม่มีเพลง) */
+  BGM._waitT = setTimeout(function(){
+    if(BGM._wantPlay && BGM.key === key && !BGM.node) bgmPlayElement(key);
+  }, 1500);
 }
 
 function bgmStop(){
   BGM.key = null;
   BGM._pending = null;
   BGM._wantPlay = false;
-  if(BGM.el && !BGM.el.paused) bgmFadeTo(BGM.el, 0, 350, function(){ BGM.el.pause(); });
+  clearTimeout(BGM._waitT);
+  bgmStopNode(0.35);
+  bgmStopElement(true);
 }
 
 /* เพลงที่ "ควรจะ" เล่นอยู่ตอนนี้ ตัดสินจากหน้าจอและโหมดที่เปิดอยู่จริง
@@ -352,6 +566,13 @@ function bgmSetVolume(v){
   bgmSave();
   /* ลากแถบเลื่อนระหว่างเพลงกำลังไล่ระดับอยู่ ต้องหยุดการไล่ก่อน
      ไม่งั้นเสียงจะเด้งกลับไปค่าที่การไล่ระดับกำลังวิ่งไปหา */
+  if(BGM.node && BGM.gain){
+    var ctx = bgmAudioCtx(), p = BGM.gain.gain;
+    try{
+      p.cancelScheduledValues(ctx.currentTime);
+      p.setValueAtTime(v, ctx.currentTime);
+    }catch(e){ p.value = v; }
+  }
   if(BGM.el && !BGM.el.paused){
     clearInterval(BGM._fadeInt);
     BGM._fadeInt = null;
@@ -375,12 +596,8 @@ function updateBgmButton(){
 
 function bgmInit(){
   updateBgmButton();
-  /* โหลดเพลงของหน้าเกมรอไว้ตั้งแต่ตอนนี้ (เงียบ ๆ ยังไม่เล่น)
-     พอกด "เข้าสู่เกมเรียนรู้" เพลงจะมาทันทีโดยไม่ต้องรอโหลด
-     และการกดปุ่มนั้นเองคือการกดที่เบราว์เซอร์รออยู่ เพลงจึงเล่นได้เลย */
   /* bgmRefresh ต้องมาก่อน เพราะบนหน้าแบบทดสอบมันจะเรียก bgmStop ซึ่งล้าง
-     BGM.key ทิ้ง — ถ้าโหลดรอไว้ก่อน ตัวที่ล้างจะลบร่องรอยว่ากำลังโหลดเพลงไหนอยู่
-     แล้วการไล่หานามสกุลไฟล์ (สำหรับคนที่ใช้ .wav/.m4a) จะไม่ทำงาน */
+     BGM.key ทิ้ง — ถ้าโหลดรอไว้ก่อน ตัวที่ล้างจะลบร่องรอยว่ากำลังโหลดเพลงไหนอยู่ */
   bgmRefresh();
   if(BGM.enabled) bgmPreload(BGM.fallback);
 }
