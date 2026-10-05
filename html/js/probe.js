@@ -360,6 +360,9 @@ function toggleProbeMode(){
 
   if(G.probeMode){
     if(ws) ws.addEventListener('click', onProbeItemClick, true);
+    /* จอเครื่องวัดลอยทับมุมขวาล่างของพื้นที่ทำงาน ถ้ามีอุปกรณ์อยู่ตรงนั้น
+       จะจิ้มวัดมันไม่ได้เลย — ให้จอหลบไปมุมที่ว่างแทน (ดู js/ui.js) */
+    if(typeof keepFloatingUiClear === 'function') keepFloatingUiClear();
     showToast('โหมดเครื่องวัด: จิ้มที่สายไฟหรือตัวอุปกรณ์เพื่ออ่านค่า','success');
   } else {
     if(ws) ws.removeEventListener('click', onProbeItemClick, true);

@@ -138,6 +138,106 @@ function closeModal(id){document.getElementById(id).classList.remove('open');}
    ============================================================ */
 var _confirmCallback = null;
 
+/* ============================================================
+   ย้ายปุ่มลอยให้พ้นอุปกรณ์ที่ผู้เล่นวางไว้
+
+   ปุ่มที่ลอยอยู่เหนือพื้นที่ทำงาน (แถบย้อน/ทำซ้ำ) มีโอกาสไปนั่งทับอุปกรณ์
+   ซึ่งแย่กว่าบังภาพเฉย ๆ เพราะอุปกรณ์ที่อยู่ "ใต้" ปุ่มจะกดไม่ได้ ลากไม่ได้
+   และปุ่มลบ (x) ของตัวมันเองก็ถูกบังไปด้วย ทางออกเดียวคือล้างทั้งแผง
+
+   เลือกย้าย "ปุ่ม" ไม่ใช่ย้าย "ของผู้เล่น" — ผู้เล่นตั้งใจวางตรงนั้น
+   ส่วนปุ่มอยู่มุมไหนก็ทำงานเหมือนกัน ขอแค่ยังหาเจอ
+
+     el       อิลิเมนต์ที่จะย้าย (ต้อง position:absolute)
+     corners  ลำดับมุมที่ยอมให้ไปอยู่ ('tl','tr','bl','br') เรียงตามความชอบ
+     pad      ระยะห่างจากขอบ (ค่าเริ่มต้น 8)
+     boundsEl กรอบที่ใช้เลือกมุม — ไม่ระบุ = ใช้ offsetParent ของ el เอง
+              มีไว้สำหรับของที่ลอยอยู่คนละกล่องกับพื้นที่ทำงาน เช่น
+              จอเครื่องวัดที่อยู่ใน #screen-game แต่ต้องหลบของใน #workspace
+
+   อยู่มุมแรกที่ว่างสนิท ถ้าไม่มีมุมไหนว่างเลยก็เลือกมุมที่ทับน้อยที่สุด
+   คืนชื่อมุมที่เลือก (null ถ้าทำไม่ได้)
+   ============================================================ */
+function keepClearOfItems(el, corners, pad, boundsEl){
+  if(!el || !corners || !corners.length) return null;
+  var host = el.offsetParent;
+  if(!host) return null;
+  var bounds = boundsEl || host;
+  var W = bounds.clientWidth, H = bounds.clientHeight;
+  var w = el.offsetWidth, h = el.offsetHeight;
+  if(!W || !H || !w || !h) return null;
+  pad = (pad == null) ? 8 : pad;
+
+  /* กล่องของอุปกรณ์ทุกชิ้น วัดเทียบมุมบนซ้ายของกรอบที่ใช้เลือกมุม */
+  var br = bounds.getBoundingClientRect(), boxes = [];
+  (typeof G !== 'undefined' ? (G.wsItems || []) : []).forEach(function(it){
+    if(!it.el) return;
+    var r = it.el.getBoundingClientRect();
+    if(!r.width) return;
+    boxes.push({ l:r.left-br.left, t:r.top-br.top, r:r.right-br.left, b:r.bottom-br.top });
+  });
+
+  function cornerPos(c){
+    return { x: (c.charAt(1) === 'l') ? pad : Math.max(pad, W - w - pad),
+             y: (c.charAt(0) === 't') ? pad : Math.max(pad, H - h - pad) };
+  }
+  function overlapAt(x, y){
+    var sum = 0;
+    for(var i=0;i<boxes.length;i++){
+      var ow = Math.min(x+w, boxes[i].r) - Math.max(x, boxes[i].l);
+      var oh = Math.min(y+h, boxes[i].b) - Math.max(y, boxes[i].t);
+      if(ow > 0 && oh > 0) sum += ow * oh;
+    }
+    return sum;
+  }
+
+  var best = corners[0], bestArea = Infinity;
+  for(var i=0;i<corners.length;i++){
+    var a = overlapAt(cornerPos(corners[i]).x, cornerPos(corners[i]).y);
+    if(a === 0){ best = corners[i]; bestArea = 0; break; }
+    if(a < bestArea){ bestArea = a; best = corners[i]; }
+  }
+  /* ตำแหน่งที่เลือกอยู่ในพิกัดของ bounds — แปลงกลับเป็นพิกัดของ offsetParent
+     (ถ้า bounds กับ host เป็นตัวเดียวกัน ผลต่างเป็นศูนย์ ไม่มีอะไรเปลี่ยน) */
+  var hr = host.getBoundingClientRect();
+  var p = cornerPos(best);
+  el.style.left   = Math.round(p.x + br.left - hr.left) + 'px';
+  el.style.top    = Math.round(p.y + br.top  - hr.top)  + 'px';
+  el.style.right  = 'auto';
+  el.style.bottom = 'auto';
+  return best;
+}
+
+/* ============================================================
+   จัดของลอยทั้งหมดให้พ้นอุปกรณ์ในคราวเดียว
+
+   เลื่อนไปทำหลังคำสั่งปัจจุบันจบด้วย setTimeout เพราะตัวเรียกหลัก
+   (updateHistoryButtons) ทำงาน "ก่อน" อุปกรณ์ถูกเพิ่มเข้า DOM จริง
+   — pushHistory() ถ่ายภาพก่อนการเปลี่ยนแปลงตามการออกแบบของ js/history.js
+
+   ไม่ใช้ requestAnimationFrame เพราะมันผูกกับรอบวาดภาพ ซึ่งบางสภาพแวดล้อม
+   ไม่เดินเลย ของลอยจะค้างทับอุปกรณ์อยู่อย่างนั้นถาวร
+   ============================================================ */
+var _keepClearPending = false;
+function keepFloatingUiClear(){
+  if(_keepClearPending) return;
+  _keepClearPending = true;
+  setTimeout(function(){
+    _keepClearPending = false;
+    var ws = document.getElementById('workspace');
+    try{
+      /* แถบย้อน/ทำซ้ำ — ชอบมุมซ้ายบน แต่ยอมย้ายได้ 3 มุม
+         (ไม่เอาขวาล่าง เพราะจอเครื่องวัดจองไว้) */
+      keepClearOfItems(document.getElementById('history-bar'), ['tl','bl','tr']);
+      /* จอเครื่องวัด — อยู่คนละกล่องกับพื้นที่ทำงาน จึงต้องบอกกรอบให้ */
+      var probe = document.getElementById('probe-display');
+      if(probe && ws && getComputedStyle(probe).display !== 'none'){
+        keepClearOfItems(probe, ['br','tr','bl','tl'], 12, ws);
+      }
+    }catch(e){}
+  }, 0);
+}
+
 function showConfirm(opts){
   opts = opts || {};
 

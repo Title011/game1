@@ -1,0 +1,100 @@
+@charset "UTF-8";
+/* ============================================================
+   STARS — แถวดาวในกล่องผลลัพธ์ (ดู js/stars.js)
+   ============================================================ */
+
+#star-row{
+  margin:10px auto 2px;
+  max-width:340px;
+  text-align:center;
+}
+#star-row[hidden]{display:none;}
+
+.star-pips{
+  display:flex; justify-content:center; gap:8px;
+  font-size:2rem; line-height:1;
+}
+.star-pip{
+  color:var(--border2);
+  filter:none;
+  transition:color .2s;
+}
+.star-pip.on{
+  color:var(--accent2);
+  text-shadow:0 0 14px rgba(255,215,0,.55);
+}
+/* ดาวเด้งทีละดวงตอนกล่องผลเปิด — ดวงที่ได้เท่านั้นที่เด้ง */
+#star-row.pop .star-pip.on{
+  animation:starPop .45s cubic-bezier(.2,1.5,.4,1) backwards;
+}
+@keyframes starPop{
+  from{ transform:scale(.2) rotate(-25deg); opacity:0; }
+  60% { transform:scale(1.25) rotate(6deg);  opacity:1; }
+  to  { transform:scale(1) rotate(0);        opacity:1; }
+}
+
+.star-note{
+  margin-top:7px;
+  font-size:.78rem; line-height:1.55;
+  color:var(--text-dim);
+}
+.star-new{ color:var(--accent3); font-weight:700; }
+.star-best{ color:var(--text-dim); opacity:.85; }
+
+.star-total{
+  margin-top:6px;
+  font-size:.72rem; font-weight:700; letter-spacing:.02em;
+  color:var(--accent2); opacity:.9;
+}
+
+@media (max-width:760px){
+  .star-pips{font-size:1.7rem; gap:6px;}
+  .star-note{font-size:.74rem;}
+}
+
+/* ผู้ที่ตั้งค่าเครื่องให้ลดการเคลื่อนไหว ไม่ควรโดนดาวเด้งใส่ */
+@media (prefers-reduced-motion: reduce){
+  #star-row.pop .star-pip.on{animation:none;}
+}
+
+/* ============================================================
+   กระดานดาวบนหน้าจบเกม
+   ============================================================ */
+.star-board{
+  width:100%; max-width:560px; margin:0 auto 22px;
+  background:rgba(17,34,64,.72);
+  border:1px solid var(--border2); border-radius:var(--radius);
+  padding:14px 16px 16px;
+}
+.star-board[hidden]{display:none;}
+
+.sb-head{font-size:.95rem; color:var(--text); margin-bottom:3px;}
+.sb-head b{color:var(--accent2); font-size:1.12rem;}
+.sb-sub{font-size:.74rem; color:var(--text-dim); line-height:1.5; margin-bottom:11px;}
+
+.sb-grid{
+  display:grid;
+  grid-template-columns:repeat(auto-fill, minmax(72px, 1fr));
+  gap:7px;
+}
+.sb-cell{
+  display:flex; flex-direction:column; align-items:center; gap:2px;
+  background:var(--bg-card); border:1px solid var(--border);
+  border-radius:9px; padding:7px 4px 6px;
+  cursor:pointer; font-family:inherit;
+  transition:border-color .15s, background .15s, transform .12s;
+}
+.sb-cell:hover{border-color:var(--accent); background:var(--bg-card2); transform:translateY(-1px);}
+.sb-cell:focus-visible{outline:2px solid var(--accent); outline-offset:2px;}
+.sb-num{font-size:.78rem; font-weight:800; color:var(--text);}
+.sb-stars{font-size:.76rem; color:var(--accent2); letter-spacing:.06em;}
+.sb-cell.none .sb-stars{color:var(--border2);}
+.sb-cell.full{border-color:rgba(255,215,0,.5); background:rgba(255,215,0,.07);}
+.sb-cell.full .sb-num{color:var(--accent2);}
+
+@media (max-width:760px){
+  .star-board{padding:12px 12px 13px;}
+  .sb-grid{grid-template-columns:repeat(auto-fill, minmax(62px, 1fr)); gap:6px;}
+  .sb-num{font-size:.72rem;}
+  .sb-stars{font-size:.68rem;}
+}

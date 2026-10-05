@@ -76,6 +76,17 @@ function loadSave(){
 function clearSave(){
   if(!SAVE_OK) return;
   try{ localStorage.removeItem(SAVE_KEY); }catch(e){}
+  /* ความคืบหน้าบางอย่างเก็บแยกก้อนกัน (ดาวประจำด่าน, สถานะด่านสอน)
+     แต่มันคือ "ของผู้เล่นคนนี้" เหมือนกัน จึงต้องหายไปพร้อมกัน
+
+     สำคัญกับเครื่องที่ใช้ร่วมกันหลายคน: ถ้าไม่ล้าง คนถัดไปจะได้ดาวของคนก่อน
+     ติดมา และจะไม่ถูกชวนเข้าด่านสอนเลยเพราะระบบคิดว่า "เคยเรียนแล้ว"
+
+     เรียกแบบมีตัวกันไว้ เพื่อให้ไฟล์นี้ยังทำงานได้ถ้าสองไฟล์นั้นไม่ถูกโหลด
+     (ค่าที่เป็นของ "เครื่อง" ไม่ใช่ของผู้เล่น — เสียง เพลง ชนิดเครื่อง
+      และตารางอันดับของเครื่อง — ไม่ถูกล้าง เพราะไม่ใช่ความคืบหน้า) */
+  if(typeof starsReset === 'function') starsReset();
+  if(typeof coachResetProgress === 'function') coachResetProgress();
 }
 
 /* ============================================================
@@ -173,9 +184,11 @@ function continueGame(){
 /* กดปุ่ม "เริ่มใหม่ทั้งหมด" — ล้างข้อมูลบันทึก */
 function askResetSave(){
   var s = loadSave();
+  var stars = (typeof starsTotal === 'function') ? starsTotal() : 0;
   var detail = s
     ? 'คะแนน <b>' + s.score + '</b> · ผ่านแล้ว <b>' +
-      Object.keys(s.doneLevels).length + ' ด่าน</b><br>' +
+      Object.keys(s.doneLevels).length + ' ด่าน</b>' +
+      (stars ? ' · ดาว <b>' + stars + ' ดวง</b>' : '') + '<br>' +
       'รวมถึงสถานะการทำแบบทดสอบ จะหายทั้งหมด'
     : 'ข้อมูลที่บันทึกไว้จะถูกลบทั้งหมด';
 
