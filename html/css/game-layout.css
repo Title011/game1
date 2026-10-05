@@ -208,6 +208,23 @@ body.sandbox-mode #level-goal{border-color:rgba(0,255,136,.4);color:var(--accent
   padding:2px 10px;border-radius:999px;
   max-width:100%;
 }
+
+/* แถบโจทย์พับเก็บได้ — เฉพาะจอแคบ (ดู js/goalbar.js)
+   บนจอคอมมีที่เหลือเฟือ จึงกางไว้เหมือนเดิมทุกประการ
+   บนมือถือคำอธิบายยาว 3-4 บรรทัดคือความสูงที่แผงต่อวงจรเสียไปฟรี ๆ */
+@media (max-width:760px){
+  #level-goal{cursor:pointer;padding-right:30px;position:relative;}
+  #level-goal::after{
+    content:'\25BE';                       /* ▾ กางอยู่ */
+    position:absolute;right:11px;top:50%;transform:translateY(-50%);
+    color:var(--text-dim);font-size:.8rem;line-height:1;pointer-events:none;
+  }
+  #level-goal.goal-collapsed::after{content:'\25B8';}   /* ▸ พับอยู่ */
+  #level-goal.goal-collapsed #goal-desc,
+  #level-goal.goal-collapsed .goal-outcome{display:none;}
+  #level-goal.goal-collapsed{padding-top:5px;padding-bottom:5px;}
+  #level-goal:focus-visible{outline:2px solid var(--accent);outline-offset:2px;}
+}
 /* min-height ต่ำ ๆ + flex-shrink เปิด = พื้นที่ทำงานยอมหดให้ก่อน
    แถบเป้าหมายกับแถบปุ่มจึงไม่โดนดันตกจอเวลาหน้าต่างเตี้ย */
 #workspace{
@@ -239,6 +256,11 @@ body.sandbox-mode #level-goal{border-color:rgba(0,255,136,.4);color:var(--accent
 #history-bar{
   position:absolute;z-index:22;top:8px;left:8px;
   display:flex;gap:6px;
+  /* แถบนี้หลบไปมุมอื่นเองเมื่อมีอุปกรณ์อยู่ใต้มัน (historyBarKeepClear ใน
+     js/history.js) — ย้ายทันทีไม่ใส่ transition โดยตั้งใจ
+     เพราะมันย้ายเพื่อ "เปิดทางให้ของที่ผู้เล่นเพิ่งวาง" ถ้าไถช้า ๆ
+     ผู้เล่นจะเห็นปุ่มคร่อมอุปกรณ์อยู่ครู่หนึ่งซึ่งเป็นภาพที่กำลังจะแก้พอดี
+     (และบางสภาพแวดล้อมไม่เดินแอนิเมชันเลย ทำให้ปุ่มค้างที่เดิมถาวร) */
 }
 /* *** ห้ามใช้ opacity บอกสถานะ disabled กับธีมมืดชุดนี้ ***
 
@@ -321,6 +343,40 @@ body.sandbox-mode #level-goal{border-color:rgba(0,255,136,.4);color:var(--accent
   position:absolute;inset:0;display:flex;align-items:center;justify-content:center;
   color:var(--text-dim);font-size:.85rem;opacity:.45;pointer-events:none;
   flex-direction:column;gap:8px;
+}
+
+/* ระหว่างลากของเข้ามาวาง ต้องเห็น "ที่ที่กำลังจะวาง" ไม่ใช่เห็นแต่คำแนะนำ
+   สำคัญมากในด่านเบรดบอร์ด เพราะข้อความคลุมแผงไว้เกือบทั้งผืน
+   ผู้เล่นจึงเล็งรูไม่ได้เลยตอนที่ต้องเล็งพอดี
+
+   เขียนสองตัวเลือกเพราะกฎของแผง (body.has-breadboard #workspace-hint)
+   มี specificity 0,2,0 เท่ากัน ตัวที่มี body นำหน้าจึงต้องมีไว้ให้ชนะ */
+body.has-breadboard #workspace.drag-over #workspace-hint,
+#workspace.drag-over #workspace-hint{
+  opacity:.1;
+}
+
+/* ข้อความแนะนำมีสองสำนวน (.hint-mouse / .hint-touch) เลือกตามเครื่องที่เล่น
+   ธง body.is-touch / body.is-mouse ติดโดย coachApplyPlatform() ใน js/coach.js
+   และผู้เล่นกดแก้เองได้จากกล่องด่านสอนถ้าระบบเดาผิด
+
+   กฎพวกนี้ "ซ่อนอย่างเดียว ไม่สั่งให้แสดง" โดยตั้งใจ — การแสดงผลของ
+   .hint-free / .hint-board ถูกคุมด้วยกฎของแผงใน breadboard.css อยู่แล้ว
+   ถ้าเผลอสั่ง display:block ที่นี่ ข้อความของด่านแผงจะไปโผล่ในด่านธรรมดา
+
+   ผูกกับ #workspace-hint เพื่อให้ specificity ชนะกฎของแผงโดยไม่ต้องพึ่ง
+   ลำดับไฟล์และไม่ต้องใช้ !important
+
+   เขียนเป็น :not() เพื่อให้เหลือสำนวนเดียวเสมอแม้ body ยังไม่มีธงเลย
+   (ช่วงเสี้ยววินาทีก่อน JS ทำงาน หรือกรณี js/coach.js ไม่ถูกโหลด)
+   ถ้าเขียน body.is-mouse ตรง ๆ กรณีไม่มีธงจะโชว์ทั้งสองสำนวนซ้อนกัน */
+body:not(.is-touch) #workspace-hint .hint-touch{display:none;}
+body.is-touch       #workspace-hint .hint-mouse{display:none;}
+
+/* เครื่องจอสัมผัสที่ธงยังไม่ถูกติด — ซ่อนสำนวนเมาส์ไว้ก่อน
+   ยอมให้ว่างชั่วขณะ ดีกว่าบอกท่าที่ผู้เล่นทำตามไม่ได้ */
+@media (pointer: coarse){
+  body:not(.is-mouse):not(.is-touch) #workspace-hint .hint-mouse{display:none;}
 }
 
 /* SVG wire layer

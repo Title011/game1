@@ -233,4 +233,43 @@ function updateHistoryButtons(){
       ? ('ทำซ้ำ: ' + HIST.future[HIST.future.length-1].label + ' (Ctrl+Y)')
       : 'ไม่มีอะไรให้ทำซ้ำ (Ctrl+Y)';
   }
+  updateTidyButton();
+  historyBarKeepClear();
+}
+
+/* ปุ่ม "จัดเรียง" อยู่แถบเดียวกัน (ดู tidyWorkspace ใน js/workspace.js)
+
+   ต้องดูสถานะ "หลัง" คำสั่งปัจจุบันจบ ด้วยเหตุผลเดียวกับตำแหน่งแถบ:
+   pushHistory() ทำงานก่อนอุปกรณ์ถูกเพิ่มเข้าจริง ถ้าเช็คทันทีจะนับของ
+   ขาดไปหนึ่งชิ้นเสมอ ปุ่มก็จะเปิดใช้งานช้าไปหนึ่งจังหวะตลอด */
+var _tidyPending = false;
+function updateTidyButton(){
+  if(_tidyPending) return;
+  _tidyPending = true;
+  setTimeout(function(){
+    _tidyPending = false;
+    var t = document.getElementById('btn-tidy');
+    if(!t || typeof canTidyWorkspace !== 'function') return;
+    var onBoard = (typeof boardWanted === 'function') && boardWanted();
+    var can = canTidyWorkspace();
+    t.disabled = !can;
+    t.hidden   = onBoard;      /* ด่านแผงไม่ต้องมีปุ่มนี้เลย ขาลงรูให้เองอยู่แล้ว */
+    t.title = can
+      ? 'จัดเรียงอุปกรณ์ให้ไม่ชิดกันจนขาแตะกัน (สายไม่หลุด ย้อนกลับได้)'
+      : (onBoard ? 'ด่านนี้ใช้แผงต่อวงจร — ขาลงรูให้เองอยู่แล้ว'
+                 : 'ต้องมีอุปกรณ์อย่างน้อย 2 ชิ้นก่อน');
+  }, 0);
+}
+
+/* แถบนี้ลอยอยู่บนพื้นที่ทำงาน ถ้าผู้เล่นวางอุปกรณ์ไว้ใต้มัน อุปกรณ์ชิ้นนั้น
+   จะกดไม่ได้ ลากไม่ได้ และปุ่มลบของมันก็ถูกบัง — ต้องล้างทั้งแผงถึงจะเอาออก
+   (มุมซ้ายบนคือจุดแรกที่คนส่วนใหญ่วางของ จึงเจอบ่อยกว่าที่คิด)
+
+   จึงให้แถบหลบไปมุมที่ว่างแทน เรียกจาก updateHistoryButtons() ซึ่งทำงาน
+   หลังทุกการเปลี่ยนแปลงที่ถูกบันทึกประวัติ — รวมถึงการลากย้ายอุปกรณ์
+
+   ตัวจัดตำแหน่งจริงอยู่ที่ keepFloatingUiClear() ใน js/ui.js เพราะจอเครื่องวัด
+   ก็มีปัญหาเดียวกัน และทั้งคู่ควรคิดพร้อมกันในรอบเดียว */
+function historyBarKeepClear(){
+  if(typeof keepFloatingUiClear === 'function') keepFloatingUiClear();
 }

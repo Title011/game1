@@ -274,6 +274,93 @@ function removeWsItem(itemId){
   if(G.wsItems.length===0) document.getElementById('workspace-hint').style.display='';
 }
 
+/* ============================================================
+   จัดเรียงอุปกรณ์ให้เป็นระเบียบ
+
+   ทำไมต้องมี: เกมนี้เชื่อมขาที่ "แตะกัน" ให้อัตโนมัติ (ดู js/wires.js)
+   เวลาอุปกรณ์วางทับหรือชิดกันเกินไป ขาจะแตะกันเองแล้วกลายเป็นลัดวงจร
+   ทั้งที่ผู้เล่นไม่ได้ตั้งใจ — อาการคือ "ตรวจแล้วบอกว่าคร่อมขาตัวเอง"
+   ทั้งที่มองด้วยตาก็เห็นว่าต่อถูก ซึ่งหาสาเหตุเองแทบไม่ได้เลย
+
+   ปุ่มนี้จึงแก้ให้ทีเดียว: เรียงลงตารางโดยเว้นระยะให้ขาไม่แตะกัน
+   ไม่แตะสายไฟเลย — สายผูกกับตัวขา พอขาขยับสายก็ตามไปเอง
+
+   เรียงตามตำแหน่งเดิม (บนลงล่าง ซ้ายไปขวา) เพื่อให้ผลลัพธ์ยังเดาได้
+   ว่าอะไรไปอยู่ตรงไหน ไม่ใช่สลับที่กันมั่ว
+   ============================================================ */
+/* ระยะห่างต่อช่องในตาราง
+
+   ต้องวัดจาก "ขอบเขตจริงรวมขา" ไม่ใช่จากกล่องอุปกรณ์ — ขาถูกวางตามตำแหน่ง
+   ขาจริงของอุปกรณ์แต่ละชนิด (PORT_ANCHORS ใน js/devices.js) ซึ่งยื่นออกนอก
+   กล่องไปได้ไกลถึงสองช่วงรู ถ้าเว้นระยะตามกล่อง ขาของสองชิ้นที่ "ดูไม่ทับกัน"
+   ก็ยังแตะกันอยู่ดี แล้วเกมจะเชื่อมมันให้เองจนกลายเป็นลัดวงจร
+
+   วัดสด ๆ ทุกครั้งเพราะขนาดเปลี่ยนตาม CSS ของแต่ละจอ และเปลี่ยนตามการหมุน */
+function tidySpacing(){
+  var max = 68;
+  (G.wsItems || []).forEach(function(it){
+    if(!it.el) return;
+    var r = it.el.getBoundingClientRect();
+    if(!r.width) return;
+    var l = r.left, t = r.top, rt = r.right, b = r.bottom;
+    it.el.querySelectorAll('.port').forEach(function(p){
+      var pr = p.getBoundingClientRect();
+      if(!pr.width) return;
+      if(pr.left   < l)  l  = pr.left;
+      if(pr.top    < t)  t  = pr.top;
+      if(pr.right  > rt) rt = pr.right;
+      if(pr.bottom > b)  b  = pr.bottom;
+    });
+    max = Math.max(max, rt - l, b - t);
+  });
+  return Math.round(max) + 16;     /* เผื่อช่องว่างกันขาแตะกันอีกชั้น */
+}
+
+function canTidyWorkspace(){
+  return !boardWanted() && (G.wsItems || []).length >= 2;
+}
+
+function tidyWorkspace(){
+  if(!G.wsItems.length){ showToast('ยังไม่มีอุปกรณ์ให้จัดเรียง','error'); return; }
+  if(boardWanted()){
+    showToast('ด่านนี้ใช้แผงต่อวงจร — ขาจะลงรูให้เองอยู่แล้ว','');
+    return;
+  }
+  var wsEl = document.getElementById('workspace');
+  if(!wsEl || !wsEl.clientWidth) return;
+
+  historyStep('จัดเรียงอุปกรณ์ (' + G.wsItems.length + ' ชิ้น)', function(){
+    var SP = tidySpacing();
+    var cols = Math.max(1, Math.floor((wsEl.clientWidth - 16) / SP));
+
+    /* เรียงตามที่ตาเห็น: ไล่เป็นแถวจากบนลงล่าง ในแถวเดียวกันไล่ซ้ายไปขวา
+       ปัดตำแหน่งแนวตั้งเป็นช่วง ๆ ก่อน ไม่งั้นของที่ "อยู่แถวเดียวกัน"
+       แต่สูงต่างกันไม่กี่พิกเซลจะถูกมองเป็นคนละแถว แล้วสลับที่กันมั่ว */
+    var order = G.wsItems.slice().sort(function(a,b){
+      var ra = Math.round((a.y||0)/60), rb = Math.round((b.y||0)/60);
+      return (ra-rb) || ((a.x||0)-(b.x||0));
+    });
+
+    order.forEach(function(item, i){
+      if(!item.el) return;
+      item.el.style.left = (8 + (i % cols) * SP) + 'px';
+      item.el.style.top  = (8 + Math.floor(i / cols) * SP) + 'px';
+      clampWsItem(item);
+    });
+  });
+
+  if(typeof bbRefresh === 'function') bbRefresh();
+  /* ต้องเป็น settleCircuit() ไม่ใช่ refreshWires() เฉย ๆ
+     เพราะ "สายขาแตะกัน" ถูกสร้างใหม่ทั้งชุดในนั้น (syncAutoJoins ใน js/wires.js)
+     ถ้าเรียกแค่วาดสายใหม่ เส้นที่เกิดตอนของยังทับกันจะค้างอยู่ทั้งที่แยกกันแล้ว */
+  var stillTouching = (typeof settleCircuit === 'function') ? settleCircuit() : 0;
+
+  showToast(stillTouching
+    ? ('จัดเรียงแล้ว แต่ยังมีขาแตะกัน ' + stillTouching + ' จุด (พื้นที่ไม่พอ) — ' + undoHint())
+    : ('จัดเรียงอุปกรณ์แล้ว — ' + undoHint()),
+    stillTouching ? '' : 'success');
+}
+
 /* ปุ่ม "ล้างพื้นที่" ที่ผู้เล่นกดเอง — ต่างจาก clearWorkspace() ที่ระบบเรียก
    ตอนเปลี่ยนด่าน/เข้าออกโหมด ซึ่งไม่ควรย้อนกลับได้ (วงจรของด่านก่อนไม่เกี่ยวกัน)
    แยกออกมาเพื่อให้ "ล้างทั้งแผง" กู้คืนได้ด้วย Ctrl+Z ครั้งเดียว */

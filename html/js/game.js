@@ -71,6 +71,36 @@ function updateLevelBar(){
     G.sandbox ? '<span class="hud-inf">∞</span>'
     : G.endless ? renderHearts(G.endlessLives, 1)
     : renderHearts(G.lives, 3);
+  /* การเลื่อนแถบด่านเป็นของอำนวยความสะดวก ไม่ใช่สาระของ updateLevelBar()
+     ซึ่งถูกเรียกแทบทุกจังหวะของเกม จึงห้ามทำให้ทั้งฟังก์ชันล้มเด็ดขาด */
+  try{ scrollActiveLevelIntoView(); }catch(e){}
+}
+
+/* แถบด่านเลื่อนแนวนอนเมื่อจอแคบ (20 จุดไม่พอใส่ในแถวเดียวบนมือถือ)
+   ถ้าไม่เลื่อนตาม ผู้เล่นด่านท้าย ๆ จะเปิดมาเห็นแถบที่ค้างอยู่ที่ด่าน 1
+   แล้วหาไม่เจอว่าตัวเองอยู่ตรงไหนและเหลืออีกกี่ด่าน
+
+   เลื่อนเฉพาะตอนที่จุดหลุดกรอบจริง ๆ เพราะ updateLevelBar() ถูกเรียกบ่อยมาก
+   (ทุกครั้งที่คะแนน/ชีวิตเปลี่ยน) การสั่งเลื่อนทุกครั้งจะทำให้แถบไหวตลอดเวลา */
+function scrollActiveLevelIntoView(){
+  var bar = document.getElementById('level-bar');
+  var dot = bar && bar.querySelector('.level-dot.active');
+  if(!bar || !dot || !dot.getBoundingClientRect) return;
+  if(bar.scrollWidth <= bar.clientWidth + 1) return;   /* ไม่ได้เลื่อนอยู่แล้ว */
+  var b = bar.getBoundingClientRect(), d = dot.getBoundingClientRect();
+  if(d.left >= b.left + 4 && d.right <= b.right - 4) return;   /* เห็นอยู่แล้ว */
+
+  /* เลื่อนเองจากผลต่างของจุดกึ่งกลาง ไม่ใช้ scrollIntoView()
+     เพราะมันเลือกเลื่อน "บรรพบุรุษที่เลื่อนได้ตัวใกล้สุด" ซึ่งไม่ได้เป็น
+     แถบด่านเสมอไป และยังพาหน้าทั้งหน้าเลื่อนตามไปด้วยในบางกรณี
+     คิดจาก rect จึงไม่ต้องสนว่า offsetParent เป็นใคร
+
+     เลื่อนทันทีไม่ใช้ behavior:'smooth' — จังหวะที่เรียกคือตอนเปลี่ยนด่าน
+     ซึ่งทั้งหน้าถูกล้างใหม่อยู่แล้ว การไถช้า ๆ จึงไม่ได้ช่วยให้เข้าใจอะไรเพิ่ม
+     แถมแอนิเมชันยังไม่ทำงานในบางสภาพแวดล้อม ทำให้บางเครื่องไม่เลื่อนเลย */
+  var delta  = (d.left + d.width/2) - (b.left + b.width/2);
+  var max    = bar.scrollWidth - bar.clientWidth;
+  bar.scrollLeft = Math.max(0, Math.min(bar.scrollLeft + delta, max));
 }
 
 /* เอานิยามด่านขึ้นจอ: คลังอุปกรณ์ กล่องโจทย์ นาฬิกา แถบด่าน และแผงต่อวงจร
@@ -770,6 +800,18 @@ function buildSolutionHint(){
 }
 
 function showResult(ok,msg,earned,elapsed,replay,fault,outcome){
+  /* ดาวประจำด่าน (ดู js/stars.js) — วางไว้ที่เดียวตรงนี้เพราะทุกเส้นทาง
+     ของผลตรวจในโหมดด่านผ่านฟังก์ชันนี้หมด ถ้าไปแปะตามจุดที่เรียก
+     จะมีทางใดทางหนึ่งหลุดแล้วดาวของรอบก่อนค้างอยู่ในกล่อง
+
+     ห่อ try ไว้โดยตั้งใจ: ดาวเป็นของประดับ ส่วนกล่องผลลัพธ์คือสิ่งที่
+     ผู้เล่นต้องได้เห็นเสมอ ถ้าระบบดาวมีปัญหา เกมต้องเล่นต่อได้ตามปกติ */
+  try{
+    if(typeof starsOnWin === 'function'){
+      if(ok) starsOnWin(elapsed); else starsHideResult();
+    }
+  }catch(e){}
+
   /* ต่อผิดธรรมดา กับ "วงจรพังจริง" ต้องรู้สึกต่างกัน */
   var broke = !ok && fault && fault.incidents && fault.incidents.length;
   document.getElementById('result-icon').innerHTML = ok

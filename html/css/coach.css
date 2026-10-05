@@ -1,0 +1,191 @@
+@charset "UTF-8";
+/* ============================================================
+   COACH — ด่านสอนแบบจับมือทำ (ดู js/coach.js)
+
+   หลักการสำคัญของไฟล์นี้: ชั้นสอนต้อง "มองเห็นแต่กดทะลุได้"
+   เพราะผู้เรียนต้องลากอุปกรณ์จริงและต่อสายจริงระหว่างที่ป้ายยังอยู่
+   ทุกอย่างจึงเป็น pointer-events:none ยกเว้นกล่องข้อความกับปุ่มของมันเอง
+
+   z-index 300 = เหนือกล่องโมดัล (100) และป้ายเด้ง (200)
+   ============================================================ */
+
+#coach{
+  position:fixed; inset:0; z-index:300;
+  pointer-events:none;
+  font-family:inherit;
+}
+#coach[hidden]{display:none;}
+
+/* ---------- วงไฮไลต์ + ฉากหลังหรี่ ----------
+   หรี่ทั้งจอด้วย box-shadow วงใหญ่ยักษ์ของตัววงเอง
+   จึงได้ "รูสว่าง" ตรงกลางโดยไม่ต้องใช้ mask และไม่บังการกดเลย */
+#coach-ring{
+  position:absolute; border-radius:14px;
+  border:2px solid var(--accent);
+  box-shadow:0 0 0 9999px rgba(4,10,20,.62), 0 0 18px rgba(0,212,255,.55);
+  transition:top .25s ease, left .25s ease, width .25s ease, height .25s ease;
+  pointer-events:none;
+}
+#coach-ring.pulse{animation:coachPulse 1.6s ease-in-out infinite;}
+@keyframes coachPulse{
+  0%,100%{border-color:var(--accent);   box-shadow:0 0 0 9999px rgba(4,10,20,.62), 0 0 12px rgba(0,212,255,.45);}
+  50%    {border-color:var(--accent3);  box-shadow:0 0 0 9999px rgba(4,10,20,.62), 0 0 26px rgba(0,255,136,.75);}
+}
+/* ไม่มีจุดให้ชี้ (ขั้นเกริ่น/สรุป) — หรี่จอเฉย ๆ ไม่ต้องมีวง */
+#coach-ring.no-target{
+  border-color:transparent; box-shadow:0 0 0 9999px rgba(4,10,20,.62);
+  animation:none;
+}
+
+/* ---------- กล่องข้อความ ---------- */
+#coach-bubble{
+  position:absolute; width:min(340px, calc(100vw - 32px));
+  background:linear-gradient(180deg,#132a4d,#0f2140);
+  border:1px solid var(--border2); border-radius:14px;
+  box-shadow:0 14px 40px rgba(0,0,0,.6);
+  padding:14px 16px 12px;
+  pointer-events:auto;
+  transition:top .25s ease, left .25s ease;
+}
+
+.coach-head{
+  display:flex; align-items:center; gap:8px;
+  margin-bottom:8px;
+}
+.coach-step{
+  font-size:.68rem; font-weight:700; letter-spacing:.04em;
+  color:#04231a; background:var(--accent3);
+  border-radius:999px; padding:3px 9px; white-space:nowrap;
+}
+.coach-plat{
+  font-size:.66rem; color:var(--text-dim);
+  border:1px solid var(--border2); background:var(--bg-card);
+  border-radius:999px; padding:3px 9px; cursor:pointer;
+  margin-left:auto; white-space:nowrap;
+}
+.coach-plat:hover{color:var(--accent); border-color:var(--accent);}
+.coach-skip{
+  background:none; border:none; color:var(--text-dim);
+  font-size:.72rem; cursor:pointer; padding:3px 4px; text-decoration:underline;
+}
+.coach-skip:hover{color:var(--danger);}
+
+#coach-title{
+  font-size:1rem; font-weight:800; color:var(--accent);
+  margin-bottom:5px; line-height:1.3;
+}
+#coach-text{
+  font-size:.86rem; line-height:1.62; color:var(--text);
+}
+#coach-text b{color:var(--accent2);}
+#coach-text .k{
+  display:inline-block; background:var(--bg-card2); border:1px solid var(--border2);
+  border-radius:5px; padding:0 6px; font-size:.78rem; font-weight:700;
+  color:var(--text); margin:0 1px;
+}
+
+/* แถบ "ทำสำเร็จแล้ว" — ขึ้นเองเมื่อผู้เรียนทำตามขั้นนั้นได้ */
+#coach-done{
+  display:none; align-items:center; gap:7px;
+  margin-top:9px; padding:7px 10px; border-radius:9px;
+  background:rgba(0,255,136,.12); border:1px solid rgba(0,255,136,.4);
+  color:var(--accent3); font-size:.8rem; font-weight:700;
+}
+#coach-done.show{display:flex; animation:coachPop .28s ease;}
+@keyframes coachPop{from{transform:scale(.92);opacity:0;} to{transform:scale(1);opacity:1;}}
+
+.coach-foot{
+  display:flex; align-items:center; gap:8px; margin-top:11px;
+}
+.coach-btn{
+  border:1px solid var(--border2); background:var(--bg-card);
+  color:var(--text); border-radius:9px; padding:7px 14px;
+  font-size:.82rem; font-weight:700; cursor:pointer; font-family:inherit;
+  transition:background .15s, color .15s, border-color .15s, opacity .15s;
+}
+.coach-btn:hover:not(:disabled){border-color:var(--accent); color:var(--accent);}
+.coach-btn:disabled{opacity:.35; cursor:default;}
+.coach-btn.primary{
+  background:linear-gradient(135deg,var(--accent),#0088cc);
+  color:#04121f; border-color:transparent;
+}
+.coach-btn.primary:hover{filter:brightness(1.12); color:#04121f;}
+.coach-btn.go{
+  background:linear-gradient(135deg,var(--accent3),#059669);
+  color:#04231a; border-color:transparent;
+}
+.coach-spacer{margin-left:auto;}
+
+/* ลูกศรชี้จากกล่องไปยังจุดที่พูดถึง */
+#coach-arrow{
+  position:absolute; width:0; height:0; pointer-events:none;
+  border:9px solid transparent;
+}
+#coach-arrow.up   {border-bottom-color:#132a4d;}
+#coach-arrow.down {border-top-color:#0f2140;}
+#coach-arrow.left {border-right-color:#132a4d;}
+#coach-arrow.right{border-left-color:#132a4d;}
+#coach-arrow.hide {display:none;}
+
+/* ---------- การ์ดชวนเรียน (โผล่ครั้งแรกที่เข้าเกม) ---------- */
+#coach-invite{
+  position:fixed; z-index:260; right:16px; bottom:16px;
+  width:min(300px, calc(100vw - 32px));
+  background:linear-gradient(180deg,#132a4d,#0f2140);
+  border:1px solid var(--accent); border-radius:14px;
+  box-shadow:0 14px 40px rgba(0,0,0,.6);
+  padding:13px 15px; pointer-events:auto;
+  animation:coachSlide .35s ease;
+}
+#coach-invite[hidden]{display:none;}
+/* ใช้ opacity อย่างเดียว ไม่แตะ transform — จอแคบต้องใช้ transform จัดกึ่งกลาง */
+@keyframes coachSlide{from{opacity:0;} to{opacity:1;}}
+.ci-title{font-size:.92rem;font-weight:800;color:var(--accent);margin-bottom:5px;}
+.ci-text{font-size:.8rem;line-height:1.55;color:var(--text-dim);margin-bottom:11px;}
+.ci-row{display:flex;gap:8px;align-items:center;}
+
+/* หมายเหตุ: กฎเลือกสำนวนข้อความแนะนำตามชนิดเครื่อง (.hint-mouse / .hint-touch)
+   ไม่ได้อยู่ในไฟล์นี้ — มันคุมข้อความของตัวเกมเอง จึงอยู่ใน game-layout.css
+   คู่กับ #workspace-hint เพื่อให้ยังทำงานถูกต้องแม้ไฟล์นี้ถูกถอดออก
+   ส่วนธง body.is-touch / body.is-mouse ติดโดย coachApplyPlatform() ในไฟล์นี้ */
+
+/* ---------- ปุ่มเปิดด่านสอนในโมดัลคู่มือ ---------- */
+.btn-coach{
+  border:1px solid var(--accent3); background:rgba(0,255,136,.1);
+  color:var(--accent3); border-radius:9px; padding:7px 13px;
+  font-size:.8rem; font-weight:700; cursor:pointer; font-family:inherit;
+  white-space:nowrap;
+}
+.btn-coach:hover{background:rgba(0,255,136,.2);}
+
+/* ---------- จอแคบ: กล่องข้อความไปแปะขอบล่างเสมอ ----------
+   บนมือถือ กล่องที่ลอยตามจุดจะไปบังจุดที่กำลังสอนเอง
+   จึงล็อกไว้ที่ขอบล่าง แล้วให้วงไฮไลต์เป็นตัวชี้จุดแทน */
+@media (max-width:760px){
+  #coach-bubble{
+    left:12px !important; right:12px; top:auto !important;
+    bottom:calc(env(safe-area-inset-bottom, 0px) + 12px);
+    width:auto;
+  }
+  /* จุดที่สอนอยู่ใต้กล่องพอดี (เช่นปุ่มตรวจวงจรที่แถบล่าง) → ย้ายกล่องขึ้นบน */
+  #coach-bubble.dock-top{
+    top:calc(env(safe-area-inset-top, 0px) + 10px) !important;
+    bottom:auto;
+  }
+  #coach-arrow{display:none;}
+  /* จอแคบวางคลังอุปกรณ์กับแถบปุ่มไว้ขอบล่าง การ์ดชวนเรียนจึงห้ามอยู่ล่าง
+     ย้ายมากลางจอแทน — ตอนเข้าเกมครั้งแรกพื้นที่ทำงานยังว่าง ไม่บังอะไรเลย */
+  #coach-invite{
+    left:12px; right:12px; width:auto;
+    bottom:auto; top:50%; transform:translateY(-50%);
+  }
+  #coach-title{font-size:.94rem;}
+  #coach-text{font-size:.82rem;}
+}
+
+/* กล่องสอนไปทับแถบปุ่มคำสั่งบนจอเตี้ย จึงยกขึ้นมาหน่อย */
+@media (max-width:760px) and (max-height:620px){
+  #coach-bubble{padding:10px 12px 9px;}
+  #coach-text{font-size:.78rem;line-height:1.5;}
+  .coach-foot{margin-top:8px;}
+}
