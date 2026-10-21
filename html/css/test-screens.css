@@ -30,6 +30,15 @@
 .btn-form-link:hover{transform:translateY(-2px);box-shadow:0 8px 26px rgba(124,58,237,.55);}
 .btn-form-link svg{width:20px;height:20px;flex-shrink:0;}
 
+/* แถวปุ่มลิงก์ — ให้ปุ่มแบบประเมินยืนข้าง ๆ ปุ่มทำแบบทดสอบได้
+   ต้องมีตัวห่อ เพราะ .form-link-box เรียงลูกทุกตัวเป็นแนวตั้ง
+   wrap ไว้ด้วย: บนจอแคบสองปุ่มนี้กว้างรวมกันเกินจอ ต้องยอมให้ตกบรรทัด
+   ไม่ใช่ดันให้จอเลื่อนแนวนอน */
+.form-link-row{
+  display:flex;align-items:stretch;justify-content:center;
+  gap:12px;flex-wrap:wrap;
+}
+
 .form-status{
   display:flex;align-items:center;gap:8px;
   font-size:.85rem;color:var(--text-dim);

@@ -5,9 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>วงจรไฟฟ้า — เกมการเรียนรู้</title>
 
-<!-- ===== STYLES (เรียงตามลำดับ ห้ามสลับ responsive.css ต้องอยู่ท้ายสุด)
-     coach.css ต้องอยู่หลัง breadboard.css ด้วย — มันมีกฎเลือกสำนวนข้อความ
-     ตามชนิดเครื่อง ซึ่งต้องชนะกฎ .hint-board ของแผง (ดูคอมเมนต์ในไฟล์) ===== -->
+<!-- ===== STYLES (เรียงตามลำดับ ห้ามสลับ responsive.css ต้องอยู่ท้ายสุด) ===== -->
 <link rel="stylesheet" href="css/base.css">
 <link rel="stylesheet" href="css/test-screens.css">
 <link rel="stylesheet" href="css/game-layout.css">
@@ -16,8 +14,6 @@
 <link rel="stylesheet" href="css/breadboard.css">
 <link rel="stylesheet" href="css/hazard.css">
 <link rel="stylesheet" href="css/modals.css">
-<link rel="stylesheet" href="css/coach.css">
-<link rel="stylesheet" href="css/stars.css">
 <link rel="stylesheet" href="css/responsive.css">
 </head>
 <body>
@@ -28,7 +24,7 @@
     <p>กรุณากดปุ่มด้านล่างเพื่อทำแบบทดสอบก่อนเรียน<br>เมื่อทำเสร็จแล้วให้กลับมาที่หน้านี้แล้วกดยืนยัน</p>
 
     <div class="form-link-box">
-      <a class="btn-form-link" id="pretest-link" href="https://docs.google.com/forms/d/e/1FAIpQLScTH9m6jwcXQXulqdEalvcuU2cry6TtsnvLMiQGWabGrabIiw/viewform" target="_blank" rel="noopener" onclick="onFormLinkClick('pretest')">
+      <a class="btn-form-link" id="pretest-link" href="https://docs.google.com/forms/d/e/1FAIpQLSd5-nlDYty-uUEpU2QfRdDISjy-nZChqhJlY1thvmKM8NFDgA/viewform" target="_blank" rel="noopener" onclick="onFormLinkClick('pretest')">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
           <path d="M14 3h7v7M21 3l-9 9M19 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V7a2 2 0 0 1 2-2h6"/>
         </svg>
@@ -83,6 +79,11 @@
     <input type="range" class="bgm-vol" id="bgm-vol" min="0" max="100" step="5" value="35"
            title="ระดับเสียงเพลง" aria-label="ระดับเสียงเพลง"
            oninput="bgmSetVolume(this.value/100)">
+    <!-- แบบประเมินความพึงพอใจ — ปุ่มขวาสุดของแถบหัว (มุมบนขวาของจอ)
+         ซ่อนไว้จนกว่าจะผ่านด่านแก่นหลัก แล้วซ่อนอีกครั้งเมื่อส่งแล้ว
+         JS คุมการแสดงผลที่ updateSurveyButton() ใน js/state.js -->
+    <button class="btn-survey" id="btn-survey" onclick="openSurvey()" style="display:none;"
+            title="แบบประเมินความพึงพอใจ">&#x1F4DD; แบบประเมิน</button>
   </header>
   <div id="level-bar"><span id="level-bar-label">ด่าน:</span></div>
   <div id="game-main">
@@ -101,24 +102,14 @@
              ด่านปกติ = พื้นที่ว่าง วางตรงไหนก็ได้แล้วเดินสายเอง
              ด่านเบรดบอร์ด = แผงจริง ขาที่อยู่รางเดียวกันต่อถึงกันเอง
              สลับด้วยคลาส body.has-breadboard (ดู css/breadboard.css) -->
-        <!-- ข้อความแนะนำแยกสองสำนวนตามเครื่องที่เล่น (.hint-mouse / .hint-touch)
-             สลับด้วยคลาส body.is-touch — ดู js/coach.js และ css/coach.css
-             เหตุผล: บอกคีย์ลัดกับคนที่ไม่มีแป้นพิมพ์คือคำแนะนำที่ทำตามไม่ได้
-             และบนจอมือถือข้อความพวกนี้กินที่ของพื้นที่ต่อวงจรไปมาก -->
         <div id="workspace-hint">
           <span class="hint-free">ลากอุปกรณ์จากคลังมาวางบนพื้นที่ทำงาน</span>
           <span class="hint-board">ลากอุปกรณ์จากคลังมาเสียบลงรูบนแผงต่อวงจร</span>
-
-          <span class="hint-free hint-mouse" style="font-size:.75rem">เดินสายเชื่อมวงจร: ลากจากขาหนึ่งไปอีกขาหนึ่ง &nbsp;|&nbsp; คลิกที่สายเพื่อลบสายเส้นนั้น</span>
-          <span class="hint-free hint-touch" style="font-size:.75rem">เดินสายเชื่อมวงจร: แตะขาแรก แล้วแตะขาที่สอง &nbsp;|&nbsp; แตะที่สายเพื่อลบสายเส้นนั้น</span>
-
-          <span class="hint-board hint-mouse" style="font-size:.75rem">ขาอุปกรณ์ที่อยู่ในรางเดียวกันจะต่อถึงกันเอง (รางเรืองแสง = เชื่อมแล้ว) &nbsp;|&nbsp; เดินสายเพิ่ม: ลากจากขาหนึ่งไปอีกขาหนึ่ง</span>
-          <span class="hint-board hint-touch" style="font-size:.75rem">ขาอุปกรณ์ที่อยู่ในรางเดียวกันจะต่อถึงกันเอง (รางเรืองแสง = เชื่อมแล้ว) &nbsp;|&nbsp; เดินสายเพิ่ม: แตะขาแรก แล้วแตะขาที่สอง</span>
+          <span class="hint-free" style="font-size:.75rem">เดินสายเชื่อมวงจร: ลาก (หรือแตะ) จากขาหนึ่งไปอีกขาหนึ่ง &nbsp;|&nbsp; คลิกที่สายเพื่อลบสายเส้นนั้น</span>
+          <span class="hint-board" style="font-size:.75rem">ขาอุปกรณ์ที่อยู่ในรางเดียวกันจะต่อถึงกันเอง (รางเรืองแสง = เชื่อมแล้ว) &nbsp;|&nbsp; เดินสายเพิ่ม: ลาก/แตะจากขาหนึ่งไปอีกขาหนึ่ง</span>
           <span class="hint-board" style="font-size:.75rem">แถว A-E และ F-J แยกกันด้วยร่องกลาง &nbsp;·&nbsp; รางแดง (+) และรางน้ำเงิน (−) ต่อถึงกันตลอดแนว</span>
-
-          <span class="hint-mouse" style="font-size:.75rem">เลือกหลายชิ้นพร้อมกัน: ลากกรอบคุมดำบนพื้นที่ว่าง (Shift ค้าง = เพิ่มเข้าชุดเดิม) แล้วกด R หมุนทั้งหมด หรือ Del ลบทั้งหมด</span>
-          <span class="hint-mouse" style="font-size:.72rem;opacity:.75">คีย์ลัด: R หมุน &nbsp;·&nbsp; S สับสวิตช์ &nbsp;·&nbsp; C ตรวจวงจร &nbsp;·&nbsp; M เครื่องวัด &nbsp;·&nbsp; H คู่มือ &nbsp;·&nbsp; Del ลบ &nbsp;·&nbsp; Ctrl+A เลือกทั้งหมด &nbsp;·&nbsp; Ctrl+D คัดลอก</span>
-          <span class="hint-touch" style="font-size:.72rem;opacity:.85">แตะอุปกรณ์ 1 ครั้ง = มีปุ่ม หมุน/ลบ โผล่มา &nbsp;·&nbsp; แตะป้าย ON/OFF = สับสวิตช์ &nbsp;·&nbsp; ปุ่ม ↶ ย้อน มุมซ้ายบน = แก้ที่กดพลาด</span>
+          <span style="font-size:.75rem">เลือกหลายชิ้นพร้อมกัน: ลากกรอบคุมดำบนพื้นที่ว่าง (Shift ค้าง = เพิ่มเข้าชุดเดิม) แล้วกด R หมุนทั้งหมด หรือ Del ลบทั้งหมด</span>
+          <span style="font-size:.72rem;opacity:.75">คีย์ลัด: R หมุน &nbsp;·&nbsp; S สับสวิตช์ &nbsp;·&nbsp; C ตรวจวงจร &nbsp;·&nbsp; M เครื่องวัด &nbsp;·&nbsp; H คู่มือ &nbsp;·&nbsp; Del ลบ &nbsp;·&nbsp; Ctrl+A เลือกทั้งหมด &nbsp;·&nbsp; Ctrl+D คัดลอก</span>
         </div>
 
         <!-- แถบสถานะความปลอดภัย — ขึ้นเองเมื่อมีอุปกรณ์เริ่มร้อนหรือพัง -->
@@ -138,13 +129,6 @@
           </button>
           <button id="btn-redo" class="hist-btn" onclick="redoAction()" disabled>
             <span class="hist-ico">&#x21B7;</span><span class="hist-label">ทำซ้ำ</span>
-          </button>
-          <!-- จัดเรียงอุปกรณ์ — อยู่แถบเดียวกับย้อน/ทำซ้ำ เพราะมันคือ
-               "คำสั่งจัดการแผง" เหมือนกัน และย้อนกลับได้ด้วย Ctrl+Z เหมือนกัน
-               แก้อาการที่หาสาเหตุเองแทบไม่ได้: วางของชิดกันจนขาแตะกัน
-               แล้วเกมบอกว่าลัดวงจร (ดู tidyWorkspace ใน js/workspace.js) -->
-          <button id="btn-tidy" class="hist-btn" onclick="tidyWorkspace()" disabled>
-            <span class="hist-ico">&#x25A6;</span><span class="hist-label">จัดเรียง</span>
           </button>
         </div>
         <!-- Mobile floating toolbar -->
@@ -209,25 +193,29 @@
 <section id="screen-posttest" class="screen">
   <div class="test-container">
     <h1><span id="win-ic"></span> ยินดีด้วย! ผ่านครบ 20 ด่านแล้ว</h1>
-    <p>กรุณากดปุ่มด้านล่างเพื่อทำแบบทดสอบหลังเรียน<br>เมื่อทำเสร็จแล้วให้กลับมาที่หน้านี้แล้วกดยืนยัน</p>
-
-    <!-- กระดานดาว — เติมโดย starsRenderBoard() ใน js/stars.js
-         กดที่ด่านไหนก็กลับไปเล่นซ้ำด่านนั้นได้ทันที -->
-    <div class="star-board" id="star-board" hidden></div>
+    <p>เหลืออีกขั้นตอนเดียว &#x2014; <b>แบบทดสอบหลังเรียนเป็นส่วนบังคับ</b><br>
+       กดปุ่มด้านล่างเพื่อทำ เมื่อทำเสร็จแล้วให้กลับมาที่หน้านี้แล้วกดยืนยัน<br>
+       <span style="opacity:.8">ส่งแล้วจะปลดล็อก <b>โหมดอิสระ</b> และ <b>โหมดวัดความเร็ว</b> ให้เล่นต่อได้</span></p>
 
     <div class="form-link-box">
-      <a class="btn-form-link" id="posttest-link" href="Insert_Google_Form_URL_Here" target="_blank" rel="noopener" onclick="onFormLinkClick('posttest')">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-          <path d="M14 3h7v7M21 3l-9 9M19 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V7a2 2 0 0 1 2-2h6"/>
-        </svg>
-        <span id="post-ic"></span> เปิดแบบทดสอบหลังเรียน
-      </a>
+      <!-- สองปุ่มนี้อยู่แถวเดียวกัน — แบบประเมินโผล่ "ข้าง ๆ" ปุ่มทำแบบทดสอบ
+           (แถวนี้ห่อไว้เพราะ .form-link-box เรียงลูกเป็นแนวตั้ง) -->
+      <div class="form-link-row">
+        <a class="btn-form-link" id="posttest-link" href="https://docs.google.com/forms/d/e/1FAIpQLSfVD_W1kys8hf8A_TUUWpEMUcjPlaWkkCLXhOIFiP6lBSTL7Q/viewform" target="_blank" rel="noopener" onclick="onFormLinkClick('posttest')">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M14 3h7v7M21 3l-9 9M19 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V7a2 2 0 0 1 2-2h6"/>
+          </svg>
+          <span id="post-ic"></span> เปิดแบบทดสอบหลังเรียน
+        </a>
+        <button class="btn-survey beside" id="survey-reminder" onclick="openSurvey()" style="display:none;"
+                title="แบบประเมินความพึงพอใจ">&#x1F4DD; แบบประเมินความพึงพอใจ</button>
+      </div>
       <div class="form-status" id="posttest-status">
         <span class="status-dot"></span>
         <span id="posttest-status-text">ยังไม่ได้กดเข้าทำแบบทดสอบ</span>
       </div>
-      <span class="form-hint">* ปุ่มจะเปิดแบบทดสอบในแท็บใหม่ และระบบจะปลดล็อกปุ่มยืนยันให้อัตโนมัติ</span>
-      <button class="form-manual" onclick="manualFormDone('posttest')">ทำแบบทดสอบแล้วแต่ปุ่มยังล็อกอยู่? แตะที่นี่</button>
+      <span class="form-hint">* ปุ่มจะเปิดแบบทดสอบในแท็บใหม่ · ปุ่มยืนยันจะกดได้หลังเปิดแบบทดสอบไปแล้วอย่างน้อย 1 นาที</span>
+      <button class="form-manual" onclick="manualFormDone('posttest')">ทำแบบทดสอบจากเครื่องอื่นแล้ว? แตะที่นี่เพื่อเริ่มจับเวลา</button>
     </div>
 
     <button class="btn-primary locked" id="posttest-confirm-btn" onclick="confirmPosttest()">
@@ -250,6 +238,43 @@
   </div>
 </section>
 
+<!-- MODAL แบบประเมินความพึงพอใจ — เปิดได้จากปุ่มแถบหัวเกม และจากหน้าแบบทดสอบหลังเรียน
+     รวมไว้ที่เดียวเพื่อไม่ให้ต้องทำ UI ซ้ำสองชุดแล้วหลุดไม่ตรงกันภายหลัง -->
+<div id="modal-survey" class="modal-overlay">
+  <div class="modal-box" style="max-width:520px">
+    <div class="modal-header">
+      <h3>&#x1F4DD; แบบประเมินความพึงพอใจ</h3>
+      <button class="modal-close" onclick="closeModal('modal-survey')">&#x2715;</button>
+    </div>
+    <div class="modal-body">
+      <p style="text-align:center;font-size:.9rem;line-height:1.7;margin-bottom:4px">
+        ช่วยบอกหน่อยว่าเกมนี้เป็นยังไงบ้าง<br>
+        <b>ทำครั้งเดียวพอ ตอนไหนก็ได้</b><br>
+        <span style="opacity:.8">แต่ต้องทำก่อน จึงจะเล่นโหมดอิสระและโหมดวัดความเร็วได้</span>
+      </p>
+      <div class="form-link-box">
+        <a class="btn-form-link" id="survey-link"
+           href="https://docs.google.com/forms/d/e/1FAIpQLScb9KGWK50ZaWhi0Q4ieVL5OrkqxqquYtKBYqXgJ-57sGgt1g/viewform"
+           target="_blank" rel="noopener" onclick="onFormLinkClick('survey')">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M14 3h7v7M21 3l-9 9M19 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V7a2 2 0 0 1 2-2h6"/>
+          </svg>
+          เปิดแบบประเมินความพึงพอใจ
+        </a>
+        <div class="form-status" id="survey-status">
+          <span class="status-dot"></span>
+          <span id="survey-status-text">ยังไม่ได้ทำแบบประเมิน</span>
+        </div>
+        <span class="form-hint">* เปิดในแท็บใหม่ · ปุ่มยืนยันจะกดได้หลังเปิดไปแล้วอย่างน้อย 1 นาที</span>
+        <button class="form-manual" onclick="manualFormDone('survey')">ทำจากเครื่องอื่นแล้ว? แตะที่นี่เพื่อเริ่มจับเวลา</button>
+      </div>
+      <button class="btn-primary locked" id="survey-confirm-btn" onclick="confirmSurvey()">
+        &#x2705; ส่งแบบประเมินเรียบร้อยแล้ว
+      </button>
+    </div>
+  </div>
+</div>
+
 <!-- MODAL TUTORIAL -->
 <div id="modal-tutorial" class="modal-overlay">
   <div class="modal-box" style="max-width:620px">
@@ -271,9 +296,6 @@
     <!-- ปุ่มพลิกหน้าต้องอยู่นอก .modal-body — ถ้าอยู่ข้างในมันจะเลื่อนหนีไป
          กับเนื้อหา พอหน้าไหนข้อความยาว ผู้เรียนจะหาปุ่ม "ถัดไป" ไม่เจอ -->
     <div class="modal-footer tut-nav">
-      <!-- ทางเข้าด่านสอนแบบลงมือทำ — คู่มือหน้านี้เป็นตัวหนังสืออย่างเดียว
-           คนที่ยังต่อสายไม่เป็นต้องการ "พาทำ" ไม่ใช่ "พาอ่าน" (ดู js/coach.js) -->
-      <button class="btn-coach" onclick="coachFromMenu()">&#x1F393; สอนวิธีเล่น</button>
       <button class="btn-tut" id="btn-tut-prev" onclick="changeTutPage(-1)">&#x25C4; ก่อนหน้า</button>
       <span class="tut-page" id="tut-page-indicator">1 / 1</span>
       <button class="btn-tut primary" id="btn-tut-next" onclick="changeTutPage(1)">ถัดไป &#x25BA;</button>
@@ -374,9 +396,6 @@
       <div id="result-icon">&#x2705;</div>
       <div id="result-title">ถูกต้อง!</div>
       <div id="result-msg">&#x2014;</div>
-      <!-- ดาวประจำด่าน — เติมโดย starsOnWin() ใน js/stars.js
-           ซ่อนไว้เสมอเมื่อตรวจไม่ผ่าน จะได้ไม่มีดาวของรอบก่อนค้างอยู่ -->
-      <div id="star-row" hidden></div>
       <div class="result-stats">
         <div class="stat-box"><div class="stat-val" id="stat-score">+100</div><div class="stat-lbl">คะแนน</div></div>
         <div class="stat-box"><div class="stat-val" id="stat-time">&#x2014;</div><div class="stat-lbl">เวลา</div></div>
@@ -403,14 +422,11 @@
        outcome         ตัดสินจาก "ผลที่ออกมา" โดยจ่ายไฟจำลองแล้ววัดจริง
        circuit-check   ตรวจโครงสร้าง/ขั้ว และคำใบ้ของแต่ละด่าน
        save            บันทึก/โหลดความคืบหน้าลง localStorage
-       sfx             เสียงเอฟเฟกต์ + ปุ่มปิดเสียง
-       bgm             เพลงพื้นหลัง + ปุ่มปิด/ระดับเสียง
        state           ตัวแปรสถานะกลาง (G) + หน้าจอ + แบบทดสอบ
        ui              ไอคอน/modal/toast
        inventory       คลังอุปกรณ์ + drag & drop
        workspace       อุปกรณ์บนพื้นที่ทำงาน + หมุน + เลือก + สับสวิตช์
        wires           ระบบสายไฟ + ลงสีตามขั้ว
-       history         ย้อนกลับ/ทำซ้ำ (Ctrl+Z / Ctrl+Y)
        solver          แก้สมการวงจรจริง (Nodal Analysis) — หัวใจของค่าไฟฟ้า
        breadboard      แผงต่อวงจรจริง: รูเสียบ รางจ่ายไฟ และรางที่นำไฟได้
        probe           จำลองการทำงานตามเวลาจริง + เครื่องวัด
@@ -418,14 +434,7 @@
        damage          ตัวประสานระหว่างเกมกับระบบความเสียหาย
        sandbox         โหมดอิสระ (เล่นทดลองไม่จำกัด)
        endless         โหมดวัดความเร็ว + ตัวสุ่มโจทย์ + ตารางอันดับ
-       game            วงจรการเล่นหลัก + คีย์ลัด
-
-       ── สามไฟล์ท้ายนี้เป็นชั้นเสริม อ่านสถานะจาก G เอาเอง ──
-       ── ไฟล์อื่นไม่รู้จักมัน ถอดออกแล้วเกมยังเล่นได้ครบ ──
-       coach           ด่านสอนจับมือทำ (สอนคนละท่าระหว่างมือถือ/คอม)
-                       + ตัวเฝ้าดูว่าผู้เล่นติดแล้วยื่นความช่วยเหลือ
-       goalbar         แถบโจทย์พับเก็บได้บนจอแคบ
-       stars           ดาวประจำด่าน + กระดานดาวบนหน้าจบ
+       game            วงจรการเล่นหลัก + คีย์ลัด (โหลดท้ายสุด)
      ============================================================ -->
 <script src="js/device-symbols.js"></script>
 <script src="js/icons.js"></script>
@@ -454,13 +463,6 @@
 <script src="js/sandbox.js"></script>
 <script src="js/endless.js"></script>
 <script src="js/game.js"></script>
-<!-- ด่านสอนแบบจับมือทำ — ต้องอยู่ท้ายสุด เพราะอ่านสถานะจาก G และเรียก
-     loadLevel()/showScreen() ของไฟล์ก่อนหน้า (ดู js/coach.js) -->
-<script src="js/coach.js"></script>
-<!-- แถบโจทย์พับเก็บได้บนจอแคบ (ดู js/goalbar.js) -->
-<script src="js/goalbar.js"></script>
-<!-- ดาวประจำด่าน — เก็บแยกจากไฟล์เซฟหลัก (ดู js/stars.js) -->
-<script src="js/stars.js"></script>
 
 </body>
 </html>

@@ -62,8 +62,21 @@ function showScreen(id){
    คืน false เมื่อยังไม่ปลดล็อก ผู้เรียกต้อง return ทันที
    (ใช้ร่วมกันโดย enterSandbox() และ enterEndless()) */
 function specialModeReady(){
+  /* เล่นจบแล้วแต่ยังไม่ส่งแบบทดสอบ = ยังไม่ได้รางวัล และห้ามเข้าทางอ้อมด้วย
+     (ปุ่มโหมดพิเศษถูกซ่อนอยู่แล้ว แต่คีย์ลัด/คอนโซลยังเรียกถึงได้) */
+  if(posttestPending()){
+    gotoPosttest('ต้องส่งแบบทดสอบหลังเรียนก่อน จึงจะเข้าโหมดพิเศษได้');
+    return false;
+  }
+  /* แบบประเมินความพึงพอใจก็ต้องครบ 1 ครั้งเหมือนกัน
+     ต่างกันตรงที่อันนี้ไม่ได้ขวางหน้าจอ แค่เปิดกล่องให้ทำตรงนั้นเลย */
+  if(surveyPending()){
+    openSurvey();
+    showToast('ต้องส่งแบบประเมินความพึงพอใจก่อน จึงจะเข้าโหมดพิเศษได้','error');
+    return false;
+  }
   if(!G.modesUnlocked){
-    showToast('ปลดล็อกโหมดนี้ได้หลังเล่นครบทุกด่าน','error');
+    showToast('ปลดล็อกโหมดนี้ได้หลังเล่นครบทุกด่านและส่งแบบทดสอบหลังเรียนแล้ว','error');
     return false;
   }
   showScreen('screen-game');
@@ -74,20 +87,236 @@ function specialModeReady(){
    PRE/POST-TEST FORM STATUS
    เช็คว่ากดปุ่มเปิดแบบทดสอบแล้วหรือยัง (เก็บใน memory ของ session)
    ============================================================ */
-var FormStatus = { pretest:false, posttest:false };
+/* ============================================================
+   แบบทดสอบหลังเรียนเป็น "ส่วนบังคับ" ไม่ใช่ของแถมท้ายเกม
+
+   เงื่อนไขสองชั้น:
+     1. ต้องเล่นครบทุกด่านก่อน จึงจะมาถึงหน้านี้ได้  (endGame ใน js/game.js)
+     2. ต้องกดส่งแบบทดสอบ จึงจะออกจากหน้านี้ไปเล่นอย่างอื่นได้
+        และรางวัล (โหมดพิเศษ) เพิ่งปลดล็อกตอนนั้น ไม่ใช่ตอนเล่นจบด่าน
+
+   *** ข้อจำกัดที่ต้องรู้ไว้ ***
+   หน้าเว็บตรวจไม่ได้ว่าผู้เรียน "กดส่ง" ใน Google Form จริงหรือเปล่า
+   Google ไม่ส่งสัญญาณอะไรกลับมาที่หน้าเว็บเลย สิ่งที่โค้ดนี้บังคับได้คือ
+   "เส้นทาง" — ปิดทุกทางออกจนกว่าจะเดินผ่านขั้นตอนแบบทดสอบ
+   คนที่ตั้งใจจะข้ามจริง ๆ ยังข้ามได้ (เปิดฟอร์มทิ้งไว้แล้วรอครบเวลา)
+   แต่จะไม่มีใครข้ามไปโดยไม่ตั้งใจหรือเพราะไม่เห็นว่ามีแบบทดสอบอยู่
+
+   การยืนยันว่าทำจริงต้องทำฝั่งครู: เปิด "เก็บอีเมล" ใน Google Form
+   แล้วเทียบรายชื่อใน Google Sheets ซึ่งอยู่นอกเหนือสิ่งที่เกมทำได้
+   ============================================================ */
+var FormStatus = {
+  pretest:false,
+  posttest:false,  posttestDone:false, posttestAt:0,
+  survey:false,    surveyDone:false,   surveyAt:0
+};
+
+/* ด่านที่ถือเป็น "แก่นหลัก" ของเกม — ผ่านด่านนี้แล้วปุ่มแบบประเมินจึงโผล่
+
+   เลขนี้นับจาก 0 ตามดัชนีใน LEVELS → 11 คือด่านที่ 12
+   "ไฟห้องนอนกับไฟห้องน้ำ" คือด่านที่สอนวงจรขนานแบบควบคุมแยกกันได้
+   ซึ่งเป็นเหตุผลที่บ้านจริงเดินไฟแบบขนาน — แก่นของทั้งเกมอยู่ตรงนี้
+   และผ่านมาถึงจุดนี้ก็เล่นมาเกินครึ่งทางแล้ว มีประสบการณ์พอจะให้ความเห็นได้
+   (อยากให้โผล่เร็ว/ช้ากว่านี้ แก้เลขเดียวตรงนี้) */
+var SURVEY_LEVEL = 11;
+
+/* เวลาขั้นต่ำหลังกดเปิดฟอร์ม ก่อนที่ปุ่มยืนยันจะกดได้ (วินาที)
+
+   กันการ "กดเปิดแล้วกดยืนยันรวดเดียว" ซึ่งใช้เวลาไม่ถึงวินาที
+   60 วินาทีสั้นกว่าเวลาทำข้อสอบจริงมาก จึงไม่ขวางคนที่ตั้งใจทำ
+   แต่พอจะทำให้การข้ามกลายเป็น "ตั้งใจข้าม" ไม่ใช่กดผ่านไปเฉย ๆ */
+var POSTTEST_MIN_SEC = 60;
+var _postGateInt = null;
+var _surveyGateInt = null;
 
 /* อัปเดตหน้าตาสถานะ "ทำแบบทดสอบแล้ว" + ปลดล็อกปุ่มถัดไป
    แยกออกมาเพื่อให้ระบบเซฟเรียกใช้คืนสถานะตอนกด "เล่นต่อ" ได้ */
 function applyFormStatusUI(which){
   var statusBox  = document.getElementById(which+'-status');
   var statusText = document.getElementById(which+'-status-text');
-  if(!statusBox || !statusText) return;
-  statusBox.classList.add('done');
-  statusText.textContent = '✓ กดเข้าทำแบบทดสอบแล้ว — พร้อมไปต่อ';
+  if(statusBox && statusText){
+    statusBox.classList.add('done');
+    var pendingConfirm = (which === 'posttest' && !FormStatus.posttestDone) ||
+                         (which === 'survey'   && !FormStatus.surveyDone);
+    statusText.textContent = pendingConfirm
+      ? '✓ เปิดแบบทดสอบแล้ว — ทำให้เสร็จแล้วกลับมากดยืนยัน'
+      : '✓ กดเข้าทำแบบทดสอบแล้ว — พร้อมไปต่อ';
+  }
 
-  var nextBtnId = which==='pretest' ? 'pretest-continue-btn' : 'posttest-confirm-btn';
-  var nextBtn = document.getElementById(nextBtnId);
-  if(nextBtn) nextBtn.classList.remove('locked');
+  if(which === 'pretest'){
+    var b = document.getElementById('pretest-continue-btn');
+    if(b) b.classList.remove('locked');
+    return;
+  }
+  /* สองอันนี้ไม่ปลดล็อกทันทีที่กดเปิดลิงก์ ต้องรอครบเวลาขั้นต่ำก่อน */
+  if(which === 'survey') updateSurveyGate();
+  else                   updatePosttestGate();
+}
+
+/* เหลืออีกกี่วินาทีจึงจะกดยืนยันแบบทดสอบหลังเรียนได้ */
+function postSecLeft(){
+  if(!FormStatus.posttest) return POSTTEST_MIN_SEC;
+  var passed = (Date.now() - (FormStatus.posttestAt || 0)) / 1000;
+  return Math.max(0, Math.ceil(POSTTEST_MIN_SEC - passed));
+}
+
+/* หน้าตาปุ่มยืนยันแบบทดสอบหลังเรียน ตามสถานะปัจจุบัน
+   ปุ่มที่ล็อกอยู่เฉย ๆ โดยไม่บอกว่าทำไม คือปุ่มที่ผู้ใช้คิดว่าพัง
+   จึงต้องเดินนาฬิกาให้เห็นว่าเหลืออีกกี่วินาที */
+function updatePosttestGate(){
+  var b = document.getElementById('posttest-confirm-btn');
+  if(!b) return;
+
+  function stopTick(){ if(_postGateInt){ clearInterval(_postGateInt); _postGateInt = null; } }
+
+  if(FormStatus.posttestDone){
+    b.classList.remove('locked');
+    b.textContent = '✅ ส่งแบบทดสอบแล้ว';
+    stopTick();
+    return;
+  }
+  if(!FormStatus.posttest){
+    b.classList.add('locked');
+    b.textContent = '✅ ส่งแบบทดสอบเรียบร้อยแล้ว';
+    stopTick();
+    return;
+  }
+  var left = postSecLeft();
+  if(left > 0){
+    b.classList.add('locked');
+    b.textContent = 'กำลังทำแบบทดสอบ… (' + left + ' วินาที)';
+    if(!_postGateInt) _postGateInt = setInterval(updatePosttestGate, 1000);
+  }else{
+    b.classList.remove('locked');
+    b.textContent = '✅ ส่งแบบทดสอบเรียบร้อยแล้ว';
+    stopTick();
+  }
+}
+
+/* ============================================================
+   แบบประเมินความพึงพอใจ
+
+   ต่างจากแบบทดสอบหลังเรียนตรงที่ "ทำตอนไหนก็ได้" ไม่ได้ขวางทางเดินเกม
+   แต่ต้องทำครบ 1 ครั้ง ถึงจะเข้าโหมดพิเศษได้ เหมือนกัน
+
+   ปุ่มโผล่หลังผ่านด่านแก่นหลัก (SURVEY_LEVEL) เพราะแบบประเมินที่ตอบ
+   ตั้งแต่ยังไม่ได้เล่นอะไรเลย ไม่มีประโยชน์กับใครทั้งนั้น
+   ============================================================ */
+
+/* ปุ่มแบบประเมินควรโผล่หรือยัง */
+function surveyUnlocked(){
+  if(FormStatus.survey || FormStatus.surveyDone) return true;  /* เริ่มไปแล้วก็ต้องเห็นต่อ */
+  if(typeof G === 'undefined') return false;
+  if(G.finished) return true;
+  return !!(G.doneLevels && G.doneLevels[SURVEY_LEVEL]);
+}
+
+/* โผล่แล้วแต่ยังไม่ได้ส่ง = ยังติดค้างอยู่ */
+function surveyPending(){
+  return !FormStatus.surveyDone && surveyUnlocked();
+}
+
+function surveySecLeft(){
+  if(!FormStatus.survey) return POSTTEST_MIN_SEC;
+  var passed = (Date.now() - (FormStatus.surveyAt || 0)) / 1000;
+  return Math.max(0, Math.ceil(POSTTEST_MIN_SEC - passed));
+}
+
+function updateSurveyGate(){
+  var b = document.getElementById('survey-confirm-btn');
+  function stopTick(){ if(_surveyGateInt){ clearInterval(_surveyGateInt); _surveyGateInt = null; } }
+  if(!b){ stopTick(); return; }
+
+  if(FormStatus.surveyDone){
+    b.classList.remove('locked');
+    b.textContent = '✅ ส่งแบบประเมินแล้ว';
+    stopTick();
+  }else if(!FormStatus.survey){
+    b.classList.add('locked');
+    b.textContent = '✅ ส่งแบบประเมินเรียบร้อยแล้ว';
+    stopTick();
+  }else{
+    var left = surveySecLeft();
+    if(left > 0){
+      b.classList.add('locked');
+      b.textContent = 'กำลังทำแบบประเมิน… (' + left + ' วินาที)';
+      if(!_surveyGateInt) _surveyGateInt = setInterval(updateSurveyGate, 1000);
+    }else{
+      b.classList.remove('locked');
+      b.textContent = '✅ ส่งแบบประเมินเรียบร้อยแล้ว';
+      stopTick();
+    }
+  }
+  updateSurveyButton();
+}
+
+/* ปุ่มมุมบนขวาของแถบหัวเกม — ซ่อนจนกว่าจะผ่านด่านแก่นหลัก
+   ทำเสร็จแล้วก็ซ่อนอีกครั้ง ไม่ต้องรกแถบหัวทิ้งไว้ */
+function updateSurveyButton(){
+  var show = surveyUnlocked() && !FormStatus.surveyDone;
+  var b = document.getElementById('btn-survey');
+  if(b) b.style.display = show ? 'inline-flex' : 'none';
+  /* ตัวเตือนบนหน้าแบบทดสอบหลังเรียน — โผล่เฉพาะตอนยังไม่ได้ทำ
+     คนที่ทำไประหว่างเล่นแล้วจะไม่เจอซ้ำให้รำคาญ */
+  var r = document.getElementById('survey-reminder');
+  if(r) r.style.display = show ? 'block' : 'none';
+}
+
+/* เปิดกล่องแบบประเมิน — เรียกได้จากปุ่มแถบหัว และจากหน้าแบบทดสอบหลังเรียน */
+function openSurvey(){
+  updateSurveyGate();
+  openModal('modal-survey');
+}
+
+function confirmSurvey(){
+  if(FormStatus.surveyDone){ showToast('ส่งแบบประเมินไปแล้ว',''); return; }
+  if(!FormStatus.survey){
+    showToast('กรุณากดปุ่ม "เปิดแบบประเมินความพึงพอใจ" ก่อน','error');
+    return;
+  }
+  var left = surveySecLeft();
+  if(left > 0){
+    showToast('เพิ่งเปิดแบบประเมินไปเมื่อครู่ — รออีก ' + left + ' วินาที','error');
+    return;
+  }
+  FormStatus.surveyDone = true;
+  updateSurveyGate();
+  applyFormStatusUI('survey');
+  if(typeof updateModeButtons === 'function') updateModeButtons();
+  saveGame();
+  closeModal('modal-survey');
+  showToast('ขอบคุณสำหรับความคิดเห็น! 🙏','success');
+}
+
+
+/* ยังติดค้างแบบทดสอบหลังเรียนอยู่ไหม
+
+   อ่านจากไฟล์เซฟด้วย ไม่ใช่จาก G อย่างเดียว เพราะตอนเพิ่งเปิดหน้าเว็บ
+   G ยังว่างอยู่ ทั้งที่ไฟล์เซฟรู้แล้วว่าเล่นจบไปแล้วและยังไม่ได้ส่ง */
+function posttestPending(){
+  if(FormStatus.posttestDone) return false;
+  if(typeof G !== 'undefined' && G.finished) return true;
+  var s = (typeof loadSave === 'function') ? loadSave() : null;
+  return !!(s && s.finished && !s.posttestDone);
+}
+
+/* พากลับไปหน้าแบบทดสอบหลังเรียน พร้อมคืนความคืบหน้าให้ครบ
+
+   ต้องคืน G ให้ครบถึงจะกดเข้าโหมดพิเศษต่อได้หลังส่งแบบทดสอบเสร็จ
+   และแถบด่านต้องถูกสร้าง ไม่งั้นพอออกจากโหมดพิเศษกลับมาจะไม่มีจุดด่านให้กด */
+function gotoPosttest(msg){
+  var s = (typeof loadSave === 'function') ? loadSave() : null;
+  if(s){
+    restoreProgress(s);
+    G.level    = Math.min(s.level, LEVELS.length - 1);
+    G.finished = true;
+    if(typeof buildLevelBar === 'function') buildLevelBar();
+  }
+  if(typeof updateModeButtons === 'function') updateModeButtons();
+  showScreen('screen-posttest');
+  updatePosttestGate();
+  updateSurveyButton();
+  if(msg) showToast(msg, 'error');
 }
 
 /* บันทึกว่าเข้าทำแบบทดสอบแล้ว + ปลดล็อกปุ่มถัดไป
@@ -96,21 +325,37 @@ function applyFormStatusUI(which){
 function markFormDone(which, silent){
   if(FormStatus[which]) return;
   FormStatus[which] = true;
+  /* จับเวลาตั้งแต่วินาทีที่เปิดฟอร์ม — ใช้คิดเวลาขั้นต่ำก่อนกดยืนยันได้
+     เก็บลงไฟล์เซฟด้วย เวลาจึงเดินต่อแม้ปิดแท็บไปทำข้อสอบแล้วกลับมา */
+  if(which === 'posttest' && !FormStatus.posttestAt) FormStatus.posttestAt = Date.now();
+  if(which === 'survey'   && !FormStatus.surveyAt)   FormStatus.surveyAt   = Date.now();
   applyFormStatusUI(which);
   saveGame();
   if(!silent) showToast('ปลดล็อกปุ่มถัดไปแล้ว','success');
 }
 
-/* ปุ่มสำรอง — เผื่อการตรวจจับอัตโนมัติพลาด ผู้เรียนจะได้ไม่ติดค้าง */
+/* ปุ่มสำรอง — เผื่อการตรวจจับอัตโนมัติพลาด ผู้เรียนจะได้ไม่ติดค้าง
+   (เช่นทำแบบทดสอบจากเครื่องอื่น หรือมือถือตัดจังหวะจนไม่ได้บันทึก) */
 function manualFormDone(which){
+  var first = !FormStatus[which];
   markFormDone(which, true);
+  if(which === 'posttest' || which === 'survey'){
+    if(which === 'survey') updateSurveyGate(); else updatePosttestGate();
+    showToast(first
+      ? 'เริ่มจับเวลาแล้ว — กดยืนยันได้ในอีก ' + POSTTEST_MIN_SEC + ' วินาที'
+      : 'รอให้ครบเวลาก่อน จึงจะกดยืนยันได้', '');
+    return;
+  }
   showToast('ปลดล็อกปุ่มถัดไปแล้ว','success');
 }
 
-/* เมื่อคลิกปุ่มเปิดลิงก์แบบทดสอบ -> ปลดล็อกปุ่มถัดไป */
+/* เมื่อคลิกปุ่มเปิดลิงก์แบบทดสอบ -> บันทึกว่าเปิดแล้ว */
 function onFormLinkClick(which){
   markFormDone(which, true);
-  showToast(which==='pretest' ? 'เปิดแบบทดสอบก่อนเรียนแล้ว ทำเสร็จแล้วกดปุ่มเข้าสู่เกมได้เลย' : 'เปิดแบบทดสอบหลังเรียนแล้ว ทำเสร็จแล้วกดยืนยันได้เลย','success');
+  var msg = 'เปิดแบบทดสอบหลังเรียนแล้ว — ทำให้เสร็จแล้วกลับมาที่หน้านี้เพื่อกดยืนยัน';
+  if(which === 'pretest') msg = 'เปิดแบบทดสอบก่อนเรียนแล้ว ทำเสร็จแล้วกดปุ่มเข้าสู่เกมได้เลย';
+  if(which === 'survey')  msg = 'เปิดแบบประเมินแล้ว — ทำให้เสร็จแล้วกลับมากดยืนยันในกล่องนี้';
+  showToast(msg,'success');
   /* ไม่ block การเปิดลิงก์ - ให้ target=_blank ทำงานตามปกติ */
 }
 
@@ -118,6 +363,14 @@ function onFormLinkClick(which){
 function confirmPretest(){
   if(!FormStatus.pretest){
     showToast('กรุณากดปุ่ม "เปิดแบบทดสอบก่อนเรียน" ก่อน','error');
+    return;
+  }
+
+  /* เล่นจบครบทุกด่านแล้วแต่ยังไม่ได้ส่งแบบทดสอบหลังเรียน
+     ห้ามใช้ปุ่มนี้เริ่มเกมใหม่เพื่อหนีแบบทดสอบ — พากลับไปที่หน้านั้น
+     (นี่คือทางหนีที่ชัดที่สุด เพราะปุ่มนี้ปลดล็อกค้างอยู่แล้วทุกครั้งที่เปิดเกม) */
+  if(posttestPending()){
+    gotoPosttest('ยังเหลือแบบทดสอบหลังเรียน — ต้องส่งก่อนจึงจะเริ่มเกมใหม่ได้');
     return;
   }
 
@@ -145,11 +398,32 @@ function confirmPretest(){
   initGame();
 }
 
-/* กดยืนยันส่งแบบทดสอบหลังเรียน */
+/* กดยืนยันส่งแบบทดสอบหลังเรียน — นี่คือจุดที่ "ประตู" เปิดออก */
 function confirmPosttest(){
+  if(FormStatus.posttestDone){
+    showToast('ส่งแบบทดสอบไปแล้ว','');
+    return;
+  }
   if(!FormStatus.posttest){
     showToast('กรุณากดปุ่ม "เปิดแบบทดสอบหลังเรียน" ก่อน','error');
     return;
   }
-  showToast('ขอบคุณที่ร่วมกิจกรรม! 🎉','success');
+  var left = postSecLeft();
+  if(left > 0){
+    showToast('เพิ่งเปิดแบบทดสอบไปเมื่อครู่ — รออีก ' + left + ' วินาที','error');
+    return;
+  }
+
+  FormStatus.posttestDone = true;
+
+  /* รางวัลเพิ่งปลดล็อกตรงนี้ ไม่ใช่ตอนเล่นจบด่านสุดท้าย
+
+     ของเดิม endGame() ปลดล็อกโหมดพิเศษให้ทันทีที่ผ่านด่าน 20
+     ผู้เรียนจึงได้รางวัลไปก่อนแล้วตั้งแต่ยังไม่แตะแบบทดสอบ
+     แรงจูงใจที่จะทำก็หายไปหมด — ย้ายมาไว้หลังส่งแบบทดสอบแทน */
+  G.modesUnlocked = true;
+  if(typeof updateModeButtons === 'function') updateModeButtons();
+  updatePosttestGate();
+  saveGame();
+  showToast('ขอบคุณที่ร่วมกิจกรรม! 🎉 ปลดล็อกโหมดพิเศษแล้ว','success');
 }

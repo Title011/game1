@@ -71,36 +71,6 @@ function updateLevelBar(){
     G.sandbox ? '<span class="hud-inf">∞</span>'
     : G.endless ? renderHearts(G.endlessLives, 1)
     : renderHearts(G.lives, 3);
-  /* การเลื่อนแถบด่านเป็นของอำนวยความสะดวก ไม่ใช่สาระของ updateLevelBar()
-     ซึ่งถูกเรียกแทบทุกจังหวะของเกม จึงห้ามทำให้ทั้งฟังก์ชันล้มเด็ดขาด */
-  try{ scrollActiveLevelIntoView(); }catch(e){}
-}
-
-/* แถบด่านเลื่อนแนวนอนเมื่อจอแคบ (20 จุดไม่พอใส่ในแถวเดียวบนมือถือ)
-   ถ้าไม่เลื่อนตาม ผู้เล่นด่านท้าย ๆ จะเปิดมาเห็นแถบที่ค้างอยู่ที่ด่าน 1
-   แล้วหาไม่เจอว่าตัวเองอยู่ตรงไหนและเหลืออีกกี่ด่าน
-
-   เลื่อนเฉพาะตอนที่จุดหลุดกรอบจริง ๆ เพราะ updateLevelBar() ถูกเรียกบ่อยมาก
-   (ทุกครั้งที่คะแนน/ชีวิตเปลี่ยน) การสั่งเลื่อนทุกครั้งจะทำให้แถบไหวตลอดเวลา */
-function scrollActiveLevelIntoView(){
-  var bar = document.getElementById('level-bar');
-  var dot = bar && bar.querySelector('.level-dot.active');
-  if(!bar || !dot || !dot.getBoundingClientRect) return;
-  if(bar.scrollWidth <= bar.clientWidth + 1) return;   /* ไม่ได้เลื่อนอยู่แล้ว */
-  var b = bar.getBoundingClientRect(), d = dot.getBoundingClientRect();
-  if(d.left >= b.left + 4 && d.right <= b.right - 4) return;   /* เห็นอยู่แล้ว */
-
-  /* เลื่อนเองจากผลต่างของจุดกึ่งกลาง ไม่ใช้ scrollIntoView()
-     เพราะมันเลือกเลื่อน "บรรพบุรุษที่เลื่อนได้ตัวใกล้สุด" ซึ่งไม่ได้เป็น
-     แถบด่านเสมอไป และยังพาหน้าทั้งหน้าเลื่อนตามไปด้วยในบางกรณี
-     คิดจาก rect จึงไม่ต้องสนว่า offsetParent เป็นใคร
-
-     เลื่อนทันทีไม่ใช้ behavior:'smooth' — จังหวะที่เรียกคือตอนเปลี่ยนด่าน
-     ซึ่งทั้งหน้าถูกล้างใหม่อยู่แล้ว การไถช้า ๆ จึงไม่ได้ช่วยให้เข้าใจอะไรเพิ่ม
-     แถมแอนิเมชันยังไม่ทำงานในบางสภาพแวดล้อม ทำให้บางเครื่องไม่เลื่อนเลย */
-  var delta  = (d.left + d.width/2) - (b.left + b.width/2);
-  var max    = bar.scrollWidth - bar.clientWidth;
-  bar.scrollLeft = Math.max(0, Math.min(bar.scrollLeft + delta, max));
 }
 
 /* เอานิยามด่านขึ้นจอ: คลังอุปกรณ์ กล่องโจทย์ นาฬิกา แถบด่าน และแผงต่อวงจร
@@ -137,6 +107,9 @@ function loadLevel(idx){
   }
   G.level=idx;
   if(idx>G.unlockedMax) G.unlockedMax=idx;  /* จำด่านไกลสุดที่ปลดล็อก */
+  /* ทุกทางที่เข้าด่านผ่านฟังก์ชันนี้หมด (เริ่มใหม่ / เล่นต่อ / กดจุดด่าน)
+     จึงเป็นที่เดียวที่พอสำหรับเช็คว่าปุ่มแบบประเมินควรโผล่หรือยัง */
+  if(typeof updateSurveyButton === 'function') updateSurveyButton();
   clearInterval(G.timerInt);
 
   /* เก็บกวาดของค้างจากด่านก่อนให้หมดก่อนเริ่มด่านใหม่
@@ -388,6 +361,9 @@ function checkCircuit(){
     }
     G.doneLevels[G.level]=true;
     updateLevelBar();
+    /* ผ่านด่านแก่นหลักแล้วหรือยัง — ถ้าใช่ ปุ่มแบบประเมินมุมบนขวาจะโผล่
+       (ดู SURVEY_LEVEL และ updateSurveyButton ใน js/state.js) */
+    if(typeof updateSurveyButton === 'function') updateSurveyButton();
     saveGame();   /* บันทึกคะแนน + ด่านที่ผ่าน */
     showResult(true,result.msg,earned,elapsed,replay,fault,outcome);
   } else {
@@ -800,18 +776,6 @@ function buildSolutionHint(){
 }
 
 function showResult(ok,msg,earned,elapsed,replay,fault,outcome){
-  /* ดาวประจำด่าน (ดู js/stars.js) — วางไว้ที่เดียวตรงนี้เพราะทุกเส้นทาง
-     ของผลตรวจในโหมดด่านผ่านฟังก์ชันนี้หมด ถ้าไปแปะตามจุดที่เรียก
-     จะมีทางใดทางหนึ่งหลุดแล้วดาวของรอบก่อนค้างอยู่ในกล่อง
-
-     ห่อ try ไว้โดยตั้งใจ: ดาวเป็นของประดับ ส่วนกล่องผลลัพธ์คือสิ่งที่
-     ผู้เล่นต้องได้เห็นเสมอ ถ้าระบบดาวมีปัญหา เกมต้องเล่นต่อได้ตามปกติ */
-  try{
-    if(typeof starsOnWin === 'function'){
-      if(ok) starsOnWin(elapsed); else starsHideResult();
-    }
-  }catch(e){}
-
   /* ต่อผิดธรรมดา กับ "วงจรพังจริง" ต้องรู้สึกต่างกัน */
   var broke = !ok && fault && fault.incidents && fault.incidents.length;
   document.getElementById('result-icon').innerHTML = ok
@@ -865,20 +829,34 @@ function nextLevel(){
 function endGame(){
   clearInterval(G.timerInt);
   G.finished=true;
-  var firstTime = !G.modesUnlocked;
-  G.modesUnlocked=true;          /* รางวัล: ปลดล็อกโหมดอิสระ + โหมดวัดความเร็ว */
+  /* *** ไม่ปลดล็อกโหมดพิเศษตรงนี้ ***
+     รางวัลย้ายไปอยู่หลัง "ส่งแบบทดสอบหลังเรียน" แล้ว (confirmPosttest ใน js/state.js)
+     ถ้าปลดล็อกตั้งแต่ตรงนี้ ผู้เรียนได้ของรางวัลไปก่อนที่จะแตะแบบทดสอบ
+     แรงจูงใจที่จะทำก็หมดลงทันที และแบบทดสอบจะกลายเป็นของที่ข้ามได้ */
   updateModeButtons();
   saveGame();   /* บันทึกว่าเล่นจบครบทุกด่านแล้ว */
   showScreen('screen-posttest');
-  if(firstTime) showToast('ปลดล็อกโหมดพิเศษแล้ว! โหมดอิสระ และ โหมดวัดความเร็ว','success');
+  if(typeof updatePosttestGate === 'function') updatePosttestGate();
+  if(typeof updateSurveyButton === 'function') updateSurveyButton();
+  if(!FormStatus.posttestDone){
+    showToast('เล่นครบทุกด่านแล้ว! เหลือขั้นตอนสุดท้าย — ทำแบบทดสอบหลังเรียน','success');
+  }
 }
 
 /* โหมดพิเศษ (อิสระ/วัดความเร็ว) โผล่หลังเล่นครบทุกด่านแล้วเท่านั้น
    ซ่อน/แสดงด้วยคลาสเดียวบน body — ดู css/game-layout.css */
 function updateModeButtons(){
-  document.body.classList.toggle('modes-unlocked', !!G.modesUnlocked);
+  /* ยังติดค้างแบบทดสอบหลังเรียน = ยังไม่ได้รางวัล ห้ามโชว์กล่อง "ปลดล็อกแล้ว"
+
+     ต้องเช็คตรงนี้ ไม่ใช่เช็คแค่ G.modesUnlocked เพราะไฟล์เซฟที่บันทึกไว้
+     ก่อนมีระบบบังคับมี modesUnlocked:true ติดมาอยู่แล้ว (ของเดิมปลดล็อกให้
+     ตั้งแต่ผ่านด่าน 20) กล่องรางวัลจึงโผล่บนหน้าแบบทดสอบทั้งที่ยังไม่ได้ส่ง
+     ดูเหมือนได้รางวัลไปแล้ว ทั้งที่กดเข้าโหมดจริงไม่ได้ (specialModeReady กันไว้) */
+  var pending = (typeof posttestPending === 'function') && posttestPending();
+  var on = !!G.modesUnlocked && !pending;
+  document.body.classList.toggle('modes-unlocked', on);
   var box = document.getElementById('unlock-box');
-  if(box) box.style.display = G.modesUnlocked ? '' : 'none';
+  if(box) box.style.display = on ? '' : 'none';
 }
 
 /* ============================================================
@@ -918,12 +896,16 @@ document.addEventListener('DOMContentLoaded', function(){
   restoreFormStatus(); /* เคยทำข้อสอบก่อนเรียนแล้ว → ปลดล็อกให้เลย ไม่ต้องทำซ้ำ */
   restoreUnlocks();    /* เคยเล่นจบครบทุกด่านไหม → โชว์ปุ่มโหมดพิเศษ */
   renderResumeBox();   /* มีข้อมูลบันทึกไว้ไหม → โชว์กล่อง "เล่นต่อ" */
+  /* เล่นจบแล้วแต่หนีแบบทดสอบไปด้วยการปิดแท็บ → พากลับมาที่หน้านั้นทันที
+     ต้องอยู่หลัง restoreFormStatus เพราะมันคือตัวที่อ่านว่าส่งไปแล้วหรือยัง */
+  enforcePosttestGate();
+  updateSurveyButton();   /* เซฟบอกว่าเคยผ่านด่านแก่นหลักไปแล้วไหม */
 
   /* บันทึกสถานะตั้งแต่ pointerdown ไม่ต้องรอ click
      บนมือถือ พอแตะลิงก์ที่ target=_blank เบราว์เซอร์เปิดแท็บใหม่แล้ว
      พักหน้าเดิมทันที onclick อาจถูกตัดจังหวะจนทำงานไม่จบ
      pointerdown เกิดก่อนเสมอ จึงบันทึกลง localStorage ได้ทัน */
-  ['pretest','posttest'].forEach(function(which){
+  ['pretest','posttest','survey'].forEach(function(which){
     var a = document.getElementById(which+'-link');
     if(!a) return;
     a.addEventListener('pointerdown', function(){ markFormDone(which,true); });
