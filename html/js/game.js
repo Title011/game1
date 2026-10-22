@@ -216,6 +216,9 @@ function tickTimer(){
      ระหว่างฉากแสดงความเสียหายก็หยุดเหมือนกัน เพราะฉากนั้นกดอะไรไม่ได้อยู่แล้ว */
   if(document.querySelector('.modal-overlay.open')) return;
   if(G.hazardPlaying) return;
+  /* หน้าเกมไม่ได้อยู่บนจอ (เปิดบทเรียนทบทวนจากกล่องคู่มือ — js/lesson.js)
+     ผู้เล่นมองไม่เห็นวงจรของตัวเองเลย เหตุผลเดียวกับตอนมีกล่องบังจอ */
+  if(!document.getElementById('screen-game').classList.contains('active')) return;
 
   G.timerSec--;
   updateTimerDisplay();

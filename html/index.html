@@ -14,11 +14,517 @@
 <link rel="stylesheet" href="css/breadboard.css">
 <link rel="stylesheet" href="css/hazard.css">
 <link rel="stylesheet" href="css/modals.css">
+<link rel="stylesheet" href="css/lesson.css">
 <link rel="stylesheet" href="css/responsive.css">
 </head>
 <body>
+<!-- LESSON — บทเรียนก่อนเข้าเกม (หน้าแรกของเว็บ) → แบบทดสอบก่อนเรียน → เกม
+     สไลด์แต่ละหน้า: data-cap = คำบรรยายใต้สไลด์ · data-gate = ต้องตอบถูกก่อนไปต่อ
+     data-demo = ฉากทดลองที่สาธิตตัวเองตอนยังไม่มีใครแตะ
+     data-dev = จองที่ไว้วางรูปอุปกรณ์ชุดเดียวกับในเกม (js/lesson.js เป็นคนวาง)
+     สีสาย: .pos แดง = ฝั่งขั้วบวก · .neg น้ำเงิน = ฝั่งขั้วลบ · .mid เหลือง = กลางวงจร
+     เส้นทาง .ls-f (จุดไฟวิ่ง) ทุกเส้นวาดจากฝั่งขั้วบวกไปขั้วลบ — กลับทิศเส้น = จุดวิ่งกลับทาง -->
+<section id="screen-lesson" class="screen active" aria-label="บทเรียนก่อนเข้าเกม">
+  <div class="ls-stage">
+    <div class="ls-top">
+      <h2 class="ls-title"><span id="ls-bolt"></span> บทเรียน: ไฟฟ้าและวงจรไฟฟ้า</h2>
+      <button class="ls-skip" id="ls-skip" type="button" onclick="lessonSkip()" hidden>ข้ามบทเรียน ›</button>
+    </div>
+
+    <div class="ls-view" id="ls-view">
+
+      <!-- 1 ไฟฟ้ารอบตัว -->
+      <section class="ls-slide" role="group" aria-roledescription="สไลด์"
+        data-cap="ลองมองไปรอบตัว… หลอดไฟ มือถือ พัดลม ทุกอย่างทำงานได้เพราะ “ไฟฟ้า” บทเรียนสั้น ๆ นี้ใช้เวลาไม่กี่นาที จะพาไปรู้จักวงจรไฟฟ้า ก่อนเข้าไปลงมือต่อวงจรเองในเกม">
+        <div class="ls-inner">
+          <h3 class="ls-head">⚡ <span class="hl">ไฟฟ้า</span> อยู่รอบตัวเรา</h3>
+          <div class="ls-art">
+            <svg class="ls-svg" viewBox="0 0 420 180" role="img" aria-label="หลอดไฟ มือถือ และพัดลม — เครื่องใช้ไฟฟ้ารอบตัว">
+              <g class="ls-glow"><circle cx="90" cy="70" r="34" fill="#ffe680" stroke="#ffd700" stroke-width="3"/>
+                <rect x="78" y="100" width="24" height="16" rx="3" fill="#888"/></g>
+              <g><rect x="180" y="34" width="60" height="110" rx="10" fill="#1a2f50" stroke="#00d4ff" stroke-width="3"/>
+                <rect x="188" y="44" width="44" height="78" rx="3" fill="#0a1628"/>
+                <path d="M214 60 L201 86 H211 L206 106 L222 78 H212 Z" fill="#ffd700" class="ls-blink"/>
+                <circle cx="210" cy="133" r="4" fill="#00d4ff"/></g>
+              <g><circle cx="330" cy="80" r="40" fill="none" stroke="#00ff88" stroke-width="3"/>
+                <g class="ls-fan"><ellipse cx="330" cy="58" rx="9" ry="20" fill="#00ff88" opacity=".8"/>
+                  <ellipse cx="349" cy="90" rx="20" ry="9" fill="#00ff88" opacity=".8" transform="rotate(30 349 90)"/>
+                  <ellipse cx="311" cy="90" rx="20" ry="9" fill="#00ff88" opacity=".8" transform="rotate(-30 311 90)"/></g>
+                <circle cx="330" cy="80" r="7" fill="#fff"/>
+                <rect x="325" y="120" width="10" height="26" fill="#888"/></g>
+            </svg>
+          </div>
+          <p class="ls-sub">ก่อนลงมือต่อวงจรจริงในเกม มาทำความรู้จักไฟฟ้าแบบง่าย ๆ กันก่อน</p>
+          <div class="ls-game"><b>ในเกม</b><span>คุณจะได้เป็นช่างไฟฝึกหัด ตั้งแต่ซ่อมไฟฉาย ทำโคมไฟหัวเตียง ไปจนถึงไฟถนนที่ติดเองตอนค่ำ — รวม 20 ด่าน</span></div>
+        </div>
+      </section>
+
+      <!-- 2 กระแสไฟฟ้า -->
+      <section class="ls-slide" role="group" aria-roledescription="สไลด์"
+        data-cap="ในสายไฟมีอนุภาคเล็ก ๆ ที่มีประจุไฟฟ้า เรียกว่า “อิเล็กตรอน” เมื่อพวกมันเคลื่อนที่ไปพร้อมกันเหมือนน้ำไหลในท่อ เราเรียกการไหลนี้ว่า “กระแสไฟฟ้า” มีหน่วยเป็นแอมแปร์ ยิ่งไหลมาก กระแสก็ยิ่งมาก">
+        <div class="ls-inner">
+          <h3 class="ls-head">ไฟฟ้าคืออะไร?</h3>
+          <div class="ls-art">
+            <svg class="ls-svg" viewBox="0 0 440 170" role="img" aria-label="เปรียบเทียบน้ำไหลในท่อ กับอิเล็กตรอนเคลื่อนที่ในสายไฟ">
+              <text x="110" y="24" fill="#8aafc7" font-size="15" text-anchor="middle" font-weight="700">น้ำไหลในท่อ</text>
+              <rect x="30" y="40" width="160" height="34" rx="17" fill="none" stroke="#2d4a70" stroke-width="3"/>
+              <line x1="40" y1="57" x2="180" y2="57" stroke="#00d4ff" stroke-width="10" stroke-linecap="round" class="ls-water"/>
+              <text x="330" y="24" fill="#8aafc7" font-size="15" text-anchor="middle" font-weight="700">อิเล็กตรอนในสายไฟ</text>
+              <defs><clipPath id="ls-ebox"><rect x="250" y="40" width="160" height="34" rx="6"/></clipPath></defs>
+              <rect x="250" y="40" width="160" height="34" rx="6" fill="none" stroke="#2d4a70" stroke-width="3"/>
+              <g clip-path="url(#ls-ebox)">
+                <line x1="246" y1="57" x2="414" y2="57" stroke="#d4820a" stroke-width="3"/>
+                <g class="ls-electrons" fill="#ffd700">
+                  <circle cx="233" cy="57" r="5"/><circle cx="258" cy="57" r="5"/><circle cx="283" cy="57" r="5"/><circle cx="308" cy="57" r="5"/><circle cx="333" cy="57" r="5"/><circle cx="358" cy="57" r="5"/><circle cx="383" cy="57" r="5"/><circle cx="408" cy="57" r="5"/>
+                </g>
+              </g>
+              <text x="220" y="120" fill="#00ff88" font-size="19" text-anchor="middle" font-weight="800">กระแสไฟฟ้า = การไหลของประจุไฟฟ้า</text>
+              <text x="220" y="148" fill="#ccd6f6" font-size="14" text-anchor="middle">หน่วย: แอมแปร์ (A) · ในเกมวัดเป็นมิลลิแอมแปร์ (mA)</text>
+            </svg>
+          </div>
+          <p class="ls-sub">น้ำ = ประจุไฟฟ้า · ท่อ = สายไฟ · ยิ่งไหลมาก กระแสยิ่งมาก</p>
+          <div class="ls-game"><b>ในเกม</b><span>จุดไฟที่วิ่งไปตามสายไฟ คือกระแสไฟฟ้ากำลังไหล — ยิ่งวิ่งเร็ว กระแสยิ่งมาก</span></div>
+        </div>
+      </section>
+
+      <!-- 3 แรงดัน & ความต้านทาน -->
+      <section class="ls-slide" role="group" aria-roledescription="สไลด์"
+        data-cap="ถ่านหรือแบตเตอรี่ทำหน้าที่ “ดัน” ให้ไฟไหล แรงดันนี้มีหน่วยเป็นโวลต์ ถ่าน AA มีแรงดัน 1.5 โวลต์ ส่วนแบตเตอรี่ก้อนเหลี่ยมมี 9 โวลต์ ดันแรงกว่า หลอดจึงสว่างกว่า และถ้าใส่ตัวต้านทานคั่นไว้ มันจะบีบให้ไฟไหลได้น้อยลง หลอดก็หรี่ลง">
+        <div class="ls-inner">
+          <h3 class="ls-head"><span class="hl">แรงดัน</span> ดันไฟ · <span class="hl">ความต้านทาน</span> บีบไฟ</h3>
+          <div class="ls-panels">
+            <div class="ls-panel">
+              <svg class="ls-svg ls-nolabel" viewBox="0 0 200 172" role="img" aria-label="ถ่าน AA ต่อกับหลอดไฟ หลอดสว่างสลัว">
+                <path class="ls-w pos" d="M140 37 H180 V148 H104"/>
+                <path class="ls-w neg" d="M96 148 H20 V37 H60"/>
+                <path class="ls-f pos" style="--fs:2.2s" d="M140 37 H180 V148 H104"/>
+                <path class="ls-f neg" style="--fs:2.2s" d="M96 148 H20 V37 H60"/>
+                <g class="ls-dev" data-dev="battery_aa" data-box="60 12 80 50"></g>
+                <g class="ls-dev" data-dev="bulb" data-box="74 90 52 60" style="--glow:.3"></g>
+              </svg>
+              <div class="ls-plabel">ถ่าน AA <b>1.5 V</b></div>
+              <div class="ls-status dim">ดันเบา → หลอดสลัว</div>
+            </div>
+            <div class="ls-panel">
+              <svg class="ls-svg ls-nolabel" viewBox="0 0 200 172" role="img" aria-label="แบตเตอรี่ 9 โวลต์ต่อกับหลอดไฟ หลอดสว่างจ้า">
+                <path class="ls-w pos" d="M109 30 V12 H180 V150 H104"/>
+                <path class="ls-w neg" d="M96 150 H20 V12 H91 V31"/>
+                <path class="ls-f pos" style="--fs:.7s" d="M109 30 V12 H180 V150 H104"/>
+                <path class="ls-f neg" style="--fs:.7s" d="M96 150 H20 V12 H91 V31"/>
+                <g class="ls-dev" data-dev="battery_9v" data-box="74 26 52 60"></g>
+                <g class="ls-dev" data-dev="bulb" data-box="74 92 52 60" style="--glow:1"></g>
+              </svg>
+              <div class="ls-plabel">แบตเตอรี่ <b>9 V</b></div>
+              <div class="ls-status ok">ดันแรง → สว่างจ้า</div>
+            </div>
+            <div class="ls-panel">
+              <svg class="ls-svg ls-nolabel" viewBox="0 0 200 172" role="img" aria-label="แบตเตอรี่ 9 โวลต์ ตัวต้านทาน และหลอดไฟ หลอดหรี่ลง">
+                <path class="ls-w pos" d="M109 30 V12 H180 V150 H170"/>
+                <path class="ls-w pos" d="M122 150 H104"/>
+                <path class="ls-w neg" d="M96 150 H20 V12 H91 V31"/>
+                <path class="ls-f pos" style="--fs:1.4s" d="M109 30 V12 H180 V150 H170"/>
+                <path class="ls-f pos" style="--fs:1.4s" d="M122 150 H104"/>
+                <path class="ls-f neg" style="--fs:1.4s" d="M96 150 H20 V12 H91 V31"/>
+                <g class="ls-dev" data-dev="battery_9v" data-box="74 26 52 60"></g>
+                <g class="ls-dev" data-dev="resistor" data-box="122 135 48 30"></g>
+                <g class="ls-dev" data-dev="bulb" data-box="74 92 52 60" style="--glow:.5"></g>
+              </svg>
+              <div class="ls-plabel">9 V + <b>ตัวต้านทาน</b></div>
+              <div class="ls-status dim">บีบไฟ → หรี่ลง นวลตา</div>
+            </div>
+          </div>
+          <p class="ls-sub">แรงดัน (โวลต์ V) มาก ไฟถูกดันแรง หลอดสว่างขึ้น · ตัวต้านทานบีบให้ไฟไหลน้อยลง หลอดหรี่ลง</p>
+          <div class="ls-game"><b>ในเกม</b><span>กดปุ่ม “เครื่องวัด” (คีย์ M) แล้วจิ้มที่อุปกรณ์ จะเห็นค่าแรงดัน (V) และกระแส (mA) ของจริง</span></div>
+        </div>
+      </section>
+
+      <!-- 4 ส่วนประกอบของวงจร -->
+      <section class="ls-slide" role="group" aria-roledescription="สไลด์"
+        data-cap="วงจรไฟฟ้าอย่างง่ายมี 4 ส่วน หนึ่ง แหล่งจ่ายไฟ เช่น ถ่านไฟฉาย มีขั้วบวกและขั้วลบ สอง สายไฟ ทำจากทองแดงที่นำไฟได้ดี หุ้มด้วยพลาสติกกันไฟดูด สาม อุปกรณ์ไฟฟ้า ที่เปลี่ยนไฟฟ้าเป็นพลังงานอื่น หลอดไฟให้แสง มอเตอร์หมุน บัซเซอร์ส่งเสียง และสี่ สวิตช์ ไว้เปิด–ปิดทางเดินของไฟ">
+        <div class="ls-inner">
+          <h3 class="ls-head">วงจรไฟฟ้ามี <span class="hl">4 ส่วน</span></h3>
+          <div class="ls-cards">
+            <div class="ls-card ls-pop">
+              <div class="ls-ic"><span class="ls-dev ls-nolabel" data-dev="battery_aa" data-w="80" data-h="50"></span></div>
+              <h4>1. แหล่งจ่ายไฟ</h4>
+              <p>ถ่าน · แบตเตอรี่<br>มีขั้ว <b>+</b> และ <b>−</b></p>
+            </div>
+            <div class="ls-card ls-pop">
+              <div class="ls-ic"><span class="ls-dev ls-nolabel" data-dev="wire" data-w="80" data-h="50"></span></div>
+              <h4>2. สายไฟ</h4>
+              <p>ทองแดงนำไฟ<br>หุ้มพลาสติกกันไฟดูด</p>
+            </div>
+            <div class="ls-card ls-pop">
+              <div class="ls-ic">
+                <span class="ls-mini"><span class="ls-dev ls-nolabel" data-dev="bulb" data-w="34" data-h="40" style="--glow:.85"></span><small>แสง</small></span>
+                <span class="ls-mini"><span class="ls-dev ls-nolabel ls-spin" data-dev="motor" data-w="38" data-h="38"></span><small>หมุน</small></span>
+                <span class="ls-mini"><span class="ls-dev ls-nolabel ls-buzz" data-dev="buzzer" data-w="38" data-h="36"></span><small>เสียง</small></span>
+              </div>
+              <h4>3. อุปกรณ์ไฟฟ้า</h4>
+              <p>เปลี่ยนไฟฟ้าเป็น<br>แสง · การหมุน · เสียง</p>
+            </div>
+            <div class="ls-card ls-pop">
+              <div class="ls-ic"><span class="ls-dev ls-nolabel" data-dev="switch" data-w="80" data-h="50"></span></div>
+              <h4>4. สวิตช์</h4>
+              <p>เปิด–ปิด<br>ทางเดินของไฟ</p>
+            </div>
+          </div>
+          <p class="ls-sub">ประกอบ 4 ส่วนนี้ให้ครบวง วงจรก็พร้อมทำงาน</p>
+          <div class="ls-game"><b>ในเกม</b><span>อุปกรณ์ทุกชิ้นอยู่ใน “คลังอุปกรณ์” หน้าตาเหมือนในภาพนี้เลย ส่วนสายไฟไม่ต้องหยิบ — ลากเส้นจากขาหนึ่งไปอีกขาได้ทันที</span></div>
+        </div>
+      </section>
+
+      <!-- 5 วงจรปิด/เปิด (ฉากทดลอง) -->
+      <section class="ls-slide" role="group" aria-roledescription="สไลด์" data-demo="switch" data-dur="17000"
+        data-cap="ไฟฟ้าจะทำงานได้ต้องไหลครบ “วง” ออกจากขั้วบวก ผ่านหลอดไฟ แล้ววนกลับเข้าขั้วลบ เรียกว่า วงจรปิด หลอดจึงสว่าง แต่ถ้าทางเดินขาดตรงไหน เช่น สับสวิตช์เป็น OFF ไฟก็ไหลไม่ได้ หลอดดับทันที เรียกว่า วงจรเปิด ลองกดสวิตช์ดูสิ">
+        <div class="ls-inner">
+          <h3 class="ls-head"><span class="hl">วงจรปิด</span> ไฟติด · <span class="hl">วงจรเปิด</span> ไฟดับ</h3>
+          <div class="ls-art">
+            <svg class="ls-svg ls-nolabel" id="ls-d-switch" viewBox="0 0 360 200" role="img" aria-label="วงจรถ่าน สวิตช์ และหลอดไฟ">
+              <path class="ls-w pos" d="M220 41 H250"/>
+              <path class="ls-w pos" d="M330 41 H345 V171 H186"/>
+              <path class="ls-w neg" d="M175 171 H15 V41 H140"/>
+              <path class="ls-f pos" d="M220 41 H250"/>
+              <path class="ls-f pos" d="M330 41 H345 V171 H186"/>
+              <path class="ls-f neg" d="M175 171 H15 V41 H140"/>
+              <g class="ls-dev" data-dev="battery_aa" data-box="140 16 80 50"></g>
+              <g class="ls-dev ls-sw ls-hit" data-act="switch" data-dev="switch" data-box="250 16 80 50"></g>
+              <g class="ls-badge ls-hit" data-act="switch"><rect x="270" y="70" width="40" height="20" rx="6"/><text x="290" y="84" text-anchor="middle" class="ls-badge-t">OFF</text></g>
+              <g class="ls-dev ls-bulb" data-dev="bulb" data-box="148 98 65 75"></g>
+            </svg>
+          </div>
+          <div class="ls-status" id="ls-sw-status" aria-live="polite"></div>
+          <div class="ls-acts"><span class="ls-try">👆 <span class="ls-only-touch">แตะ</span><span class="ls-only-mouse">คลิก</span>สวิตช์ในภาพ หรือกดปุ่มนี้</span><button type="button" class="ls-act" data-act="switch">สับสวิตช์ ON / OFF</button></div>
+          <p class="ls-note">ระวังสับสน: สวิตช์ <b>ON</b> = วงจร<b>ปิด</b> ไฟติด · สวิตช์ <b>OFF</b> = วงจร<b>เปิด</b> ไฟดับ</p>
+          <div class="ls-game"><b>ในเกม</b><span>กดป้าย ON/OFF บนสวิตช์เพื่อสับ (บนคอมเลือกสวิตช์แล้วกด S ก็ได้) — ก่อนกดตรวจวงจร สวิตช์ต้องเป็น ON</span></div>
+        </div>
+      </section>
+
+      <!-- 6 อนุกรม/ขนาน (ฉากทดลอง) -->
+      <section class="ls-slide" role="group" aria-roledescription="สไลด์" data-demo="bulbs" data-dur="20000"
+        data-cap="ต่อหลอดไฟหลายดวงได้ 2 แบบ แบบอนุกรมคือเรียงต่อกันเป็นแถวเดียว ไฟต้องผ่านทุกดวงตามลำดับ หลอดจึงหรี่ลง และถ้าดวงหนึ่งขาด ดวงอื่นดับหมด ส่วนแบบขนานคือแยกเป็นหลายเส้นทาง แต่ละดวงต่อกับถ่านโดยตรง จึงสว่างเต็มที่ และถ้าดวงหนึ่งขาด ดวงอื่นยังสว่างอยู่ ลองกดที่หลอดไฟเพื่อถอดออกดูสิ">
+        <div class="ls-inner">
+          <h3 class="ls-head"><span class="hl">อนุกรม</span> กับ <span class="hl">ขนาน</span></h3>
+          <div class="ls-panels">
+            <div class="ls-panel">
+              <div class="ls-plabel">อนุกรม — เรียงแถวเดียว</div>
+              <svg class="ls-svg ls-nolabel" id="ls-d-series" viewBox="0 0 240 230" role="img" aria-label="หลอดไฟสองดวงต่อแบบอนุกรม">
+                <path class="ls-w pos" d="M160 81 H220 V170 H158"/>
+                <path class="ls-w mid" d="M150 170 H70"/>
+                <path class="ls-w neg" d="M62 170 H20 V81 H80"/>
+                <path class="ls-f pos" style="--fs:1.8s" d="M160 81 H220 V170 H158"/>
+                <path class="ls-f mid" style="--fs:1.8s" d="M150 170 H70"/>
+                <path class="ls-f neg" style="--fs:1.8s" d="M62 170 H20 V81 H80"/>
+                <g class="ls-dev" data-dev="battery_aa" data-box="80 56 80 50"></g>
+                <g class="ls-dev ls-hit" data-act="bulb" data-b="sa" data-dev="bulb" data-box="40 112 52 60">
+                  <g class="ls-xmark"><line x1="56" y1="122" x2="76" y2="142"/><line x1="76" y1="122" x2="56" y2="142"/></g></g>
+                <g class="ls-dev ls-hit" data-act="bulb" data-b="sb" data-dev="bulb" data-box="128 112 52 60">
+                  <g class="ls-xmark"><line x1="144" y1="122" x2="164" y2="142"/><line x1="164" y1="122" x2="144" y2="142"/></g></g>
+              </svg>
+              <div class="ls-status" id="ls-ser-status" aria-live="polite"></div>
+            </div>
+            <div class="ls-panel">
+              <div class="ls-plabel">ขนาน — แยกหลายทาง</div>
+              <svg class="ls-svg ls-nolabel" id="ls-d-parallel" viewBox="0 0 240 230" role="img" aria-label="หลอดไฟสองดวงต่อแบบขนาน">
+                <path class="ls-w pos" d="M160 39 H220 V215"/>
+                <path class="ls-w pos" d="M220 130 H124"/>
+                <path class="ls-w pos" d="M220 215 H124"/>
+                <path class="ls-w neg" d="M116 130 H20"/>
+                <path class="ls-w neg" d="M116 215 H20 V39 H80"/>
+                <circle class="ls-j pos" cx="220" cy="130" r="4.5"/>
+                <circle class="ls-j neg" cx="20" cy="130" r="4.5"/>
+                <path class="ls-f pos" data-br="ab" style="--fs:.65s" d="M160 39 H220 V130"/>
+                <path class="ls-f pos" data-br="b"  style="--fs:.9s"  d="M220 130 V215"/>
+                <path class="ls-f pos" data-br="a"  style="--fs:.9s"  d="M220 130 H124"/>
+                <path class="ls-f pos" data-br="b"  style="--fs:.9s"  d="M220 215 H124"/>
+                <path class="ls-f neg" data-br="a"  style="--fs:.9s"  d="M116 130 H20"/>
+                <path class="ls-f neg" data-br="b"  style="--fs:.9s"  d="M116 215 H20"/>
+                <path class="ls-f neg" data-br="b"  style="--fs:.9s"  d="M20 215 V130"/>
+                <path class="ls-f neg" data-br="ab" style="--fs:.65s" d="M20 130 V39 H80"/>
+                <g class="ls-dev" data-dev="battery_aa" data-box="80 14 80 50"></g>
+                <g class="ls-dev ls-hit" data-act="bulb" data-b="pa" data-dev="bulb" data-box="94 72 52 60">
+                  <g class="ls-xmark"><line x1="110" y1="82" x2="130" y2="102"/><line x1="130" y1="82" x2="110" y2="102"/></g></g>
+                <g class="ls-dev ls-hit" data-act="bulb" data-b="pb" data-dev="bulb" data-box="94 157 52 60">
+                  <g class="ls-xmark"><line x1="110" y1="167" x2="130" y2="187"/><line x1="130" y1="167" x2="110" y2="187"/></g></g>
+              </svg>
+              <div class="ls-status" id="ls-par-status" aria-live="polite"></div>
+            </div>
+          </div>
+          <div class="ls-acts"><span class="ls-try">👆 <span class="ls-only-touch">แตะ</span><span class="ls-only-mouse">คลิก</span>หลอดไฟเพื่อถอดออก</span><button type="button" class="ls-act ghost" data-act="bulbs-reset">↺ ใส่หลอดคืนทั้งหมด</button></div>
+          <p class="ls-sub">ไฟในบ้านเราเดินแบบ <b>ขนาน</b> — ปิดไฟห้องหนึ่ง ห้องอื่นยังสว่างอยู่</p>
+          <div class="ls-game"><b>ในเกม</b><span>บทที่ 2 ฝึกต่อแบบอนุกรม · บทที่ 4 ฝึกต่อแบบขนาน — ด่าน 12 คือการเดินไฟสองห้องแบบบ้านจริง</span></div>
+        </div>
+      </section>
+
+      <!-- 7 ขั้วบวก/ลบ (ฉากทดลอง) -->
+      <section class="ls-slide" role="group" aria-roledescription="สไลด์" data-demo="led" data-dur="17000"
+        data-cap="ถ่านมีขั้วบวกและขั้วลบเสมอ และอุปกรณ์บางชิ้นก็มีขั้วด้วย เช่น LED ไดโอด และมอเตอร์ ต้องต่อให้ถูกด้าน LED ยอมให้ไฟผ่านได้ทางเดียว ถ้าต่อกลับขั้ว ไฟไหลไม่ได้ LED ก็ไม่ติด ส่วนมอเตอร์ถ้ากลับขั้วจะหมุนกลับทาง">
+        <div class="ls-inner">
+          <h3 class="ls-head"><span class="hl">ขั้วบวก</span> และ <span class="hl">ขั้วลบ</span></h3>
+          <div class="ls-split">
+            <div class="ls-panel">
+              <svg class="ls-svg ls-nolabel" id="ls-d-led" viewBox="0 0 260 175" role="img" aria-label="วงจรถ่าน ตัวต้านทาน และ LED">
+                <path class="ls-w pos" d="M170 37 H240 V141 H224"/>
+                <path class="ls-w pos" d="M176 141 H156"/>
+                <path class="ls-w neg" d="M108 141 H20 V37 H90"/>
+                <path class="ls-f pos" d="M170 37 H240 V141 H224"/>
+                <path class="ls-f pos" d="M176 141 H156"/>
+                <path class="ls-f neg" d="M108 141 H20 V37 H90"/>
+                <g class="ls-dev" data-dev="battery_aa" data-box="90 12 80 50"></g>
+                <text x="184" y="30" fill="#ff4444" font-size="18" font-weight="800">+</text>
+                <text x="70" y="30" fill="#00aaff" font-size="18" font-weight="800">−</text>
+                <g class="ls-dev" data-dev="resistor" data-box="176 126 48 30"></g>
+                <g class="ls-dev ls-led ls-hit on" data-act="led" data-dev="led" data-box="100 115 64 52" transform="translate(264 0) scale(-1 1)"></g>
+              </svg>
+              <div class="ls-status" id="ls-led-status" aria-live="polite"></div>
+              <div class="ls-acts"><button type="button" class="ls-act" data-act="led">🔄 กลับขั้ว LED</button></div>
+            </div>
+            <div class="ls-facts">
+              <div class="ls-fact">
+                <span class="ls-fic"><span class="ls-dev" data-dev="battery_aa" data-w="76" data-h="48"></span></span>
+                <p><b>ถ่าน:</b> ขั้วบวก (+) ฝั่งปุ่มนูนสีทอง · ขั้วลบ (−) ฝั่งแบน</p>
+              </div>
+              <div class="ls-fact">
+                <span class="ls-fic"><span class="ls-dev ls-nolabel ls-spin" data-dev="motor" data-w="36" data-h="36"></span><span class="ls-dev ls-nolabel ls-spin rev" data-dev="motor" data-w="36" data-h="36"></span></span>
+                <p><b>มอเตอร์:</b> กลับขั้ว = หมุนกลับทาง</p>
+              </div>
+              <div class="ls-fact">
+                <span class="ls-fic"><svg viewBox="0 0 80 40" width="76" height="38" aria-hidden="true"><line x1="6" y1="12" x2="74" y2="12" stroke="#ff4444" stroke-width="4" stroke-linecap="round"/><line x1="6" y1="28" x2="74" y2="28" stroke="#00aaff" stroke-width="4" stroke-linecap="round"/></svg></span>
+                <p><b>สีสายในเกม:</b> แดง = ฝั่งขั้วบวก · น้ำเงิน = ฝั่งขั้วลบ</p>
+              </div>
+            </div>
+          </div>
+          <p class="ls-sub">LED และไดโอดยอมให้ไฟผ่านได้ <b>ทางเดียว</b> — ต้องหันขาบวกเข้าหาขั้วบวกของถ่าน</p>
+          <div class="ls-game"><b>ในเกม</b><span>บทที่ 3 ทั้งบทเป็นเรื่องขั้ว — ดูสีสายช่วยได้ว่าต่อถูกขั้วหรือยัง</span></div>
+        </div>
+      </section>
+
+      <!-- 8 ความปลอดภัย -->
+      <section class="ls-slide" role="group" aria-roledescription="สไลด์"
+        data-cap="ถ้าต่อสายจากขั้วบวกไปขั้วลบตรง ๆ โดยไม่ผ่านอุปกรณ์ จะเกิดการลัดวงจร กระแสไหลมหาศาลจนสายร้อนจัด อาจไฟไหม้ได้ เราจึงใส่ฟิวส์ไว้ใกล้แหล่งจ่าย ฟิวส์จะขาดเองเมื่อกระแสเกิน ตัดไฟก่อนเกิดอันตราย และ LED ต้องมีตัวต้านทานคั่นเสมอ สำคัญที่สุด ไฟบ้าน 220 โวลต์อันตรายถึงชีวิต ห้ามนำมาทดลองเด็ดขาด">
+        <div class="ls-inner">
+          <h3 class="ls-head warn">⚠️ ความปลอดภัยต้องมาก่อน</h3>
+          <div class="ls-cards c3">
+            <div class="ls-card danger ls-pop">
+              <div class="ls-ic">
+                <svg class="ls-nolabel" viewBox="0 0 160 100" width="128" height="80" aria-hidden="true">
+                  <path class="ls-w ls-hot" d="M120 55 H145 V92 H15 V55 H40"/>
+                  <g class="ls-dev" data-dev="battery_aa" data-box="40 30 80 50"></g>
+                  <polygon class="ls-blink" fill="#ffd700" points="145,84 147,89 152,91 147,93 145,98 143,93 138,91 143,89"/>
+                  <polygon class="ls-blink" fill="#ffd700" points="15,84 17,89 22,91 17,93 15,98 13,93 8,91 13,89"/>
+                </svg>
+              </div>
+              <h4>ลัดวงจร</h4>
+              <p>ต่อ <b>+</b> กับ <b>−</b> ตรง ๆ ไม่ผ่านอุปกรณ์ → กระแสสูงมาก สายร้อนจัด ไฟไหม้ได้</p>
+            </div>
+            <div class="ls-card ls-pop">
+              <div class="ls-ic"><span class="ls-dev ls-blown" data-dev="fuse" data-w="96" data-h="60"></span></div>
+              <h4>ฟิวส์</h4>
+              <p>ขาดเองเมื่อกระแสเกิน ตัดไฟก่อนเกิดอันตราย — ติดไว้<b>ใกล้แหล่งจ่าย</b></p>
+            </div>
+            <div class="ls-card ls-pop">
+              <div class="ls-ic"><span class="ls-dev ls-nolabel" data-dev="resistor" data-w="64" data-h="40"></span><span class="ls-dev ls-nolabel" data-dev="led" data-w="56" data-h="46"></span></div>
+              <h4>LED + ตัวต้านทาน</h4>
+              <p>LED ต้องมี<b>ตัวต้านทาน</b>คั่นเสมอ ไม่งั้นกระแสเกินจนไหม้</p>
+            </div>
+          </div>
+          <div class="ls-danger" role="note"><span class="ls-dico">⚡</span><span><b>ไฟบ้าน 220 โวลต์ อันตรายถึงชีวิต</b> — ห้ามเอาสายไฟหรือโลหะแหย่ปลั๊กไฟเด็ดขาด ทดลองจริงได้เฉพาะกับถ่านไฟฉาย และให้ผู้ใหญ่ดูแล</span></div>
+          <div class="ls-game"><b>ในเกม</b><span>ต่อผิดแล้วอุปกรณ์จะร้อน มีควัน แล้วพังให้เห็นจริง เสียชีวิต 1 ดวง พร้อมรายงานว่าพังเพราะอะไรและป้องกันยังไง</span></div>
+        </div>
+      </section>
+
+      <!-- 9 คำถามข้อ 1 -->
+      <section class="ls-slide ls-q" role="group" aria-roledescription="สไลด์" data-gate="quiz"
+        data-cap="คำถามข้อแรก ดูภาพแล้วเลือกว่าแบบไหนหลอดไฟจะติด ตอบผิดได้ ลองใหม่ได้เรื่อย ๆ">
+        <div class="ls-inner">
+          <div class="ls-qno">ทดสอบความเข้าใจ · ข้อ 1/4</div>
+          <h3 class="ls-head">แบบไหน<span class="hl">หลอดไฟจะติด</span>?</h3>
+          <div class="ls-opts">
+            <button type="button" class="ls-opt" data-act="answer" data-ok="0"
+              data-fb="ยังไม่ติด — ไฟออกจากขั้วบวกได้ แต่กลับเข้าขั้วลบไม่ได้ วงจรยังเปิดอยู่">
+              <svg class="ls-svg ls-nolabel" viewBox="0 0 130 96" aria-hidden="true">
+                <path class="ls-w pos" d="M97 26 H118 V86 H67.5"/>
+                <g class="ls-dev" data-dev="battery_aa" data-box="33 6 64 40"></g>
+                <g class="ls-dev ls-bulb" data-dev="bulb" data-box="45 42 39 45"></g>
+              </svg>
+              <span><span class="ls-key">ก</span> ต่อสายแค่เส้นเดียว</span>
+            </button>
+            <button type="button" class="ls-opt" data-act="answer" data-ok="1"
+              data-fb="ถูกต้อง! ไฟไหลออกจากขั้วบวก ผ่านหลอด แล้ววนกลับเข้าขั้วลบได้ครบรอบ = วงจรปิด">
+              <svg class="ls-svg ls-nolabel" viewBox="0 0 130 96" aria-hidden="true">
+                <path class="ls-w pos" d="M97 26 H118 V86 H67.5"/>
+                <path class="ls-w neg" d="M61.5 86 H12 V26 H33"/>
+                <g class="ls-dev" data-dev="battery_aa" data-box="33 6 64 40"></g>
+                <g class="ls-dev ls-bulb" data-dev="bulb" data-box="45 42 39 45"></g>
+              </svg>
+              <span><span class="ls-key">ข</span> ต่อสายครบวง</span>
+            </button>
+            <button type="button" class="ls-opt" data-act="answer" data-ok="0"
+              data-fb="อันตราย! นี่คือการลัดวงจร ไฟไม่ผ่านหลอดเลย แต่สายจะร้อนจัด">
+              <svg class="ls-svg ls-nolabel" viewBox="0 0 130 96" aria-hidden="true">
+                <path class="ls-w pos" d="M97 26 H118 V4 H12 V26 H33"/>
+                <g class="ls-dev" data-dev="battery_aa" data-box="33 6 64 40"></g>
+                <g class="ls-dev ls-bulb" data-dev="bulb" data-box="45 42 39 45"></g>
+              </svg>
+              <span><span class="ls-key">ค</span> ต่อขั้ว + กับ − ตรง ๆ</span>
+            </button>
+          </div>
+          <div class="ls-fb" aria-live="polite"></div>
+        </div>
+      </section>
+
+      <!-- 10 คำถามข้อ 2 -->
+      <section class="ls-slide ls-q" role="group" aria-roledescription="สไลด์" data-gate="quiz"
+        data-cap="คำถามข้อสอง ถ้าไฟประดับสองดวงต่อแบบอนุกรม แล้วดวงหนึ่งขาด อีกดวงจะเป็นอย่างไร">
+        <div class="ls-inner">
+          <div class="ls-qno">ทดสอบความเข้าใจ · ข้อ 2/4</div>
+          <h3 class="ls-head">ไฟประดับ 2 ดวงต่อแบบ<span class="hl">อนุกรม</span><br>ถ้าดวงหนึ่งขาด อีกดวงจะเป็นอย่างไร?</h3>
+          <div class="ls-opts list">
+            <button type="button" class="ls-opt" data-act="answer" data-ok="1"
+              data-fb="ถูกต้อง! อนุกรมมีทางเดินไฟทางเดียว ขาดตรงไหนก็ดับหมดทั้งวง"><span class="ls-key">ก</span> ดับไปด้วย</button>
+            <button type="button" class="ls-opt" data-act="answer" data-ok="0"
+              data-fb="ยังไม่ใช่ — แบบนั้นคือวงจรขนาน ที่แต่ละดวงมีทางเดินไฟของตัวเอง"><span class="ls-key">ข</span> ยังสว่างเหมือนเดิม</button>
+            <button type="button" class="ls-opt" data-act="answer" data-ok="0"
+              data-fb="ยังไม่ใช่ — พอทางเดินไฟขาด ไฟไหลไม่ได้เลยสักดวง"><span class="ls-key">ค</span> สว่างกว่าเดิม</button>
+          </div>
+          <div class="ls-fb" aria-live="polite"></div>
+        </div>
+      </section>
+
+      <!-- 11 คำถามข้อ 3 -->
+      <section class="ls-slide ls-q" role="group" aria-roledescription="สไลด์" data-gate="quiz"
+        data-cap="คำถามข้อสาม ถ้าต่อ LED กลับขั้ว จะเกิดอะไรขึ้น">
+        <div class="ls-inner">
+          <div class="ls-qno">ทดสอบความเข้าใจ · ข้อ 3/4</div>
+          <span class="ls-dev ls-nolabel" data-dev="led" data-w="70" data-h="57"></span>
+          <h3 class="ls-head">ถ้าต่อ <span class="hl">LED กลับขั้ว</span> จะเกิดอะไรขึ้น?</h3>
+          <div class="ls-opts list">
+            <button type="button" class="ls-opt" data-act="answer" data-ok="0"
+              data-fb="ยังไม่ใช่ — กลับขั้วไม่ได้ทำให้ LED สว่างขึ้น"><span class="ls-key">ก</span> สว่างกว่าเดิม</button>
+            <button type="button" class="ls-opt" data-act="answer" data-ok="0"
+              data-fb="ยังไม่ใช่ — LED มีขั้ว จะต่อด้านไหนก็ได้ไม่ได้นะ"><span class="ls-key">ข</span> ติดเหมือนเดิม</button>
+            <button type="button" class="ls-opt" data-act="answer" data-ok="1"
+              data-fb="ถูกต้อง! LED ยอมให้ไฟผ่านได้ทางเดียว กลับขั้วแล้วไฟไหลไม่ได้"><span class="ls-key">ค</span> ไม่ติด เพราะไฟผ่านได้ทางเดียว</button>
+          </div>
+          <div class="ls-fb" aria-live="polite"></div>
+        </div>
+      </section>
+
+      <!-- 12 คำถามข้อ 4 -->
+      <section class="ls-slide ls-q" role="group" aria-roledescription="สไลด์" data-gate="quiz"
+        data-cap="คำถามข้อสุดท้าย อุปกรณ์ชิ้นไหนตัดไฟเองอัตโนมัติ เมื่อกระแสไหลมากเกินไป">
+        <div class="ls-inner">
+          <div class="ls-qno">ทดสอบความเข้าใจ · ข้อ 4/4</div>
+          <h3 class="ls-head">อุปกรณ์ไหน<span class="hl">ตัดไฟเองอัตโนมัติ</span><br>เมื่อกระแสไหลมากเกินไป?</h3>
+          <div class="ls-opts">
+            <button type="button" class="ls-opt" data-act="answer" data-ok="0"
+              data-fb="ยังไม่ใช่ — สวิตช์ต้องมีคนสับ มันไม่ตัดไฟเอง">
+              <span class="ls-dev ls-nolabel" data-dev="switch" data-w="80" data-h="50"></span>
+              <span><span class="ls-key">ก</span> สวิตช์</span>
+            </button>
+            <button type="button" class="ls-opt" data-act="answer" data-ok="1"
+              data-fb="ถูกต้อง! ไส้ฟิวส์จะร้อนจนขาดเมื่อกระแสเกิน วงจรจึงถูกตัดทันที">
+              <span class="ls-dev ls-nolabel ls-blowable" data-dev="fuse" data-w="80" data-h="50"></span>
+              <span><span class="ls-key">ข</span> ฟิวส์</span>
+            </button>
+            <button type="button" class="ls-opt" data-act="answer" data-ok="0"
+              data-fb="ยังไม่ใช่ — ตัวต้านทานแค่ลดกระแสลง ไม่ได้ตัดไฟ">
+              <span class="ls-dev ls-nolabel" data-dev="resistor" data-w="80" data-h="50"></span>
+              <span><span class="ls-key">ค</span> ตัวต้านทาน</span>
+            </button>
+          </div>
+          <div class="ls-fb" aria-live="polite"></div>
+        </div>
+      </section>
+
+      <!-- 13 วิธีเล่น -->
+      <section class="ls-slide" role="group" aria-roledescription="สไลด์"
+        data-cap="ในเกมมี 3 ขั้นตอน หนึ่ง ลากอุปกรณ์จากคลังมาวาง สอง ต่อสายไฟจากขาของอุปกรณ์ชิ้นหนึ่งไปอีกชิ้น สาม กดปุ่มตรวจวงจร ถ้าถูกจะได้คะแนนและไปด่านต่อไป ทุกด่านมีเวลาจำกัด และมีชีวิต 3 ดวง ตรวจผิด วงจรพัง หรือหมดเวลา จะเสีย 1 ดวง ติดตรงไหนให้กดปุ่มคู่มือ">
+        <div class="ls-inner">
+          <h3 class="ls-head">เล่นเกม<span class="hl">ยังไง</span>?</h3>
+          <div class="ls-cards c3 steps">
+            <div class="ls-card ls-pop">
+              <div class="ls-ic"><span class="ls-step">1</span> <span data-icon="box" data-size="30" style="color:var(--accent)"></span> ➜ <span class="ls-dev ls-nolabel" data-dev="bulb" data-w="30" data-h="35" style="--glow:.6"></span></div>
+              <h4>วางอุปกรณ์</h4>
+              <p><span class="ls-only-mouse">ลากอุปกรณ์จาก “คลังอุปกรณ์” ด้านซ้าย มาวางบนพื้นที่ทำงาน</span><span class="ls-only-touch">ลากอุปกรณ์จาก “คลังอุปกรณ์” แถบล่างของจอ ขึ้นมาวางบนพื้นที่ทำงาน</span></p>
+            </div>
+            <div class="ls-card ls-pop">
+              <div class="ls-ic"><span class="ls-step">2</span>
+                <svg class="ls-nolabel" viewBox="0 0 140 56" width="126" height="50" aria-hidden="true">
+                  <rect x="4" y="12" width="40" height="32" rx="6" fill="#1a2f50" stroke="#2d4a70"/>
+                  <rect x="96" y="12" width="40" height="32" rx="6" fill="#1a2f50" stroke="#2d4a70"/>
+                  <g class="ls-dev" data-dev="battery_aa" data-box="8 18 32 20"></g>
+                  <g class="ls-dev" data-dev="bulb" data-box="105 13 26 30"></g>
+                  <path class="ls-draw" d="M44 28 H96" stroke="#ff4444" stroke-width="3.5" stroke-linecap="round" fill="none"/>
+                  <circle cx="44" cy="28" r="5" fill="#ff4444" stroke="#fff" stroke-width="1.5"/>
+                  <circle cx="96" cy="28" r="5" fill="#ccd6f6" stroke="#fff" stroke-width="1.5"/>
+                  <circle class="ls-finger" cx="44" cy="28" r="8" fill="rgba(255,255,255,.3)" stroke="#fff" stroke-width="1.5"/>
+                </svg>
+              </div>
+              <h4>ต่อสายไฟ</h4>
+              <p><span class="ls-only-mouse">ลากจากขา (จุดกลม) ของอุปกรณ์ชิ้นหนึ่ง ไปปล่อยที่ขาของอีกชิ้น</span><span class="ls-only-touch">แตะขา (จุดกลม) ของชิ้นแรก แล้วแตะขาของอีกชิ้น สายจะต่อให้เอง</span></p>
+            </div>
+            <div class="ls-card ls-pop">
+              <div class="ls-ic"><span class="ls-step">3</span> <span class="btn-action btn-check ls-fake" aria-hidden="true"><span data-icon="bolt" data-size="16"></span> ตรวจวงจร</span></div>
+              <h4>ตรวจวงจร</h4>
+              <p>ถ้าถูก ไฟจะติด ได้คะแนน แล้วไปด่านต่อไป — ทำเสร็จเร็วได้โบนัสเพิ่ม</p>
+            </div>
+          </div>
+          <!-- หน้าตาของแถบหัวเกมจริง (ใช้คลาสเดียวกับ #game-header) แต่กดไม่ได้ -->
+          <div class="ls-hud">
+            <div class="ls-hudgrp">
+              <div class="hud-item"><span class="hud-label">เวลา</span><span class="hud-value" style="color:var(--accent3)">03:00</span></div>
+              <div class="hud-item"><span class="hud-label">ชีวิต</span><span class="hud-value hud-hearts" id="ls-hearts"></span></div>
+              <div class="ls-hudtxt">ตรวจผิด วงจรพัง หรือหมดเวลา <b>เสีย 1 ดวง</b> · หมดทั้ง 3 ดวง เริ่มใหม่ตั้งแต่ด่าน 1</div>
+            </div>
+            <div class="ls-hudgrp">
+              <span class="btn-tutorial ls-fake" aria-hidden="true"><span data-icon="book" data-size="16"></span> คู่มือ</span>
+              <div class="ls-hudtxt">ติดตรงไหน กดปุ่ม “คู่มือ” ดูคำใบ้ของด่านนั้นได้ทุกเมื่อ</div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- 14 พร้อมลุย -->
+      <section class="ls-slide" role="group" aria-roledescription="สไลด์"
+        data-cap="เยี่ยมมาก! ในเกมมี 20 ด่าน แบ่งเป็น 7 บท เริ่มจากวงจรง่าย ๆ ไปจนถึงวงจรผสมที่รวมทุกอย่าง ขั้นต่อไป {next}">
+        <div class="ls-inner">
+          <h3 class="ls-head">พร้อมลุยแล้ว! ในเกมมี <span class="hl">20 ด่าน 7 บท</span></h3>
+          <!-- ช่วงด่านของแต่ละบทตรงกับหัวไฟล์ js/levels.js — แก้ด่านแล้วอย่าลืมแก้ตรงนี้ -->
+          <div class="ls-map">
+            <div class="ls-chap"><span class="ls-step">1</span><div><b>วงจรปิดพื้นฐาน</b><small>ด่าน 1–4</small></div></div>
+            <div class="ls-chap"><span class="ls-step">2</span><div><b>วงจรอนุกรม</b><small>ด่าน 5–7</small></div></div>
+            <div class="ls-chap"><span class="ls-step">3</span><div><b>ขั้วบวก/ลบ</b><small>ด่าน 8–10</small></div></div>
+            <div class="ls-chap"><span class="ls-step">4</span><div><b>วงจรขนาน</b><small>ด่าน 11–13</small></div></div>
+            <div class="ls-chap"><span class="ls-step">5</span><div><b>อุปกรณ์เปลี่ยนพลังงาน</b><small>ด่าน 14–16</small></div></div>
+            <div class="ls-chap"><span class="ls-step">6</span><div><b>อิเล็กทรอนิกส์ขั้นสูง</b><small>ด่าน 17–19</small></div></div>
+            <div class="ls-chap last"><span class="ls-step">7</span><div><b>วงจรผสมรวมทุกอย่าง</b><small>ด่าน 20</small></div></div>
+          </div>
+          <button type="button" class="ls-cta" id="ls-cta" data-act="finish">ไปทำแบบทดสอบก่อนเรียน →</button>
+          <div class="ls-cta-hint" id="ls-cta-hint"></div>
+        </div>
+      </section>
+
+      <!-- โผล่เมื่อเนื้อหาหน้าปัจจุบันยาวเกินจอ (มือถือจอเล็ก) — กดแล้วเลื่อนลงให้ -->
+      <button type="button" class="ls-morehint" tabindex="-1" aria-hidden="true" onclick="lessonScrollMore()">▾ เลื่อนลงดูต่อ</button>
+    </div>
+
+    <div class="ls-cap" id="ls-cap" aria-live="polite"></div>
+
+    <div class="ls-bar">
+      <div class="ls-segs" id="ls-segs"></div>
+      <div class="ls-ctrl">
+        <button class="ls-btn" id="ls-prev" type="button" onclick="lessonPrev()">‹ ก่อนหน้า</button>
+        <button class="ls-btn" id="ls-play" type="button" onclick="lessonTogglePlay()" aria-pressed="true">⏸ <span class="ls-play-txt">หยุด</span></button>
+        <span class="ls-counter" id="ls-counter">1 / 14</span>
+        <button class="ls-btn primary" id="ls-next" type="button" onclick="lessonNext()">ถัดไป ›</button>
+      </div>
+    </div>
+  </div>
+</section>
+
 <!-- PRE-TEST -->
-<section id="screen-pretest" class="screen active">
+<section id="screen-pretest" class="screen">
   <div class="test-container">
     <h1><span id="pretest-bolt"></span> วงจรไฟฟ้า &#x2014; ข้อสอบก่อนเรียน</h1>
     <p>กรุณากดปุ่มด้านล่างเพื่อทำแบบทดสอบก่อนเรียน<br>เมื่อทำเสร็จแล้วให้กลับมาที่หน้านี้แล้วกดยืนยัน</p>
@@ -53,6 +559,9 @@
         <button class="btn-reset-save" onclick="askResetSave()">เริ่มใหม่ทั้งหมด</button>
       </div>
     </div>
+
+    <!-- กลับไปดูบทเรียนก่อนเข้าเกมได้เสมอ (js/lesson.js) -->
+    <button class="btn-lesson-again" type="button" onclick="lessonOpen('pretest')">&#x1F4FA; ดูบทเรียนอีกครั้ง</button>
   </div>
 </section>
 
@@ -292,6 +801,8 @@
         </div>
       </div>
       <div id="tutorial-text-box">ใส่ข้อความสอน</div>
+      <!-- ทบทวนบทเรียนพื้นฐานกลางด่าน — นาฬิกาด่านหยุดรอระหว่างดู (ดู tickTimer ใน js/game.js) -->
+      <button class="btn-lesson-review" type="button" onclick="lessonFromGame()">&#x1F4FA; ทบทวนบทเรียนพื้นฐาน (ไฟฟ้าและวงจร)</button>
     </div>
     <!-- ปุ่มพลิกหน้าต้องอยู่นอก .modal-body — ถ้าอยู่ข้างในมันจะเลื่อนหนีไป
          กับเนื้อหา พอหน้าไหนข้อความยาว ผู้เรียนจะหาปุ่ม "ถัดไป" ไม่เจอ -->
@@ -434,6 +945,7 @@
        damage          ตัวประสานระหว่างเกมกับระบบความเสียหาย
        sandbox         โหมดอิสระ (เล่นทดลองไม่จำกัด)
        endless         โหมดวัดความเร็ว + ตัวสุ่มโจทย์ + ตารางอันดับ
+       lesson          บทเรียนก่อนเข้าเกม (หน้าแรกของเว็บ) — ใช้รูปอุปกรณ์จาก device-symbols
        game            วงจรการเล่นหลัก + คีย์ลัด (โหลดท้ายสุด)
      ============================================================ -->
 <script src="js/device-symbols.js"></script>
@@ -462,6 +974,7 @@
 <script src="js/damage.js"></script>
 <script src="js/sandbox.js"></script>
 <script src="js/endless.js"></script>
+<script src="js/lesson.js"></script>
 <script src="js/game.js"></script>
 
 </body>
