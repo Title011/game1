@@ -235,7 +235,7 @@ function askResetSave(){
   var detail = s
     ? 'คะแนน <b>' + s.score + '</b> · ผ่านแล้ว <b>' +
       Object.keys(s.doneLevels).length + ' ด่าน</b><br>' +
-      'รวมถึงสถานะการทำแบบทดสอบ จะหายทั้งหมด'
+      'รวมถึงสถานะบทเรียนและการทำแบบทดสอบ จะหายทั้งหมด'
     : 'ข้อมูลที่บันทึกไว้จะถูกลบทั้งหมด';
 
   showConfirm({
@@ -248,6 +248,15 @@ function askResetSave(){
     danger:true,
     onConfirm:function(){
       clearSave();
+      /* เริ่มใหม่ทั้งหมด = คนใหม่มาใช้เครื่อง ต้องเริ่มจากบทเรียนตามลำดับ (js/lesson.js)
+         โหลดหน้าใหม่ทั้งหน้าแทนการล้างทีละค่า เพราะสถานะแบบทดสอบในหน่วยความจำ
+         (FormStatus) กับปุ่มที่ปลดล็อกไว้แล้ว ไม่ได้ถูกล้างไปพร้อมไฟล์เซฟ
+         ถ้าไม่โหลดใหม่ ปุ่ม "เข้าสู่เกม" จะยังปลดล็อกค้างอยู่ทั้งที่ยังไม่ได้ทำแบบทดสอบ */
+      if(typeof lessonForget === 'function'){
+        lessonForget();
+        location.reload();
+        return;
+      }
       renderResumeBox();
       showToast('ลบข้อมูลที่บันทึกไว้แล้ว','');
     }

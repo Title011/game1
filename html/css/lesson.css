@@ -1,0 +1,439 @@
+@charset "UTF-8";
+/* ============================================================
+   LESSON — หน้าบทเรียนก่อนเข้าเกม (ดู js/lesson.js)
+
+   หน้าตาเป็น "เวที" เดียวกับต้นฉบับบทเรียน: หัวข้อ → สไลด์ → คำบรรยาย → แถบควบคุม
+   แต่ใช้สีและตัวอักษรชุดเดียวกับเกม (ตัวแปรใน css/base.css)
+   ไม่โหลดฟอนต์จาก Google เพราะเกมต้องเปิดได้แม้ไม่มีเน็ต (เปิดแบบ file://)
+
+   คลาสทุกตัวขึ้นต้นด้วย ls- กันชนกับคลาสของเกม
+   (.slide .glow .flow .pop ในต้นฉบับเป็นชื่อกลาง ๆ ที่ชนง่ายมาก)
+   ============================================================ */
+
+#screen-lesson{align-items:center;justify-content:center;padding:16px;}
+/* JS เปิด/ปิดด้วยแอตทริบิวต์ hidden — ต้องชนะ display ที่คลาสตั้งไว้ */
+#screen-lesson [hidden]{display:none!important;}
+
+.ls-stage{
+  width:100%;max-width:1000px;
+  height:760px;max-height:calc(100vh - 32px);max-height:calc(100dvh - 32px);
+  display:flex;flex-direction:column;overflow:hidden;
+  background:radial-gradient(ellipse at 65% 18%,rgba(0,212,255,.09),transparent 60%),var(--bg-panel);
+  border:1px solid var(--border2);border-radius:20px;
+  box-shadow:0 4px 40px rgba(0,212,255,.12);
+}
+
+/* ---------- แถบหัว ---------- */
+/* สูงพอสำหรับปุ่มข้ามเสมอ — ปุ่มโผล่/หายแล้วแถบหัวต้องไม่ยืดหด จนสไลด์ทั้งหน้ากระตุก */
+.ls-top{
+  flex:0 0 auto;display:flex;align-items:center;gap:10px;min-height:52px;
+  padding:8px 16px;background:rgba(0,212,255,.06);border-bottom:1px solid var(--border);
+}
+.ls-title{
+  flex:1;min-width:0;display:flex;align-items:center;gap:8px;
+  font-size:1rem;font-weight:700;color:var(--accent);
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
+}
+.ls-skip{
+  flex:0 0 auto;background:transparent;color:var(--text-dim);
+  border:1px solid var(--border2);border-radius:9px;padding:7px 14px;
+  font-family:inherit;font-size:.82rem;font-weight:700;cursor:pointer;
+  transition:color .15s,border-color .15s;
+}
+.ls-skip:hover{color:var(--accent);border-color:var(--accent);}
+
+/* ---------- พื้นที่สไลด์ ----------
+   สไลด์ซ้อนกันอยู่ที่เดียว แล้วสลับด้วยความทึบ
+   visibility ปิดตามหลังการจางหาย = สไลด์ที่ซ่อนอยู่กด Tab เข้าไปไม่ได้
+   และโปรแกรมอ่านหน้าจอไม่อ่านสไลด์ที่มองไม่เห็น
+
+   touch-action:pan-y — ให้เบราว์เซอร์จัดการแค่การเลื่อนขึ้นลง
+   การปัดซ้าย-ขวาส่งมาให้ js/lesson.js ใช้เปลี่ยนหน้า */
+.ls-view{position:relative;flex:1 1 auto;min-height:0;overflow:hidden;touch-action:pan-y;}
+.ls-slide{
+  position:absolute;top:0;right:0;bottom:0;left:0;
+  display:flex;flex-direction:column;
+  overflow-y:auto;overscroll-behavior:contain;
+  padding:14px 5%;
+  opacity:0;transform:translateX(36px);visibility:hidden;
+  transition:opacity .45s ease,transform .45s ease,visibility 0s linear .45s;
+}
+.ls-slide.active{opacity:1;transform:none;visibility:visible;transition-delay:0s;}
+/* เนื้อหายาวเกินจอ: ไล่เงาที่ขอบล่าง + ป้าย "เลื่อนลงดูต่อ" (js/lesson.js ใส่คลาส .ls-more) */
+.ls-view::after{
+  content:'';position:absolute;left:0;right:0;bottom:0;height:46px;pointer-events:none;z-index:1;
+  background:linear-gradient(to bottom,rgba(17,34,64,0),rgba(17,34,64,.96));
+  opacity:0;transition:opacity .25s ease;
+}
+.ls-view.ls-more::after{opacity:1;}
+.ls-morehint{
+  position:absolute;left:50%;bottom:8px;transform:translateX(-50%);z-index:2;
+  display:none;background:var(--bg-card);border:1px solid var(--accent);color:var(--accent);
+  border-radius:999px;padding:4px 14px;font-family:inherit;font-size:.76rem;font-weight:700;cursor:pointer;
+  box-shadow:0 4px 14px rgba(0,0,0,.45);animation:ls-bob 1.4s ease-in-out infinite;
+}
+.ls-view.ls-more .ls-morehint{display:block;}
+@keyframes ls-bob{0%,100%{transform:translate(-50%,0)}50%{transform:translate(-50%,3px)}}
+/* margin:auto ในกล่องที่เลื่อนได้ = เนื้อหาสั้นอยู่กลางจอ เนื้อหายาวเริ่มจากขอบบน
+   (justify-content:center จะตัดหัวเนื้อหาที่ยาวเกินจอทิ้ง เลื่อนขึ้นไปดูไม่ได้) */
+.ls-inner{
+  margin:auto;width:100%;
+  display:flex;flex-direction:column;align-items:center;gap:12px;text-align:center;
+}
+/* สไลด์ที่ซ่อนอยู่ไม่ต้องเดินแอนิเมชันให้เปลืองเครื่อง */
+.ls-slide:not(.active) *{animation-play-state:paused!important;}
+
+.ls-head{font-size:clamp(1.15rem,2.6vw,1.75rem);font-weight:800;color:var(--accent);line-height:1.3;}
+.ls-head .hl{color:var(--accent2);}
+.ls-head.warn{color:#ff7a7a;}
+.ls-sub{font-size:clamp(.88rem,1.5vw,1.02rem);color:var(--text);line-height:1.65;max-width:780px;}
+.ls-sub b{color:var(--accent3);}
+.ls-note{
+  font-size:.84rem;color:var(--text);line-height:1.6;max-width:640px;
+  background:rgba(0,212,255,.06);border:1px dashed var(--border2);border-radius:10px;padding:6px 12px;
+}
+.ls-note b{color:var(--accent2);}
+
+/* กล่อง "ในเกม" — ผูกเรื่องที่เพิ่งเรียนเข้ากับสิ่งที่จะได้เห็นจริงในเกม */
+.ls-game{
+  display:inline-flex;align-items:baseline;gap:8px;text-align:left;max-width:780px;
+  background:rgba(255,215,0,.06);border:1px solid rgba(255,215,0,.32);border-radius:10px;
+  padding:7px 12px;font-size:.84rem;line-height:1.6;color:#f3e3a6;
+}
+.ls-game > b{
+  flex:0 0 auto;background:var(--accent2);color:#1a1300;
+  border-radius:6px;padding:1px 8px;font-size:.72rem;font-weight:800;
+}
+
+/* ---------- ภาพประกอบ ---------- */
+.ls-art{width:100%;display:flex;align-items:center;justify-content:center;gap:clamp(10px,3vw,36px);flex-wrap:wrap;}
+.ls-svg{display:block;width:100%;height:auto;max-width:520px;max-height:min(270px,32vh);}
+.ls-svg text{font-family:inherit;}
+
+/* แผงย่อยเรียงแนวนอน (แรงดัน 3 แผง / อนุกรม-ขนาน 2 แผง)
+   ไม่ตัดขึ้นบรรทัดใหม่ — บนจอแคบให้หดลงพร้อมกัน จะได้เทียบกันได้ในแวบเดียว */
+.ls-panels{display:flex;justify-content:center;gap:clamp(8px,2.5vw,28px);width:100%;}
+.ls-panel{
+  flex:1 1 0;min-width:0;max-width:250px;
+  display:flex;flex-direction:column;align-items:center;gap:4px;
+}
+.ls-panel .ls-svg{max-height:min(220px,28vh);}
+/* สองคอลัมน์ที่ตัดลงบรรทัดใหม่ได้ (ฉากขั้วบวก/ลบ: วงจร LED + กล่องข้อเท็จจริง)
+   ต้องมี flex-basis จริง — ถ้าใช้ .ls-panel แบบ basis 0 ในแถวที่ตัดบรรทัดได้
+   บนจอแคบแผงจะถูกบีบเหลือเส้นเดียวแทนที่จะลงไปอยู่บรรทัดใหม่ */
+.ls-split{display:flex;flex-wrap:wrap;justify-content:center;align-items:center;gap:14px clamp(14px,3vw,36px);width:100%;}
+.ls-split > *{flex:1 1 260px;max-width:340px;}
+.ls-facts{display:flex;flex-direction:column;gap:8px;}
+.ls-fact{
+  display:flex;align-items:center;gap:10px;text-align:left;
+  background:var(--bg-card);border:1px solid var(--border2);border-radius:12px;padding:8px 10px;
+}
+.ls-fact p{font-size:.8rem;color:var(--text-dim);line-height:1.5;}
+.ls-fact p b{color:var(--accent2);}
+.ls-fic{flex:0 0 80px;display:flex;align-items:center;justify-content:center;gap:4px;}
+.ls-plabel{font-size:.9rem;font-weight:800;color:var(--text);line-height:1.4;}
+.ls-plabel b{color:var(--accent2);}
+.ls-status{font-size:.82rem;font-weight:700;line-height:1.5;min-height:1.5em;color:var(--text-dim);}
+/* ในแผงแคบข้อความสถานะตัดเป็นสองบรรทัดได้ — จองที่ไว้ก่อน ภาพจะได้ไม่กระโดดตอนข้อความเปลี่ยน */
+.ls-panel .ls-status{min-height:3em;}
+.ls-status.ok{color:var(--accent3);}
+.ls-status.no{color:#ff8a8a;}
+.ls-status.dim{color:var(--accent2);}
+
+/* ---------- การ์ด ---------- */
+.ls-cards{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px;width:100%;max-width:900px;}
+.ls-cards.c3{grid-template-columns:repeat(3,minmax(0,1fr));}
+.ls-card{
+  background:var(--bg-card);border:1px solid var(--border2);border-radius:14px;
+  padding:12px 10px;display:flex;flex-direction:column;align-items:center;gap:6px;
+}
+.ls-card h4{font-size:.95rem;color:var(--text);}
+.ls-card p{font-size:.78rem;color:var(--text-dim);line-height:1.55;}
+.ls-card p b{color:var(--accent2);}
+.ls-card.danger{border-color:rgba(255,68,68,.55);background:rgba(255,68,68,.06);}
+.ls-ic{min-height:58px;display:flex;align-items:center;justify-content:center;gap:6px;flex-wrap:wrap;}
+.ls-ic small{display:block;font-size:.66rem;color:var(--text-dim);}
+.ls-mini{display:flex;flex-direction:column;align-items:center;gap:2px;}
+.ls-step{
+  width:26px;height:26px;border-radius:50%;flex:0 0 auto;
+  display:flex;align-items:center;justify-content:center;
+  background:var(--accent2);color:#000;font-weight:800;font-size:.82rem;
+}
+
+/* ป้ายเตือนไฟบ้าน — เรื่องความปลอดภัยในชีวิตจริง ต้องเด่นกว่าทุกอย่างในหน้า */
+.ls-danger{
+  display:flex;align-items:center;gap:10px;text-align:left;max-width:780px;
+  background:linear-gradient(135deg,rgba(255,68,68,.18),rgba(255,140,0,.12));
+  border:1.5px solid var(--danger);border-radius:12px;padding:9px 14px;
+  font-size:.86rem;line-height:1.55;color:#ffd6d6;
+}
+.ls-danger b{color:#fff;}
+.ls-danger .ls-dico{font-size:1.5rem;line-height:1;}
+
+/* ฉากทดลอง: ปุ่มจริงไว้ใต้ภาพเสมอ (ใช้คีย์บอร์ดและโปรแกรมอ่านหน้าจอได้)
+   ส่วนการแตะที่ตัวอุปกรณ์ในภาพเป็นทางลัดสำหรับคนที่กดตรงนั้นเลย */
+.ls-acts{display:flex;gap:8px;flex-wrap:wrap;justify-content:center;}
+.ls-act{
+  display:inline-flex;align-items:center;gap:6px;
+  background:var(--bg-card);border:1.5px solid var(--accent);color:var(--accent);
+  border-radius:999px;padding:7px 16px;min-height:38px;
+  font-family:inherit;font-size:.85rem;font-weight:700;cursor:pointer;
+  transition:background .15s,transform .15s;
+}
+.ls-act:hover{background:rgba(0,212,255,.12);transform:translateY(-1px);}
+.ls-act.ghost{border-color:var(--border2);color:var(--text-dim);}
+.ls-hit{cursor:pointer;}
+.ls-try{font-size:.8rem;color:var(--accent2);font-weight:700;animation:ls-breathe 1.8s ease-in-out infinite;}
+@keyframes ls-breathe{0%,100%{opacity:1}50%{opacity:.45}}
+
+/* ---------- วงจรในภาพ ----------
+   สีสายตามเกม: แดง = ฝั่งขั้วบวก · น้ำเงิน = ฝั่งขั้วลบ · เหลือง = กลางวงจร (js/wires.js)
+   .ls-f คือ "จุดไฟ" ที่วิ่งทับสาย — dasharray เกือบศูนย์ + ปลายมน = ได้เป็นจุดกลม
+   เส้นทางทุกเส้นวาดจากฝั่งขั้วบวกไปขั้วลบ จุดจึงวิ่งทิศเดียวกับในเกม */
+.ls-w{fill:none;stroke-width:3.5;stroke-linecap:round;stroke-linejoin:round;}
+.ls-w.pos{stroke:#ff4444;}
+.ls-w.neg{stroke:#00aaff;}
+.ls-w.mid{stroke:#ffd700;}
+.ls-f{
+  fill:none;stroke-width:8;stroke-linecap:round;stroke-linejoin:round;
+  stroke-dasharray:.01 16;
+  animation:ls-flow var(--fs,1.1s) linear infinite;
+  transition:opacity .3s ease;
+}
+.ls-f.pos{stroke:#ff8080;filter:drop-shadow(0 0 3px #ff4444);}
+.ls-f.neg{stroke:#66ccff;filter:drop-shadow(0 0 3px #00aaff);}
+.ls-f.mid{stroke:#ffe680;filter:drop-shadow(0 0 3px #ffd700);}
+.ls-f.off{opacity:0;animation-play-state:paused;}
+@keyframes ls-flow{to{stroke-dashoffset:-16.01;}}
+.ls-j{stroke:none;}
+.ls-j.pos{fill:#ff4444;}
+.ls-j.neg{fill:#00aaff;}
+/* สายลัดวงจร — ร้อนจัดจนเรืองแดง */
+.ls-hot{stroke:#ff4444;filter:drop-shadow(0 0 5px #ff2a00);animation:ls-hot .7s ease-in-out infinite;}
+@keyframes ls-hot{0%,100%{stroke:#ff4444}50%{stroke:#ffb020}}
+
+/* อุปกรณ์ในภาพ — โคลนชิ้นส่วนจริงจาก js/device-symbols.js
+   (โคลนมาเป็นโหนดจริง ไม่ใช้ <use> จึงเลือกชิ้นส่วนข้างในด้วย CSS ได้ — ดู makeSvgIconInline ใน js/ui.js)
+   ความสว่างของหลอดคุมด้วย --glow ตัวเดียวกับที่ css/circuit.css ใช้ในเกม */
+.ls-dev{transition:opacity .3s ease;}
+span.ls-dev{display:inline-flex;}
+/* ป้ายชื่อท้ายรูป (BULB 60W, SWITCH ...) เกะกะเวลาวาดเป็นวงจร — ใช้ป้ายของบทเรียนแทน */
+.ls-nolabel text[fill="#6e88a8"]{display:none;}
+.ls-sw.off .switch-lever{transform:rotate(-30deg);}
+.ls-led.on .led-ray{opacity:1;filter:drop-shadow(0 0 5px #00ff88);transition:opacity .3s ease;}
+.ls-led.on .led-bulb{filter:drop-shadow(0 0 10px #00ff88) brightness(1.45);transition:filter .3s ease;}
+.ls-led .led-bulb{transition:filter .3s ease;}
+.ls-spin .motor-rotor{animation:cg-spin 1.2s linear infinite;}
+.ls-spin.rev .motor-rotor{animation-direction:reverse;}
+.ls-buzz{--glow:1;}
+.ls-buzz .buzzer-body{animation:cg-buzz-shake .14s linear infinite;}
+/* ฟิวส์ขาด — เว้นช่องกลางไส้ฟิวส์ให้เห็นว่าขาดจริง */
+.ls-blown .fuse-element{stroke:#ff6b6b;stroke-dasharray:15 8 300;}
+/* หลอดที่ถูกถอดออก */
+.ls-gone{opacity:.3;}
+.ls-xmark{display:none;}
+.ls-gone .ls-xmark{display:inline;}
+.ls-xmark line{stroke:#ff4d4d;stroke-width:5;stroke-linecap:round;}
+.ls-badge rect{fill:#0a1628;stroke:var(--accent3);stroke-width:1.5;}
+.ls-badge text{fill:var(--accent3);font-size:11px;font-weight:800;}
+.ls-off .ls-badge rect{stroke:var(--danger);}
+.ls-off .ls-badge text{fill:var(--danger);}
+.ls-cap-txt{font-size:13px;font-weight:800;}
+
+/* ---------- ฉาก 1-2 (ภาพจากต้นฉบับบทเรียน) ---------- */
+@keyframes ls-glow{0%,100%{filter:drop-shadow(0 0 4px var(--accent2))}50%{filter:drop-shadow(0 0 16px var(--accent2))}}
+.ls-glow{animation:ls-glow 1.5s ease-in-out infinite;}
+@keyframes ls-blink{0%,100%{opacity:1}50%{opacity:.4}}
+.ls-blink{animation:ls-blink 1s ease-in-out infinite;}
+.ls-water{stroke-dasharray:6 10;animation:ls-water 1s linear infinite;}
+@keyframes ls-water{to{stroke-dashoffset:-32;}}
+.ls-electrons{animation:ls-march 1.1s linear infinite;}
+/* ใบพัดหมุนรอบดุมกลาง (330,80) ในกรอบภาพ — ใช้ cg-spin ตัวเดียวกับโรเตอร์มอเตอร์ในเกม */
+.ls-fan{transform-box:view-box;transform-origin:330px 80px;animation:cg-spin 1.6s linear infinite;}
+@keyframes ls-march{from{transform:translateX(0)}to{transform:translateX(25px)}}
+
+/* การ์ดค่อย ๆ โผล่ทีละใบตอนเข้าสไลด์ */
+.ls-pop{opacity:0;transform:translateY(12px);}
+.ls-slide.active .ls-pop{animation:ls-pop .45s ease forwards;}
+.ls-slide.active .ls-pop:nth-child(2){animation-delay:.12s;}
+.ls-slide.active .ls-pop:nth-child(3){animation-delay:.24s;}
+.ls-slide.active .ls-pop:nth-child(4){animation-delay:.36s;}
+@keyframes ls-pop{to{opacity:1;transform:none;}}
+
+/* ---------- คำถาม ---------- */
+.ls-qno{font-size:.78rem;font-weight:800;color:var(--accent2);letter-spacing:.04em;}
+.ls-opts{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;width:100%;max-width:820px;}
+.ls-opts.list{grid-template-columns:1fr;max-width:520px;}
+.ls-opt{
+  background:var(--bg-card);border:2px solid var(--border2);border-radius:14px;color:var(--text);
+  padding:12px;font-family:inherit;font-size:.92rem;font-weight:700;line-height:1.45;cursor:pointer;
+  display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;
+  transition:border-color .15s,transform .15s,background .15s;
+}
+.ls-opts.list .ls-opt{flex-direction:row;justify-content:flex-start;text-align:left;}
+.ls-opt:hover:not(:disabled){border-color:var(--accent);transform:translateY(-2px);}
+.ls-opt:disabled{cursor:default;color:var(--text);}
+.ls-opt.wrong{border-color:var(--danger);background:rgba(255,68,68,.08);opacity:.7;animation:ls-shake .35s ease;}
+.ls-opt.right{border-color:var(--accent3);background:rgba(0,255,136,.1);box-shadow:0 0 18px rgba(0,255,136,.25);}
+.ls-opt .ls-svg{max-height:min(120px,18vh);}
+.ls-key{
+  flex:0 0 auto;width:26px;height:26px;border-radius:50%;
+  display:inline-flex;align-items:center;justify-content:center;
+  background:var(--bg-dark);border:1px solid var(--border2);color:var(--accent2);font-size:.8rem;
+}
+.ls-opt.right .ls-key{background:var(--accent3);border-color:var(--accent3);color:#000;}
+.ls-opt.wrong .ls-key{background:var(--danger);border-color:var(--danger);color:#fff;}
+.ls-fb{min-height:1.6em;font-size:.92rem;font-weight:700;line-height:1.5;max-width:700px;}
+.ls-fb.ok{color:var(--accent3);}
+.ls-fb.no{color:#ff8a8a;}
+.ls-q .ls-bulb{--glow:0;}
+.ls-opt.right .ls-bulb{--glow:.95;}
+.ls-opt.right .ls-blowable .fuse-element{stroke:#ff6b6b;stroke-dasharray:15 8 300;}
+@keyframes ls-shake{0%,100%{transform:translateX(0)}25%{transform:translateX(-6px)}75%{transform:translateX(6px)}}
+.ls-opts.ls-nudge{animation:ls-shake .35s ease;}
+
+/* ---------- วิธีเล่น ---------- */
+.ls-hud{display:flex;gap:10px 22px;flex-wrap:wrap;justify-content:center;width:100%;max-width:900px;}
+.ls-hudgrp{display:flex;align-items:center;gap:8px;flex:1 1 300px;max-width:440px;}
+.ls-hudtxt{font-size:.78rem;color:var(--text-dim);line-height:1.5;text-align:left;}
+.ls-hudtxt b{color:#ff8a8a;}
+.ls-fake{pointer-events:none;display:inline-flex;align-items:center;gap:6px;}
+.ls-draw{stroke-dasharray:60;stroke-dashoffset:60;animation:ls-draw 2.6s ease-in-out infinite;}
+@keyframes ls-draw{0%{stroke-dashoffset:60;opacity:1}55%,85%{stroke-dashoffset:0;opacity:1}100%{stroke-dashoffset:0;opacity:0}}
+.ls-finger{animation:ls-finger 2.6s ease-in-out infinite;}
+@keyframes ls-finger{0%{transform:translateX(0);opacity:1}55%,85%{transform:translateX(44px);opacity:1}100%{transform:translateX(44px);opacity:0}}
+.ls-only-touch{display:none;}
+.ls-touch .ls-only-touch{display:inline;}
+.ls-touch .ls-only-mouse{display:none;}
+
+/* ---------- หน้าสุดท้าย: แผนที่บทในเกม ---------- */
+.ls-map{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px;width:100%;max-width:860px;}
+.ls-chap{
+  display:flex;align-items:center;gap:8px;text-align:left;
+  background:var(--bg-card);border:1px solid var(--border2);border-radius:10px;padding:7px 9px;
+}
+.ls-chap .ls-step{width:24px;height:24px;font-size:.75rem;}
+.ls-chap b{display:block;font-size:.8rem;color:var(--text);line-height:1.35;}
+.ls-chap small{display:block;font-size:.7rem;color:var(--text-dim);}
+.ls-chap.last{border-color:var(--accent2);}
+.ls-cta{
+  background:linear-gradient(135deg,var(--accent3),#059669);color:#04231a;border:none;
+  padding:13px 30px;border-radius:12px;font-family:inherit;font-size:1.02rem;font-weight:800;cursor:pointer;
+  box-shadow:0 4px 18px rgba(0,255,136,.3);transition:transform .15s,box-shadow .15s;
+}
+.ls-cta:hover{transform:translateY(-2px);box-shadow:0 8px 26px rgba(0,255,136,.45);}
+.ls-cta-hint{font-size:.8rem;color:var(--text-dim);}
+
+/* ---------- คำบรรยาย ---------- */
+.ls-cap{
+  flex:0 0 auto;margin:0 12px;padding:8px 14px;border-radius:10px;
+  background:rgba(5,12,24,.55);color:#cfe6ff;
+  font-size:clamp(.8rem,1.35vw,.92rem);line-height:1.55;text-align:center;
+  min-height:3.3em;display:flex;align-items:center;justify-content:center;
+}
+
+/* ---------- แถบควบคุม ----------
+   แถบความคืบหน้าแบ่งช่องตามจำนวนสไลด์ ช่องปัจจุบันเติมตามเวลาเล่นอัตโนมัติ
+   กดช่องเพื่อกระโดดไปหน้านั้นได้ (ครั้งแรกกดได้เฉพาะหน้าที่เคยผ่านมาแล้ว)
+   ตัวปุ่มสูง 18px แต่แถบที่เห็นหนาแค่ 6px — เป้ากดใหญ่กว่าที่ตาเห็น */
+.ls-bar{flex:0 0 auto;padding:8px 14px 12px;display:flex;flex-direction:column;gap:6px;}
+.ls-segs{display:flex;gap:4px;}
+.ls-seg{flex:1 1 0;min-width:0;height:18px;padding:6px 0;background:none;border:none;cursor:pointer;display:block;}
+.ls-seg i{display:block;height:6px;border-radius:3px;background:#22406a;position:relative;overflow:hidden;}
+.ls-seg i::after{
+  content:'';position:absolute;left:0;top:0;bottom:0;width:var(--p,0%);
+  background:linear-gradient(90deg,var(--accent),var(--accent2));
+}
+.ls-seg.locked{cursor:not-allowed;opacity:.45;}
+.ls-seg.cur i{box-shadow:0 0 0 1px rgba(255,215,0,.45);}
+.ls-ctrl{display:flex;align-items:center;gap:10px;}
+.ls-btn{
+  background:var(--bg-card);border:1px solid var(--border2);color:var(--text);
+  border-radius:9px;padding:8px 14px;min-height:38px;
+  font-family:inherit;font-size:.85rem;font-weight:700;white-space:nowrap;cursor:pointer;
+  transition:border-color .15s,color .15s,opacity .15s;
+}
+.ls-btn:hover:not(:disabled){border-color:var(--accent);color:var(--accent);}
+.ls-btn:disabled{opacity:.35;cursor:default;}
+.ls-btn.primary{background:var(--accent);border-color:var(--accent);color:#00131a;}
+.ls-btn.primary:hover:not(:disabled){color:#00131a;filter:brightness(1.1);}
+/* ยังตอบคำถามไม่ถูก — ปุ่มยังกดได้ (กดแล้วจะบอกเหตุผล) แต่ดูรอ ๆ อยู่ */
+.ls-btn.primary.wait{background:var(--bg-card);border-color:var(--border2);color:var(--text-dim);}
+.ls-counter{flex:1;text-align:center;font-size:.85rem;color:var(--text-dim);}
+
+/* ---------- ปุ่มเปิดบทเรียนจากหน้าอื่น ---------- */
+.btn-lesson-again,.btn-lesson-review{
+  align-self:center;display:inline-flex;align-items:center;gap:8px;
+  background:transparent;color:var(--accent);
+  border:1px solid var(--border2);border-radius:9px;padding:9px 18px;
+  font-family:inherit;font-size:.85rem;font-weight:700;cursor:pointer;
+  transition:border-color .15s,background .15s;
+}
+.btn-lesson-again:hover,.btn-lesson-review:hover{border-color:var(--accent);background:rgba(0,212,255,.08);}
+
+/* ============================================================
+   จอแคบ (มือถือแนวตั้ง) — เต็มจอ ไม่มีกรอบ
+   ============================================================ */
+@media (max-width:760px){
+  .ls-cards{grid-template-columns:repeat(2,minmax(0,1fr));}
+  .ls-map{grid-template-columns:repeat(2,minmax(0,1fr));}
+}
+@media (max-width:640px){
+  #screen-lesson{padding:0;}
+  .ls-stage{
+    max-width:none;height:100vh;height:100dvh;max-height:none;
+    border:none;border-radius:0;
+  }
+  .ls-top{padding:8px 12px;}
+  .ls-title{font-size:.9rem;}
+  .ls-slide{padding:12px 14px;}
+  .ls-inner{gap:10px;}
+  /* การ์ดสามใบเรียงลงเป็นแถว: รูปซ้าย · หัวข้อกับคำอธิบายซ้อนกันอยู่ขวา */
+  .ls-cards.c3{grid-template-columns:1fr;}
+  .ls-cards.c3 .ls-card{
+    display:grid;grid-template-columns:128px minmax(0,1fr);
+    column-gap:10px;row-gap:2px;align-items:center;text-align:left;
+  }
+  .ls-cards.c3 .ls-ic{grid-row:1 / span 2;min-height:0;}
+  .ls-cards.c3 h4{align-self:end;}
+  .ls-cards.c3 p{align-self:start;}
+  .ls-cards.c3.steps .ls-card{grid-template-columns:140px minmax(0,1fr);}
+  .ls-opts.text{grid-template-columns:1fr;}
+  .ls-opts.text .ls-opt{flex-direction:row;justify-content:flex-start;text-align:left;}
+  .ls-opt{padding:10px 8px;font-size:.84rem;}
+  .ls-cap{margin:0 8px;padding:6px 10px;font-size:.8rem;min-height:0;}
+  .ls-bar{padding:6px 10px 10px;}
+  .ls-btn{padding:8px 11px;min-height:42px;}
+  .ls-game,.ls-note,.ls-danger{font-size:.8rem;}
+}
+@media (max-width:400px){
+  .ls-play-txt{display:none;}
+}
+/* จอโน้ตบุ๊กทั่วไป (1366×768 เหลือพื้นที่จริงราว 650px) — บีบช่องไฟให้สไลด์ที่แน่นที่สุดยังพอดีจอ */
+@media (max-height:720px){
+  .ls-top{min-height:46px;padding:5px 16px;}
+  .ls-slide{padding:10px 5%;}
+  .ls-inner{gap:8px;}
+  .ls-svg{max-height:28vh;}
+  .ls-panel .ls-svg{max-height:25vh;}
+  .ls-cap{padding:6px 12px;font-size:.82rem;}
+  .ls-bar{padding:6px 14px 10px;}
+}
+/* จอเตี้ย (มือถือแนวนอน) — ซ่อนคำบรรยายใต้สไลด์ เหลือหัวข้อ ภาพ และสรุปในสไลด์
+   (ต้นฉบับบทเรียนก็ทำแบบนี้ ไม่งั้นพื้นที่ภาพเหลือไม่ถึงครึ่งจอ) */
+@media (max-height:520px){
+  .ls-cap{display:none;}
+  .ls-top{padding:5px 12px;}
+  .ls-slide{padding:8px 14px;}
+  .ls-svg{max-height:40vh;}
+  .ls-panel .ls-svg{max-height:36vh;}
+}
+
+/* ผู้ใช้ที่ตั้งเครื่องให้ลดการเคลื่อนไหว — ไม่เลื่อนสไลด์ ไม่กะพริบ
+   แต่ยังเก็บจุดไฟวิ่งตามสายไว้ เพราะนั่นคือเนื้อหา (ทิศทางของกระแส) ไม่ใช่ของตกแต่ง */
+@media (prefers-reduced-motion:reduce){
+  .ls-slide{transform:none;transition:opacity .2s ease,visibility 0s linear .2s;}
+  .ls-glow,.ls-blink,.ls-try,.ls-hot,.ls-fan,.ls-morehint,.ls-buzz .buzzer-body{animation:none;}
+  .ls-pop{opacity:1;transform:none;}
+  .ls-slide.active .ls-pop{animation:none;}
+}
