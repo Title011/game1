@@ -143,6 +143,7 @@
 /* ---------- การ์ด ---------- */
 .ls-cards{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px;width:100%;max-width:900px;}
 .ls-cards.c3{grid-template-columns:repeat(3,minmax(0,1fr));}
+.ls-cards.c4{grid-template-columns:repeat(4,minmax(0,1fr));}
 .ls-card{
   background:var(--bg-card);border:1px solid var(--border2);border-radius:14px;
   padding:12px 10px;display:flex;flex-direction:column;align-items:center;gap:6px;
@@ -389,14 +390,14 @@ span.ls-dev{display:inline-flex;}
   .ls-slide{padding:12px 14px;}
   .ls-inner{gap:10px;}
   /* การ์ดสามใบเรียงลงเป็นแถว: รูปซ้าย · หัวข้อกับคำอธิบายซ้อนกันอยู่ขวา */
-  .ls-cards.c3{grid-template-columns:1fr;}
-  .ls-cards.c3 .ls-card{
+  .ls-cards.c3,.ls-cards.c4{grid-template-columns:1fr;}
+  .ls-cards.c3 .ls-card,.ls-cards.c4 .ls-card{
     display:grid;grid-template-columns:128px minmax(0,1fr);
     column-gap:10px;row-gap:2px;align-items:center;text-align:left;
   }
-  .ls-cards.c3 .ls-ic{grid-row:1 / span 2;min-height:0;}
-  .ls-cards.c3 h4{align-self:end;}
-  .ls-cards.c3 p{align-self:start;}
+  .ls-cards.c3 .ls-ic,.ls-cards.c4 .ls-ic{grid-row:1 / span 2;min-height:0;}
+  .ls-cards.c3 h4,.ls-cards.c4 h4{align-self:end;}
+  .ls-cards.c3 p,.ls-cards.c4 p{align-self:start;}
   .ls-cards.c3.steps .ls-card{grid-template-columns:140px minmax(0,1fr);}
   .ls-opts.text{grid-template-columns:1fr;}
   .ls-opts.text .ls-opt{flex-direction:row;justify-content:flex-start;text-align:left;}
