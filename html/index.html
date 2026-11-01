@@ -24,19 +24,19 @@
      data-dev = จองที่ไว้วางรูปอุปกรณ์ชุดเดียวกับในเกม (js/lesson.js เป็นคนวาง)
      สีสาย: .pos แดง = ฝั่งขั้วบวก · .neg น้ำเงิน = ฝั่งขั้วลบ · .mid เหลือง = กลางวงจร
      เส้นทาง .ls-f (จุดไฟวิ่ง) ทุกเส้นวาดจากฝั่งขั้วบวกไปขั้วลบ — กลับทิศเส้น = จุดวิ่งกลับทาง -->
-<section id="screen-intro" class="screen active" aria-label="วิดีโอสอนก่อนเข้าเกม">
+<section id="screen-intro" class="screen" aria-label="วิดีโอสอนก่อนเข้าเกม">
   <div class="intro-wrap">
     <h2 class="intro-title"><span id="intro-bolt">⚡</span> บทเรียน: ไฟฟ้าและวงจรไฟฟ้า</h2>
     <video id="intro-video" class="intro-video" controls playsinline preload="metadata">
       <source src="video/intro-lesson.mp4" type="video/mp4">
       เบราว์เซอร์ของคุณไม่รองรับการเล่นวิดีโอ — <a href="video/intro-lesson.mp4">กดที่นี่เพื่อดาวน์โหลด</a>
     </video>
-    <button type="button" class="intro-cta" id="intro-cta" onclick="introContinue()">ไปทำแบบทดสอบก่อนเรียน →</button>
+    <button type="button" class="intro-cta" id="intro-cta" onclick="introContinue()">เข้าสู่เกม →</button>
   </div>
 </section>
 
 <!-- PRE-TEST -->
-<section id="screen-pretest" class="screen">
+<section id="screen-pretest" class="screen active">
   <div class="test-container">
     <h1><span id="pretest-bolt"></span> วงจรไฟฟ้า &#x2014; ข้อสอบก่อนเรียน</h1>
     <p>กรุณากดปุ่มด้านล่างเพื่อทำแบบทดสอบก่อนเรียน<br>เมื่อทำเสร็จแล้วให้กลับมาที่หน้านี้แล้วกดยืนยัน</p>
@@ -492,25 +492,29 @@
 <script>
 /* วิดีโอสอนก่อนเข้าเกม — แทนบทเรียนสไลด์เดิม */
 (function(){
-  window.__introReturn = 'pretest';
+  window.__introReturn = 'game-fresh';
   window.introOpen = function(ret){
-    window.__introReturn = ret || 'pretest';
+    ret = ret || 'game-fresh';
+    window.__introReturn = ret;
     var b = document.getElementById('intro-cta');
-    if(b) b.textContent = (ret === 'game') ? 'กลับไปเล่นเกม \u2192' : 'ไปทำแบบทดสอบก่อนเรียน \u2192';
+    if(b) b.textContent = (ret === 'pretest') ? 'กลับไปหน้าแบบทดสอบ →' : (ret === 'game') ? 'กลับไปเล่นเกม →' : 'เข้าสู่เกม →';
     if(typeof showScreen === 'function') showScreen('screen-intro');
     var v = document.getElementById('intro-video');
-    if(v){ try{ v.currentTime = 0; v.play(); }catch(e){} }
+    if(v){ try{ v.currentTime = 0; var _p=v.play(); if(_p&&_p.catch) _p.catch(function(){}); }catch(e){} }
     window.scrollTo(0,0);
   };
   window.introContinue = function(){
     var v = document.getElementById('intro-video');
     if(v){ try{ v.pause(); }catch(e){} }
-    var ret = window.__introReturn || 'pretest';
-    if(ret === 'game'){
+    var ret = window.__introReturn || 'game-fresh';
+    if(ret === 'pretest'){
+      if(typeof showScreen === 'function') showScreen('screen-pretest');
+    } else if(ret === 'game'){
       if(typeof showScreen === 'function') showScreen('screen-game');
       if(typeof ensureBreadboard === 'function') ensureBreadboard();
     } else {
-      if(typeof showScreen === 'function') showScreen('screen-pretest');
+      if(typeof showScreen === 'function') showScreen('screen-game');
+      if(typeof initGame === 'function') initGame();
     }
   };
 })();

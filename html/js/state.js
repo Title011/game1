@@ -389,13 +389,12 @@ function confirmPretest(){
       okText:'เริ่มใหม่',
       cancelText:'ยกเลิก',
       danger:true,
-      onConfirm:function(){ showScreen('screen-game'); initGame(); }
+      onConfirm:function(){ introOpen('game-fresh'); }
     });
     return;
   }
 
-  showScreen('screen-game');
-  initGame();
+  introOpen('game-fresh');
 }
 
 /* กดยืนยันส่งแบบทดสอบหลังเรียน — นี่คือจุดที่ "ประตู" เปิดออก */
