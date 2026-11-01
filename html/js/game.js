@@ -68,9 +68,8 @@ function updateLevelBar(){
   document.getElementById('hud-score').textContent = G.endless ? G.endlessScore : G.score;
   /* อิสระ = ไม่มีชีวิต (∞) · วัดความเร็ว = ชีวิตเดียว · ปกติ = 3 ดวง */
   document.getElementById('hud-lives').innerHTML =
-    G.sandbox ? '<span class="hud-inf">∞</span>'
-    : G.endless ? renderHearts(G.endlessLives, 1)
-    : renderHearts(G.lives, 3);
+    G.endless ? renderHearts(G.endlessLives, 1)
+    : '<span class="hud-inf">∞</span>';
 }
 
 /* เอานิยามด่านขึ้นจอ: คลังอุปกรณ์ กล่องโจทย์ นาฬิกา แถบด่าน และแผงต่อวงจร
@@ -234,11 +233,8 @@ function updateTimerDisplay(){
 function onTimeUp(){
   /* โหมดวัดความเร็ว: หมดเวลา = จบรัน ไปหน้าตารางอันดับ */
   if(G.endless){ endEndlessRun('หมดเวลา'); return; }
-  G.lives--;
-  updateLevelBar();
-  saveGame();   /* บันทึกจำนวนชีวิตที่เหลือ */
-  if(G.lives<=0){showToast('หมดชีวิต! เริ่มใหม่...','error');setTimeout(initGame,2000);}
-  else{showToast('หมดเวลา! เหลือ '+G.lives+' ชีวิต','error');setTimeout(function(){loadLevel(G.level);},2000);}
+  showToast('หมดเวลา! เริ่มด่านนี้ใหม่','error');
+  setTimeout(function(){loadLevel(G.level);},2000);
 }
 
 /* ============================================================
@@ -317,11 +313,7 @@ function checkCircuit(){
       }
       var bad = { ok:false, msg:fault.msg };
       if(G.endless){ endlessResult(bad, elapsed); return; }
-      G.lives--;
-      updateLevelBar();
-      saveGame();
       showResult(false, fault.msg, 0, elapsed, false, fault);
-      if(G.lives<=0) scheduleGameOver();
     });
     return;
   }
@@ -370,12 +362,7 @@ function checkCircuit(){
     saveGame();   /* บันทึกคะแนน + ด่านที่ผ่าน */
     showResult(true,result.msg,earned,elapsed,replay,fault,outcome);
   } else {
-    /* ตรวจไม่ผ่าน = เสียชีวิต 1 ดวง */
-    G.lives--;
-    updateLevelBar();
-    saveGame();   /* บันทึกจำนวนชีวิตที่เหลือ */
     showResult(false, result.msg, 0, elapsed, false, fault, outcome);
-    if(G.lives<=0) scheduleGameOver();
   }
 }
 
