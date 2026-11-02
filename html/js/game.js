@@ -865,9 +865,6 @@ function openTutorial(){
 }
 function renderTutPage(){
   var p=G.tutPages[G.tutIdx];
-  var img=document.getElementById('tutorial-img');
-  var ph=document.getElementById('tutorial-img-ph');
-  img.src=p.img; img.style.display=''; ph.style.display='none';
   document.getElementById('tutorial-text-box').innerHTML=p.text.replace(/\n/g,'<br>');
   document.getElementById('tut-page-indicator').textContent=(G.tutIdx+1)+' / '+G.tutPages.length;
   document.getElementById('btn-tut-prev').disabled=G.tutIdx===0;
