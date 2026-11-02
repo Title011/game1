@@ -626,6 +626,10 @@ function buildSeriesDiagram(lv){
   var botY = P + rows*RH + 8;
   var railL = RAIL, railR = W - RAIL;
 
+  /* เผื่อที่วาดอุปกรณ์คร่อม (ไดโอดคายพลังงานคร่อมมอเตอร์ ด่าน 15) */
+  var across = lv.hintAcross, BRANCH = across ? 70 : 0;
+  H += BRANCH; botY += BRANCH;
+
   function px(i){ return OFF + P + B/2 + (i % HINT.PER_ROW) * S; }
   function py(i){ return P + Math.floor(i / HINT.PER_ROW) * RH + B/2; }
 
@@ -675,6 +679,22 @@ function buildSeriesDiagram(lv){
      + hintWireTag(W/2, botY-6, 'สาย −  (กลับเข้าขั้วลบ ครบวงจร)', HINT_NEG);
 
   for(var k=0;k<seq.length;k++) s += hintDeviceBox(seq[k], px(k), py(k));
+  if(across){
+    var ai=seq.indexOf(across.device);
+    if(ai>=0){
+      var mcx=px(ai), mcy=py(ai), hb=B/2, I2=HINT.ICON, dcy=mcy+72;
+      var pid=(DEVICES[across.part]||{}).svgId||'dev-diode';
+      s += '<line x1="'+(mcx-hb)+'" y1="'+(mcy+hb)+'" x2="'+(mcx-hb)+'" y2="'+(dcy-hb)+'" stroke="'+HINT_POS+'" stroke-width="2.2" stroke-linecap="round"/>'
+         + '<line x1="'+(mcx+hb)+'" y1="'+(mcy+hb)+'" x2="'+(mcx+hb)+'" y2="'+(dcy-hb)+'" stroke="'+HINT_NEG+'" stroke-width="2.2" stroke-linecap="round"/>'
+         + '<rect x="'+(mcx-hb)+'" y="'+(dcy-hb)+'" width="'+B+'" height="'+B+'" rx="9" fill="#1a2f50" stroke="#2d4a70" stroke-width="1.3"/>'
+         + '<g transform="matrix(-1,0,0,1,'+(2*mcx)+',0)"><use href="#'+pid+'" x="'+(mcx-I2/2)+'" y="'+(dcy-I2/2)+'" width="'+I2+'" height="'+I2+'"/></g>'
+         + '<circle cx="'+(mcx-hb+10)+'" cy="'+(dcy-hb+10)+'" r="6.5" fill="'+HINT_NEG+'" stroke="#fff" stroke-width="1.1"/>'
+         + '<text x="'+(mcx-hb+10)+'" y="'+(dcy-hb+13.3)+'" text-anchor="middle" fill="#fff" font-size="10" font-weight="bold">−</text>'
+         + '<circle cx="'+(mcx+hb-10)+'" cy="'+(dcy-hb+10)+'" r="6.5" fill="'+HINT_POS+'" stroke="#fff" stroke-width="1.1"/>'
+         + '<text x="'+(mcx+hb-10)+'" y="'+(dcy-hb+13)+'" text-anchor="middle" fill="#fff" font-size="9" font-weight="bold">+</text>'
+         + '<text x="'+mcx+'" y="'+(dcy+hb+12)+'" text-anchor="middle" fill="#8fa5c0" font-size="8">'+(across.label||'ไดโอดคร่อม (กลับขั้ว)')+'</text>';
+    }
+  }
   return s + '</svg>';
 }
 

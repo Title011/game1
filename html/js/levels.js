@@ -336,6 +336,7 @@ var LEVELS = [
     /* ไม่ใช้ topology:'series' แล้ว เพราะไดโอดที่คร่อมขดลวดทำให้มี 2 สาขาตามจริง
        และไม่ใช้ conducting:['diode'] เพราะไดโอดคายพลังงานที่ต่อถูก
        "ต้องไม่นำกระแส" ตอนทำงานปกติ — เงื่อนไขเดิมกลับหัวกับความจริง */
+    hintAcross:{device:'motor', part:'diode'},
     require:{work:['motor'], switchControls:true, flyback:true},
     timeLimit:200, baseScore:200,
     tutorial:[
