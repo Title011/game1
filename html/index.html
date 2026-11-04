@@ -445,33 +445,33 @@
        lesson          บทเรียนก่อนเข้าเกม (หน้าแรกของเว็บ) — ใช้รูปอุปกรณ์จาก device-symbols
        game            วงจรการเล่นหลัก + คีย์ลัด (โหลดท้ายสุด)
      ============================================================ -->
-<script src="js/device-symbols.js"></script>
-<script src="js/icons.js"></script>
-<script src="js/devices.js"></script>
-<script src="js/levels.js"></script>
-<script src="js/analyze.js"></script>
-<script src="js/outcome.js"></script>
-<script src="js/circuit-check.js"></script>
-<script src="js/save.js"></script>
-<script src="js/sfx.js"></script>
-<script src="js/bgm.js"></script>
-<script src="js/state.js"></script>
-<script src="js/ui.js"></script>
-<script src="js/inventory.js"></script>
-<script src="js/workspace.js"></script>
-<script src="js/wires.js"></script>
+<script src="js/engine/device-symbols.js"></script>
+<script src="js/ui/icons.js"></script>
+<script src="js/engine/devices.js"></script>
+<script src="js/game/levels.js"></script>
+<script src="js/engine/analyze.js"></script>
+<script src="js/engine/outcome.js"></script>
+<script src="js/engine/circuit-check.js"></script>
+<script src="js/game/save.js"></script>
+<script src="js/ui/sfx.js"></script>
+<script src="js/ui/bgm.js"></script>
+<script src="js/game/state.js"></script>
+<script src="js/ui/ui.js"></script>
+<script src="js/board/inventory.js"></script>
+<script src="js/board/workspace.js"></script>
+<script src="js/board/wires.js"></script>
 <!-- ย้อนกลับ/ทำซ้ำ — ต้องอยู่หลัง workspace.js กับ wires.js
      เพราะ restoreCircuit() เรียก addWsItem / addWire / clearWorkspace ของสองไฟล์นั้น
      (เรียกตอนรันไทม์ ลำดับจึงไม่บังคับ แต่วางไว้ให้อ่านง่ายว่าพึ่งใคร) -->
-<script src="js/history.js"></script>
-<script src="js/solver.js"></script>
-<script src="js/breadboard.js"></script>
-<script src="js/probe.js"></script>
-<script src="js/hazard.js"></script>
-<script src="js/damage.js"></script>
-<script src="js/sandbox.js"></script>
-<script src="js/endless.js"></script>
-<script src="js/game.js"></script>
+<script src="js/game/history.js"></script>
+<script src="js/engine/solver.js"></script>
+<script src="js/board/breadboard.js"></script>
+<script src="js/engine/probe.js"></script>
+<script src="js/engine/hazard.js"></script>
+<script src="js/engine/damage.js"></script>
+<script src="js/game/sandbox.js"></script>
+<script src="js/game/endless.js"></script>
+<script src="js/game/game.js"></script>
 
 <script>
 /* วิดีโอสอนก่อนเข้าเกม — แทนบทเรียนสไลด์เดิม */
