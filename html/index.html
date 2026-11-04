@@ -25,6 +25,7 @@
       <source src="video/intro-lesson.mp4" type="video/mp4">
       เบราว์เซอร์ของคุณไม่รองรับการเล่นวิดีโอ — <a href="video/intro-lesson.mp4">กดที่นี่เพื่อดาวน์โหลด</a>
     </video>
+    <div id="intro-hint" class="intro-hint" style="display:none">⏳ ดูวิดีโอให้จบก่อนถึงจะเข้าเกมได้</div>
     <button type="button" class="intro-cta" id="intro-cta" onclick="introContinue()">เข้าสู่เกม →</button>
   </div>
 </section>
@@ -479,15 +480,30 @@
   window.introOpen = function(ret){
     ret = ret || 'game-fresh';
     window.__introReturn = ret;
+    var mustWatch = (ret === 'game-fresh');
+    var baseText = (ret === 'pretest') ? 'กลับไปหน้าแบบทดสอบ →' : (ret === 'game') ? 'กลับไปเล่นเกม →' : 'เข้าสู่เกม →';
     var b = document.getElementById('intro-cta');
-    if(b) b.textContent = (ret === 'pretest') ? 'กลับไปหน้าแบบทดสอบ →' : (ret === 'game') ? 'กลับไปเล่นเกม →' : 'เข้าสู่เกม →';
+    var hint = document.getElementById('intro-hint');
+    if(b){ b.disabled = mustWatch; b.classList.toggle('intro-cta-locked', mustWatch); b.textContent = mustWatch ? 'ดูวิดีโอให้จบก่อน' : baseText; }
+    if(hint) hint.style.display = mustWatch ? '' : 'none';
     if(typeof closeModal === 'function') closeModal('modal-tutorial');
     if(typeof showScreen === 'function') showScreen('screen-intro');
     var v = document.getElementById('intro-video');
-    if(v){ try{ v.currentTime = 0; var _p=v.play(); if(_p&&_p.catch) _p.catch(function(){}); }catch(e){} }
+    if(v){
+      v.ontimeupdate = v.onseeking = v.onended = v.onerror = null;
+      if(mustWatch){
+        var maxT = 0;
+        var unlock = function(){ if(b){ b.disabled=false; b.classList.remove('intro-cta-locked'); b.textContent=baseText; } if(hint) hint.style.display='none'; };
+        v.ontimeupdate = function(){ if(v.currentTime > maxT) maxT = v.currentTime; };
+        v.onseeking = function(){ if(v.currentTime > maxT + 1) v.currentTime = maxT; };
+        v.onended = unlock; v.onerror = unlock;
+      }
+      try{ v.currentTime = 0; var _p=v.play(); if(_p&&_p.catch) _p.catch(function(){}); }catch(e){}
+    }
     window.scrollTo(0,0);
   };
   window.introContinue = function(){
+    var _b = document.getElementById('intro-cta'); if(_b && _b.disabled) return;
     var v = document.getElementById('intro-video');
     if(v){ try{ v.pause(); }catch(e){} }
     var ret = window.__introReturn || 'game-fresh';

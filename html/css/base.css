@@ -46,3 +46,8 @@ body::before{
 #screen-intro .intro-cta:hover{filter:brightness(1.08);}
 #screen-intro .intro-video a{color:#8ab4ff;}
 @media(max-width:640px){ #screen-intro.active{padding:10px;} }
+
+/* วิดีโอ intro: ปุ่มล็อกตอนบังคับดูให้จบ */
+#screen-intro .intro-cta-locked{background:#2a3a52;box-shadow:none;cursor:not-allowed;opacity:.6;}
+#screen-intro .intro-cta-locked:hover{filter:none;}
+#screen-intro .intro-hint{font-size:13px;color:#ffd277;text-align:center;margin:-4px 0 0;}
