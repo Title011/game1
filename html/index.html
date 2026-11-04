@@ -14,14 +14,13 @@
 <link rel="stylesheet" href="css/breadboard.css">
 <link rel="stylesheet" href="css/hazard.css">
 <link rel="stylesheet" href="css/modals.css">
-<link rel="stylesheet" href="css/lesson.css">
 <link rel="stylesheet" href="css/responsive.css">
 </head>
 <body>
 <!-- LESSON — บทเรียนก่อนเข้าเกม (หน้าแรกของเว็บ) → แบบทดสอบก่อนเรียน → เกม
      สไลด์แต่ละหน้า: data-cap = คำบรรยายใต้สไลด์ · data-gate = ต้องตอบถูกก่อนไปต่อ
      data-demo = ฉากทดลองที่สาธิตตัวเองตอนยังไม่มีใครแตะ
-     data-dev = จองที่ไว้วางรูปอุปกรณ์ชุดเดียวกับในเกม (js/lesson.js เป็นคนวาง)
+     data-dev = จองที่ไว้วางรูปอุปกรณ์ชุดเดียวกับในเกม
      สีสาย: .pos แดง = ฝั่งขั้วบวก · .neg น้ำเงิน = ฝั่งขั้วลบ · .mid เหลือง = กลางวงจร
      เส้นทาง .ls-f (จุดไฟวิ่ง) ทุกเส้นวาดจากฝั่งขั้วบวกไปขั้วลบ — กลับทิศเส้น = จุดวิ่งกลับทาง -->
 <section id="screen-intro" class="screen" aria-label="วิดีโอสอนก่อนเข้าเกม">
@@ -72,7 +71,7 @@
       </div>
     </div>
 
-    <!-- กลับไปดูบทเรียนก่อนเข้าเกมได้เสมอ (js/lesson.js) -->
+    <!-- กลับไปดูบทเรียนก่อนเข้าเกมได้เสมอ -->
     <button class="btn-lesson-again" type="button" onclick="introOpen('pretest')">&#x1F4FA; ดูบทเรียนอีกครั้ง</button>
   </div>
 </section>
@@ -478,7 +477,6 @@
 <script src="js/damage.js"></script>
 <script src="js/sandbox.js"></script>
 <script src="js/endless.js"></script>
-<script src="js/lesson.js"></script>
 <script src="js/game.js"></script>
 
 <script>
