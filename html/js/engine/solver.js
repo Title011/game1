@@ -421,4 +421,3 @@ function nodeVoltageAt(sol, portEl){
   if(n === undefined) return null;
   return sol.nodeV[n];
 }
-
