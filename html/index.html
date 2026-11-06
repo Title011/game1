@@ -12,6 +12,7 @@
 <link rel="stylesheet" href="css/components.css">
 <link rel="stylesheet" href="css/circuit.css">
 <link rel="stylesheet" href="css/breadboard.css">
+<link rel="stylesheet" href="css/coach.css">
 <link rel="stylesheet" href="css/hazard.css">
 <link rel="stylesheet" href="css/modals.css">
 <link rel="stylesheet" href="css/responsive.css">
@@ -300,6 +301,7 @@
       <div id="tutorial-text-box">ใส่ข้อความสอน</div>
       <!-- ทบทวนบทเรียนพื้นฐานกลางด่าน — นาฬิกาด่านหยุดรอระหว่างดู (ดู tickTimer ใน js/game.js) -->
       <button class="btn-lesson-review" type="button" onclick="introOpen('game')">&#x1F4FA; ทบทวนบทเรียนพื้นฐาน (ไฟฟ้าและวงจร)</button>
+      <button class="btn-coach" type="button" onclick="coachFromMenu()">&#x1F393; สอนวิธีเล่น</button>
     </div>
     <!-- ปุ่มพลิกหน้าต้องอยู่นอก .modal-body — ถ้าอยู่ข้างในมันจะเลื่อนหนีไป
          กับเนื้อหา พอหน้าไหนข้อความยาว ผู้เรียนจะหาปุ่ม "ถัดไป" ไม่เจอ -->
@@ -472,6 +474,7 @@
 <script src="js/game/sandbox.js"></script>
 <script src="js/game/endless.js"></script>
 <script src="js/game/game.js"></script>
+<script src="js/game/coach.js"></script>
 
 <script>
 /* วิดีโอสอนก่อนเข้าเกม — แทนบทเรียนสไลด์เดิม */
