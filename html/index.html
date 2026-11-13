@@ -18,7 +18,7 @@
 <link rel="stylesheet" href="css/responsive.css">
 </head>
 <body>
-<!-- บทเรียน (วิดีโอ) — เล่นก่อนเข้าเกม · ลำดับ: แบบทดสอบก่อนเรียน → วิดีโอบทเรียน → เกม -->
+<!-- บทเรียน (วิดีโอ) เล่นก่อนเข้าเกม ลำดับ: แบบทดสอบก่อนเรียน -> วิดีโอบทเรียน -> เกม -->
 <section id="screen-intro" class="screen" aria-label="วิดีโอสอนก่อนเข้าเกม">
   <div class="intro-wrap">
     <h2 class="intro-title"><span id="intro-bolt">⚡</span> บทเรียน: ไฟฟ้าและวงจรไฟฟ้า</h2>
@@ -82,21 +82,16 @@
     <button class="btn-endless" id="btn-endless" onclick="toggleEndless()">วัดความเร็ว</button>
     <button class="btn-sandbox" id="btn-sandbox" onclick="toggleSandbox()">โหมดอิสระ</button>
     <button class="btn-tutorial" onclick="openTutorial()"><span id="btn-book-ic"></span> คู่มือ</button>
-    <!-- ปิดเสียง — เกมที่มีเสียงต้องมีปุ่มปิดเสมอ และต้องหาเจอโดยไม่ต้องเปิดเมนู
-         เพราะคนที่อยากปิดคือคนที่กำลังรำคาญอยู่พอดี (ดู js/sfx.js) -->
+    <!-- ปิดเสียง — เกมที่มีเสียงต้องมีปุ่มปิดที่หาเจอได้โดยไม่ต้องเปิดเมนู เพราะคนที่อยากปิดคือคนที่กำลังรำคาญอยู่พอดี (sfx.js) -->
     <button class="btn-sound" id="btn-sound" onclick="toggleSfx()"
             title="ปิดเสียง" aria-label="เปิด/ปิดเสียง" aria-pressed="true"><span class="sound-ico">&#x1F50A;</span></button>
-    <!-- เพลงพื้นหลัง — ปุ่มเปิด/ปิด + แถบเลื่อนระดับเสียง
-         แถบเลื่อนซ่อนบนจอเล็ก (ดู responsive.css) เพราะแถบหัวแน่นเกินไป
-         วิธีใส่ไฟล์ .mp3 อธิบายไว้ที่หัวไฟล์ js/bgm.js -->
+    <!-- เพลงพื้นหลัง — ปุ่มเปิด/ปิด + แถบเลื่อนระดับเสียง (แถบเลื่อนซ่อนบนจอเล็กเพราะแถบหัวแน่นไป) วิธีใส่ไฟล์ .mp3 อยู่ที่หัวไฟล์ bgm.js -->
     <button class="btn-sound" id="btn-music" onclick="toggleBgm()"
             title="ปิดเพลงพื้นหลัง" aria-label="เปิด/ปิดเพลงพื้นหลัง" aria-pressed="true"><span class="sound-ico">&#x1F3B5;</span></button>
     <input type="range" class="bgm-vol" id="bgm-vol" min="0" max="100" step="5" value="35"
            title="ระดับเสียงเพลง" aria-label="ระดับเสียงเพลง"
            oninput="bgmSetVolume(this.value/100)">
-    <!-- แบบประเมินความพึงพอใจ — ปุ่มขวาสุดของแถบหัว (มุมบนขวาของจอ)
-         ซ่อนไว้จนกว่าจะผ่านด่านแก่นหลัก แล้วซ่อนอีกครั้งเมื่อส่งแล้ว
-         JS คุมการแสดงผลที่ updateSurveyButton() ใน js/state.js -->
+    <!-- แบบประเมินความพึงพอใจ — ปุ่มขวาสุดของแถบหัว ซ่อนจนกว่าจะผ่านด่านแก่นหลัก แล้วซ่อนอีกครั้งเมื่อส่งแล้ว (คุมที่ updateSurveyButton() ใน state.js) -->
     <button class="btn-survey" id="btn-survey" onclick="openSurvey()" style="display:none;"
             title="แบบประเมินความพึงพอใจ">&#x1F4DD; แบบประเมิน</button>
   </header>
@@ -113,10 +108,8 @@
         ondragover="onWsDragOver(event)"
         ondrop="onWsDrop(event)"
         ondragleave="onWsDragLeave()">
-        <!-- คำแนะนำมี 2 ชุด เพราะพื้นที่ทำงานมี 2 แบบ
-             ด่านปกติ = พื้นที่ว่าง วางตรงไหนก็ได้แล้วเดินสายเอง
-             ด่านเบรดบอร์ด = แผงจริง ขาที่อยู่รางเดียวกันต่อถึงกันเอง
-             สลับด้วยคลาส body.has-breadboard (ดู css/breadboard.css) -->
+        <!-- คำแนะนำ 2 ชุดเพราะพื้นที่ทำงานมี 2 แบบ ด่านปกติ = พื้นที่ว่างวางตรงไหนก็ได้แล้วเดินสายเอง,
+             ด่านเบรดบอร์ด = แผงจริงขาที่อยู่รางเดียวกันต่อถึงกันเอง สลับด้วยคลาส body.has-breadboard (breadboard.css) -->
         <div id="workspace-hint">
           <span class="hint-free">ลากอุปกรณ์จากคลังมาวางบนพื้นที่ทำงาน</span>
           <span class="hint-board">ลากอุปกรณ์จากคลังมาเสียบลงรูบนแผงต่อวงจร</span>
@@ -130,14 +123,9 @@
         <!-- แถบสถานะความปลอดภัย — ขึ้นเองเมื่อมีอุปกรณ์เริ่มร้อนหรือพัง -->
         <div id="hazard-bar" style="display:none;"></div>
 
-        <!-- ย้อนกลับ / ทำซ้ำ — ต้องมีปุ่มจริง ไม่ใช่มีแต่คีย์ลัด
-             เพราะบนมือถือไม่มีแป้นพิมพ์ และผู้เล่นมือถือคือกลุ่มที่กดพลาดบ่อยสุด
-
-             วางมุมซ้ายบนของพื้นที่ทำงาน: มุมขวาบนไม่ได้เพราะชนปุ่มลบ (x)
-             ของอุปกรณ์ที่วางไว้แถวนั้น · ขอบล่างก็ไม่ได้เพราะมีแถบคุมดำ
-             กับจอเครื่องวัดจองไว้แล้ว · ไม่ใส่ในแถบปุ่มคำสั่งด้านล่าง
-             เพราะบนจอ 400px ปุ่มสี่ตัวเดิมเต็มแถวพอดี เพิ่มอีกสองตัวจะตกบรรทัด
-             แล้วไปกินความสูงของพื้นที่ต่อวงจร (ดู js/history.js) -->
+        <!-- ย้อนกลับ/ทำซ้ำ — ต้องมีปุ่มจริง ไม่ใช่มีแต่คีย์ลัด เพราะมือถือไม่มีแป้นพิมพ์และกดพลาดบ่อยสุด
+             วางมุมซ้ายบน: ขวาบนชนปุ่มลบของอุปกรณ์, ขอบล่างมีแถบคุมดำกับจอเครื่องวัดจองไว้,
+             ไม่ใส่ในแถบปุ่มล่างเพราะบนจอ 400px สี่ปุ่มเดิมเต็มแถวพอดี เพิ่มอีกจะตกบรรทัดไปกินพื้นที่ต่อวงจร (history.js) -->
         <div id="history-bar">
           <button id="btn-undo" class="hist-btn" onclick="undoAction()" disabled>
             <span class="hist-ico">&#x21B6;</span><span class="hist-label">ย้อน</span>
@@ -152,12 +140,10 @@
           <button onclick="var id=G.selectedItemId;if(id){deselectAll();removeWsItem(id);hideMobileToolbar();}" style="background:var(--danger);border:none;color:#fff;border-radius:8px;padding:8px 14px;font-size:.85rem;cursor:pointer;">&#x2715; ลบ</button>
           <button onclick="deselectAll();hideMobileToolbar();" style="background:var(--bg-card);border:1px solid var(--border);color:var(--text-dim);border-radius:8px;padding:8px 14px;font-size:.85rem;cursor:pointer;">ยกเลิก</button>
         </div>
-        <!-- กรอบคุมดำ — ลากบนพื้นที่ว่างเพื่อเลือกอุปกรณ์หลายชิ้นพร้อมกัน
-             (ดู startMarquee ใน js/workspace.js) -->
+        <!-- กรอบคุมดำ — ลากบนพื้นที่ว่างเพื่อเลือกอุปกรณ์หลายชิ้นพร้อมกัน (startMarquee ใน workspace.js) -->
         <div id="marquee" style="display:none;"></div>
 
-        <!-- แถบคำสั่งของกลุ่มที่เลือกไว้ — โผล่เองเมื่อเลือกตั้งแต่ 2 ชิ้นขึ้นไป
-             ใช้ได้ทั้งคอมและมือถือ (คอมกด R / Del ก็ได้ผลเดียวกัน) -->
+        <!-- แถบคำสั่งของกลุ่มที่เลือก โผล่เองเมื่อเลือกตั้งแต่ 2 ชิ้นขึ้นไป ใช้ได้ทั้งคอมและมือถือ (คอมกด R/Del ก็ได้ผลเดียวกัน) -->
         <div id="multi-toolbar" style="display:none;">
           <span id="multi-count">เลือกไว้ 0 ชิ้น</span>
           <button class="mt-btn mt-rotate" onclick="rotateSelection()">&#x21BA; หมุนทั้งหมด <kbd>R</kbd></button>
@@ -213,8 +199,7 @@
        <span style="opacity:.8">ส่งแล้วจะปลดล็อก <b>โหมดอิสระ</b> และ <b>โหมดวัดความเร็ว</b> ให้เล่นต่อได้</span></p>
 
     <div class="form-link-box">
-      <!-- สองปุ่มนี้อยู่แถวเดียวกัน — แบบประเมินโผล่ "ข้าง ๆ" ปุ่มทำแบบทดสอบ
-           (แถวนี้ห่อไว้เพราะ .form-link-box เรียงลูกเป็นแนวตั้ง) -->
+      <!-- สองปุ่มนี้อยู่แถวเดียวกัน แบบประเมินโผล่ข้าง ๆ ปุ่มทำแบบทดสอบ (ห่อไว้เพราะ .form-link-box เรียงลูกเป็นแนวตั้ง) -->
       <div class="form-link-row">
         <a class="btn-form-link" id="posttest-link" href="https://docs.google.com/forms/d/e/1FAIpQLSeeL4hUBbxE2JC3mPGb9TlxgDFHoWqXmTKgkn4wugJrb6gO7g/viewform" target="_blank" rel="noopener" onclick="onFormLinkClick('posttest')">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -253,8 +238,7 @@
   </div>
 </section>
 
-<!-- MODAL แบบประเมินความพึงพอใจ — เปิดได้จากปุ่มแถบหัวเกม และจากหน้าแบบทดสอบหลังเรียน
-     รวมไว้ที่เดียวเพื่อไม่ให้ต้องทำ UI ซ้ำสองชุดแล้วหลุดไม่ตรงกันภายหลัง -->
+<!-- MODAL แบบประเมินความพึงพอใจ เปิดได้จากปุ่มแถบหัวเกมและหน้าแบบทดสอบหลังเรียน รวมไว้ที่เดียวจะได้ไม่ทำ UI ซ้ำสองชุดแล้วหลุดไม่ตรงกัน -->
 <div id="modal-survey" class="modal-overlay">
   <div class="modal-box" style="max-width:520px">
     <div class="modal-header">
@@ -303,8 +287,7 @@
       <button class="btn-lesson-review" type="button" onclick="introOpen('game')">&#x1F4FA; ทบทวนบทเรียนพื้นฐาน (ไฟฟ้าและวงจร)</button>
       <button class="btn-coach" type="button" onclick="coachFromMenu()">&#x1F393; สอนวิธีเล่น</button>
     </div>
-    <!-- ปุ่มพลิกหน้าต้องอยู่นอก .modal-body — ถ้าอยู่ข้างในมันจะเลื่อนหนีไป
-         กับเนื้อหา พอหน้าไหนข้อความยาว ผู้เรียนจะหาปุ่ม "ถัดไป" ไม่เจอ -->
+    <!-- ปุ่มพลิกหน้าต้องอยู่นอก .modal-body ถ้าอยู่ข้างในมันจะเลื่อนหนีไปกับเนื้อหา พอหน้าไหนข้อความยาวจะหาปุ่มถัดไปไม่เจอ -->
     <div class="modal-footer tut-nav">
       <button class="btn-tut" id="btn-tut-prev" onclick="changeTutPage(-1)">&#x25C4; ก่อนหน้า</button>
       <span class="tut-page" id="tut-page-indicator">1 / 1</span>
@@ -318,9 +301,7 @@
   <div class="modal-box" style="max-width:480px">
     <div class="modal-header">
       <h3>จบรัน &#x2014; โหมดวัดความเร็ว</h3>
-      <!-- ปิดกล่องนี้ต้องพากลับเข้าด่านด้วย ไม่ใช่แค่ปิดกล่องเฉย ๆ
-           ไม่งั้นวงจรของรอบที่เพิ่งจบยังค้างอยู่บนจอ แต่เกมกลับไปเป็นโหมดด่านแล้ว
-           กด "ตรวจวงจร" ทีเดียวเสียชีวิตจริงของด่านนั้นทันที -->
+      <!-- ปิดกล่องนี้ต้องพากลับเข้าด่านด้วย ไม่ใช่แค่ปิดเฉย ๆ ไม่งั้นวงจรของรอบที่เพิ่งจบยังค้างบนจอ แต่เกมกลับไปโหมดด่านแล้ว กดตรวจวงจรทีเดียวเสียชีวิตจริงของด่านนั้นทันที -->
       <button class="modal-close" onclick="quitEndlessToLevels()">&#x2715;</button>
     </div>
     <div class="modal-body">
@@ -343,8 +324,7 @@
   </div>
 </div>
 
-<!-- MODAL INCIDENT — รายงานเหตุการณ์เมื่อวงจรพัง
-     ตอบ 4 ข้อ: ต่อแบบนี้ / พังตรงไหน / อันตรายยังไง / ป้องกันยังไง -->
+<!-- MODAL INCIDENT — รายงานเหตุการณ์เมื่อวงจรพัง ตอบ 4 ข้อ: ต่อแบบนี้ / พังตรงไหน / อันตรายยังไง / ป้องกันยังไง -->
 <div id="modal-incident" class="modal-overlay">
   <div class="modal-box" style="max-width:620px">
     <div class="modal-header incident-header">
@@ -358,8 +338,7 @@
   </div>
 </div>
 
-<!-- MODAL CONFIRM — กล่องยืนยันกลาง ใช้แทน confirm() ของเบราว์เซอร์
-     เรียกผ่าน showConfirm({...}) ใน js/ui.js -->
+<!-- MODAL CONFIRM — กล่องยืนยันกลาง ใช้แทน confirm() ของเบราว์เซอร์ เรียกผ่าน showConfirm({...}) ใน ui.js -->
 <div id="modal-confirm" class="modal-overlay">
   <div class="modal-box modal-confirm-box">
     <div class="modal-header">
@@ -378,9 +357,7 @@
   </div>
 </div>
 
-<!-- MODAL OHM — เลือกค่าตัวต้านทานในโหมดอิสระ
-     ค่าที่ให้เลือกมาจาก RESISTOR_OHMS (อนุกรม E12) ใน js/devices.js
-     เรียกผ่าน openOhmPicker(itemId) ใน js/workspace.js -->
+<!-- MODAL OHM — เลือกค่าตัวต้านทานในโหมดอิสระ ค่ามาจาก RESISTOR_OHMS (อนุกรม E12) ใน devices.js เรียกผ่าน openOhmPicker(itemId) ใน workspace.js -->
 <div id="modal-ohm" class="modal-overlay">
   <div class="modal-box modal-ohm-box">
     <div class="modal-header">
@@ -422,14 +399,13 @@
 
 <div id="toast"></div>
 
-<!-- ============================================================
-     SCRIPTS — เรียงตามลำดับการพึ่งพา ห้ามสลับ
+<!-- SCRIPTS — เรียงตามลำดับการพึ่งพา ห้ามสลับ
        device-symbols  ฉีดไลบรารีรูปอุปกรณ์ (SVG) เข้า DOM
        icons           ไอคอน UI + หัวใจ
-       devices         นิยามอุปกรณ์ + ชื่อจุด 
+       devices         นิยามอุปกรณ์ + ชื่อจุด
        levels          ข้อมูล 20 ด่าน
-       analyze         ระบบวิเคราะห์วงจร (อ่านเป็นโครงข่ายจริง)
-       outcome         ตัดสินจาก "ผลที่ออกมา" โดยจ่ายไฟจำลองแล้ววัดจริง
+       analyze         วิเคราะห์วงจร (อ่านเป็นโครงข่ายจริง)
+       outcome         ตัดสินจากผลที่ออกมา โดยจ่ายไฟจำลองแล้ววัดจริง
        circuit-check   ตรวจโครงสร้าง/ขั้ว และคำใบ้ของแต่ละด่าน
        save            บันทึก/โหลดความคืบหน้าลง localStorage
        state           ตัวแปรสถานะกลาง (G) + หน้าจอ + แบบทดสอบ
@@ -437,16 +413,15 @@
        inventory       คลังอุปกรณ์ + drag & drop
        workspace       อุปกรณ์บนพื้นที่ทำงาน + หมุน + เลือก + สับสวิตช์
        wires           ระบบสายไฟ + ลงสีตามขั้ว
-       solver          แก้สมการวงจรจริง (Nodal Analysis) — หัวใจของค่าไฟฟ้า
+       solver          แก้สมการวงจรจริง (Nodal Analysis) ตัวคิดค่าไฟฟ้า
        breadboard      แผงต่อวงจรจริง: รูเสียบ รางจ่ายไฟ และรางที่นำไฟได้
        probe           จำลองการทำงานตามเวลาจริง + เครื่องวัด
        hazard          ความร้อนสะสม ความเสียหาย และรายงานอันตราย
        damage          ตัวประสานระหว่างเกมกับระบบความเสียหาย
        sandbox         โหมดอิสระ (เล่นทดลองไม่จำกัด)
        endless         โหมดวัดความเร็ว + ตัวสุ่มโจทย์ + ตารางอันดับ
-       lesson          บทเรียนก่อนเข้าเกม (หน้าแรกของเว็บ) — ใช้รูปอุปกรณ์จาก device-symbols
-       game            วงจรการเล่นหลัก + คีย์ลัด (โหลดท้ายสุด)
-     ============================================================ -->
+       lesson          บทเรียนก่อนเข้าเกม ใช้รูปอุปกรณ์จาก device-symbols
+       game            วงจรการเล่นหลัก + คีย์ลัด (โหลดท้ายสุด) -->
 <script src="js/engine/device-symbols.js"></script>
 <script src="js/ui/icons.js"></script>
 <script src="js/engine/devices.js"></script>
@@ -462,9 +437,7 @@
 <script src="js/board/inventory.js"></script>
 <script src="js/board/workspace.js"></script>
 <script src="js/board/wires.js"></script>
-<!-- ย้อนกลับ/ทำซ้ำ — ต้องอยู่หลัง workspace.js กับ wires.js
-     เพราะ restoreCircuit() เรียก addWsItem / addWire / clearWorkspace ของสองไฟล์นั้น
-     (เรียกตอนรันไทม์ ลำดับจึงไม่บังคับ แต่วางไว้ให้อ่านง่ายว่าพึ่งใคร) -->
+<!-- ย้อนกลับ/ทำซ้ำ วางไว้หลัง workspace.js กับ wires.js เพราะ restoreCircuit() เรียก addWsItem/addWire/clearWorkspace ของสองไฟล์นั้น (จริง ๆ เรียกตอนรันไทม์ ลำดับไม่บังคับ แต่วางให้อ่านง่ายว่าพึ่งใคร) -->
 <script src="js/game/history.js"></script>
 <script src="js/engine/solver.js"></script>
 <script src="js/board/breadboard.js"></script>

@@ -30,10 +30,8 @@
 .btn-form-link:hover{transform:translateY(-2px);box-shadow:0 8px 26px rgba(124,58,237,.55);}
 .btn-form-link svg{width:20px;height:20px;flex-shrink:0;}
 
-/* แถวปุ่มลิงก์ — ให้ปุ่มแบบประเมินยืนข้าง ๆ ปุ่มทำแบบทดสอบได้
-   ต้องมีตัวห่อ เพราะ .form-link-box เรียงลูกทุกตัวเป็นแนวตั้ง
-   wrap ไว้ด้วย: บนจอแคบสองปุ่มนี้กว้างรวมกันเกินจอ ต้องยอมให้ตกบรรทัด
-   ไม่ใช่ดันให้จอเลื่อนแนวนอน */
+/* แถวปุ่มลิงก์ ให้ปุ่มแบบประเมินยืนข้างปุ่มทำแบบทดสอบได้ ต้องมีตัวห่อเพราะ .form-link-box เรียงลูกเป็นแนวตั้ง
+   wrap ไว้ด้วย บนจอแคบสองปุ่มกว้างเกินจอ ต้องยอมให้ตกบรรทัด ไม่ใช่ดันจอเลื่อนแนวนอน */
 .form-link-row{
   display:flex;align-items:stretch;justify-content:center;
   gap:12px;flex-wrap:wrap;
@@ -58,8 +56,7 @@
 }
 .form-status.done .status-dot{background:var(--accent3);box-shadow:0 0 8px rgba(0,255,136,.7);}
 .form-hint{font-size:.78rem;color:var(--text-dim);text-align:center;opacity:.8;}
-/* ปุ่มสำรองปลดล็อกเอง — เผื่อมือถือตัดจังหวะจนตรวจจับอัตโนมัติพลาด
-   ทำให้ดูเบา ๆ ไม่ให้เด่นกว่าปุ่มเปิดแบบทดสอบจริง */
+/* ปุ่มสำรองปลดล็อกเอง เผื่อมือถือตัดจังหวะจนตรวจจับอัตโนมัติพลาด ทำให้ดูเบา ๆ ไม่ให้เด่นกว่าปุ่มเปิดแบบทดสอบจริง */
 .form-manual{
   background:none;border:none;
   color:var(--text-dim);font-family:inherit;font-size:.74rem;
@@ -81,10 +78,7 @@
 }
 .btn-primary.locked:hover{transform:none;}
 
-/* ============================================================
-   RESUME BOX — กล่อง "เล่นต่อ" (แสดงเมื่อมีข้อมูลบันทึกไว้ในเครื่อง)
-   JS เป็นคนเปิด/ปิดด้วย display:flex/none — ดู js/save.js
-   ============================================================ */
+/* RESUME BOX — กล่อง "เล่นต่อ" โชว์เมื่อมีข้อมูลบันทึกในเครื่อง JS เปิด/ปิดด้วย display:flex/none (save.js) */
 .resume-box{
   display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:14px;
   background:rgba(0,255,136,.06);border:1.5px solid var(--accent3);

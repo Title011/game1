@@ -1,7 +1,5 @@
-/* ============================================================
-   UI — ตัวช่วยหน้าตาทั่วไป: สร้างไอคอน SVG จาก symbol,
-        วางไอคอนลงปุ่ม, เปิด/ปิด modal, และ toast แจ้งเตือน
-   ============================================================ */
+/* UI — ตัวช่วยหน้าตา: สร้างไอคอน SVG, วางลงปุ่ม, เปิด/ปิด modal, toast */
+
 /* เก็บ viewBox ของแต่ละ symbol (อ่านจาก DOM ครั้งเดียว) */
 var _svgViewBoxCache = null;
 function getSymbolViewBox(svgId){
@@ -18,11 +16,10 @@ function getSymbolViewBox(svgId){
 function makeSvgIcon(svgId,w,h){
   var ns='http://www.w3.org/2000/svg';
   var svg=document.createElementNS(ns,'svg');
-  /* ใช้ viewBox ตรงกับ symbol จริง (ไม่งั้นภาพเบี้ยว) */
+  /* viewBox ตรงกับ symbol จริง ไม่งั้นภาพเบี้ยว */
   svg.setAttribute('viewBox', getSymbolViewBox(svgId));
   svg.setAttribute('width',w||34);
   svg.setAttribute('height',h||34);
-  /* รักษาสัดส่วน ไม่ยืด/บีบ */
   svg.setAttribute('preserveAspectRatio','xMidYMid meet');
   var use=document.createElementNS(ns,'use');
   use.setAttribute('href','#'+svgId);
@@ -30,19 +27,11 @@ function makeSvgIcon(svgId,w,h){
   return svg;
 }
 
-/* ไอคอนแบบ "ฝังชิ้นส่วนจริง" — ก๊อปปี้รูปทรงข้างใน symbol มาวางเป็นโหนดจริง
-
-   ทำไมต้องมีอีกแบบ: <use> วางเนื้อหาไว้ใน shadow tree ที่ตัวเลือก CSS
-   จากไฟล์ .css เข้าไปไม่ถึง เลือกได้แค่ตัว <svg>/<use> ทั้งก้อนเท่านั้น
-   กฎอย่าง ".ws-item.lit .motor-rotor" จึงไม่เคยจับอะไรเลย
-   (สืบทอดค่าเข้าไปได้อยู่ เช่น --glow — แต่เลือกทีละชิ้นไม่ได้)
-
-   อุปกรณ์ในพื้นที่ทำงานต้องขยับ/เรืองแสงทีละชิ้นตามค่าไฟฟ้าจริง
-   จึงต้องฝังของจริง ส่วนไอคอนในกล่องอุปกรณ์และรูปคำใบ้ไม่ต้องขยับ
-   ใช้ <use> ต่อไปได้ เบากว่าและไม่ต้องโคลน DOM
-
-   symbol ทั้ง 17 อันในไฟล์ js/device-symbols.js เป็นรูปทรงล้วน
-   ไม่มี id / gradient / clipPath อยู่ข้างใน การโคลนจึงไม่ทำ id ซ้ำในหน้า */
+/* ไอคอนแบบฝังของจริง — โคลนรูปทรงใน symbol มาเป็นโหนดจริง
+   เพราะ <use> อยู่ใน shadow tree ที่ CSS จากไฟล์ .css เลือกทีละชิ้นไม่ได้
+   อุปกรณ์ในพื้นที่ทำงานต้องขยับ/เรืองแสงทีละชิ้นเลยต้องฝังจริง
+   ส่วนไอคอนในกล่องอุปกรณ์/รูปคำใบ้ไม่ต้องขยับ ใช้ makeSvgIcon (เบากว่า) ได้
+   symbol ใน device-symbols.js เป็นรูปทรงล้วน ไม่มี id ข้างใน โคลนแล้วไม่ทำ id ซ้ำ */
 function makeSvgIconInline(svgId,w,h){
   var sym=document.getElementById(svgId);
   if(!sym) return makeSvgIcon(svgId,w,h);
@@ -52,14 +41,13 @@ function makeSvgIconInline(svgId,w,h){
   svg.setAttribute('width',w||34);
   svg.setAttribute('height',h||34);
   svg.setAttribute('preserveAspectRatio','xMidYMid meet');
-  /* แสงเรืองล้นขอบ viewBox ได้ ไม่ต้องให้ตัดทิ้ง */
-  svg.style.overflow='visible';
+  svg.style.overflow='visible';            /* ให้แสงเรืองล้นขอบได้ */
   var kids=sym.childNodes;
   for(var i=0;i<kids.length;i++) svg.appendChild(kids[i].cloneNode(true));
   return svg;
 }
 
-/* วาง SVG icon ลงในปุ่ม/หัวข้อ (แทน emoji) */
+/* วาง SVG icon ลงปุ่ม/หัวข้อ (แทน emoji) */
 function injectUIIcons(){
   var map = {
     'hdr-bolt':'bolt', 'btn-book-ic':'book', 'inv-box-ic':'box',
@@ -73,29 +61,17 @@ function injectUIIcons(){
     var el = document.getElementById(id);
     if(el) el.innerHTML = ICON(map[id], sizes[id]||18);
   }
-  /* ปุ่มโหมดพิเศษเปลี่ยนทั้งไอคอนและข้อความตามสถานะ จึงมีฟังก์ชันของตัวเอง */
+  /* ปุ่มโหมดพิเศษเปลี่ยนไอคอน+ข้อความตามสถานะ มีฟังก์ชันของตัวเอง */
   if(typeof updateSandboxButton === 'function') updateSandboxButton();
   if(typeof updateEndlessButton === 'function') updateEndlessButton();
 }
 
-/* ============================================================
-   MODALS / TOAST
-   ============================================================ */
-/* ============================================================
-   KEY MATCHING — เทียบปุ่มบนแป้นพิมพ์แบบไม่ขึ้นกับภาษา
 
-   ปัญหา: e.key คืน "ตัวอักษรที่พิมพ์ออกมา" ซึ่งเปลี่ยนตามภาษาที่ตั้งไว้
-          อยู่โหมดไทย กดปุ่ม R จะได้ 'พ' ไม่ใช่ 'r' คีย์ลัดจึงเงียบสนิท
+/* ===== เทียบปุ่มคีย์บอร์ดแบบไม่ขึ้นกับภาษา =====
+   e.key เปลี่ยนตามภาษา (โหมดไทยกด R ได้ 'พ') เลยเช็ก e.code (ตำแหน่งปุ่ม) ก่อน
+   แล้วค่อย keyCode (เบราว์เซอร์เก่า) และ e.key (ทางสุดท้าย) */
 
-   ตรวจ 3 ทาง เพราะแต่ละทางมีจุดอ่อนต่างกัน:
-     1. e.code    'KeyR' = ตำแหน่งปุ่มจริงบนแป้น ไม่ขึ้นกับภาษาเลย (แม่นสุด)
-     2. e.keyCode 82     = รหัสปุ่มแบบเก่า อิงตำแหน่งปุ่มเหมือนกัน
-                           ใช้สำรองเบราว์เซอร์เก่าที่ไม่มี e.code
-     3. e.key     'r'    = ตัวอักษรจริง ใช้เป็นทางสุดท้าย
-                           เผื่อแป้นแปลก ๆ ที่ e.code ไม่ตรงตำแหน่งมาตรฐาน
-   ============================================================ */
-
-/* เทียบปุ่มตัวอักษร A-Z เช่น isKey(e,'r') */
+/* เทียบปุ่ม A-Z เช่น isKey(e,'r') */
 function isKey(e, letter){
   var U = letter.toUpperCase();
   if(e.code === 'Key' + U) return true;
@@ -113,29 +89,16 @@ function isNamedKey(e, name){
   if(e.code === name) return true;
   if(e.key  === name) return true;
   if(NAMED_KEYCODES[name] && e.keyCode === NAMED_KEYCODES[name]) return true;
-  /* Space มีชื่อไม่ตรงกันระหว่าง key (' ') กับ code ('Space') */
-  if(name === 'Space' && e.key === ' ') return true;
+  if(name === 'Space' && e.key === ' ') return true;   /* key เป็น ' ' แต่ code เป็น 'Space' */
   return false;
 }
 
 function openModal(id){document.getElementById(id).classList.add('open');}
 function closeModal(id){document.getElementById(id).classList.remove('open');}
 
-/* ============================================================
-   CONFIRM — กล่องยืนยันกลาง ใช้แทน confirm() ของเบราว์เซอร์
-
-   confirm() เป็น dialog ของระบบ ปรับหน้าตาไม่ได้เลย และหลุดธีมเกม
-   ตัวนี้ใช้ modal เดียวกับที่เกมใช้อยู่ จึงคุมสไตล์ได้ทั้งหมด
-
-   ต่างกันตรงที่ confirm() หยุดโค้ดรอคำตอบได้ แต่ modal ทำไม่ได้
-   จึงต้องส่งงานที่จะทำต่อมาทาง onConfirm (callback) แทน
-
-   showConfirm({
-     title:'...', message:'...', detail:'...(รับ HTML)',
-     okText:'...', cancelText:'...', icon:'trash', danger:true,
-     onConfirm:function(){ ...ทำต่อเมื่อผู้ใช้กดยืนยัน... }
-   })
-   ============================================================ */
+/* ===== กล่องยืนยันกลาง (แทน confirm() ของเบราว์เซอร์ที่ปรับหน้าตาไม่ได้) =====
+   confirm() หยุดโค้ดรอคำตอบได้ แต่ modal ทำไม่ได้ เลยส่งงานต่อผ่าน onConfirm
+   showConfirm({ title, message, detail(รับ HTML), okText, cancelText, icon, danger, onConfirm }) */
 var _confirmCallback = null;
 
 function showConfirm(opts){
@@ -162,7 +125,7 @@ function showConfirm(opts){
   openModal('modal-confirm');
 }
 
-/* ปิดกล่อง — ok=true คือกดปุ่มยืนยัน, false คือยกเลิก/กดปิด/คลิกนอกกล่อง */
+/* ปิดกล่อง — ok=true คือกดยืนยัน, false คือยกเลิก/ปิด/คลิกนอกกล่อง */
 function closeConfirm(ok){
   closeModal('modal-confirm');
   var cb = _confirmCallback;

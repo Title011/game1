@@ -10,15 +10,9 @@
   background-size:cover;background-position:center;background-attachment:fixed;
 }
 
-/* หน้าเกมต้องสูง "เท่าจอพอดี" ไม่ใช่ min-height เหมือนหน้าอื่น
-
-   .screen ใช้ min-height:100vh ซึ่งยืดตามเนื้อหาได้ พอคลังอุปกรณ์ยาว
-   (โหมดอิสระมี 16 ชนิด ~750px) ทั้งหน้าจะสูงตาม แล้วแถบปุ่มคำสั่ง
-   หลุดลงไปใต้จอ แทนที่คลังจะเลื่อนอยู่ในกล่องตัวเอง
-
-   พอตรึงความสูงไว้ #game-main (flex:1 + min-height:0) จึงถูกจำกัด
-   และ #inventory (overflow-y:auto) ก็เลื่อนในตัวเองตามที่ตั้งใจไว้
-   dvh เผื่อมือถือที่แถบ address bar ยุบ-ขยาย */
+/* หน้าเกมต้องสูงเท่าจอพอดี ไม่ใช่ min-height เหมือนหน้าอื่น เพราะ min-height:100vh ยืดตามเนื้อหา
+   พอคลังอุปกรณ์ยาว (โหมดอิสระ 16 ชนิด ~750px) ทั้งหน้าจะสูงตามจนแถบปุ่มหลุดลงใต้จอ
+   ตรึงความสูงไว้ #game-main ถึงถูกจำกัดและ #inventory เลื่อนในตัวเองได้ dvh เผื่อ address bar มือถือยุบ-ขยาย */
 #screen-game.active{
   height:100vh;
   height:100dvh;
@@ -50,10 +44,8 @@
 }
 .btn-tutorial:hover{transform:translateY(-1px);}
 
-/* ปุ่มเปิด/ปิดเสียง — ไอคอนล้วน ไม่มีข้อความ
-   เป็นปุ่มเดียวในแถบหัวที่ไม่มีคำกำกับ เพราะรูปลำโพงเป็นสัญลักษณ์สากล
-   และแถบหัวบนจอ 400px แน่นอยู่แล้ว เพิ่มคำอีกคำจะดันปุ่มอื่นตกบรรทัด
-   ขนาด 36px เป็นขั้นต่ำที่นิ้วกดติดบนมือถือ (ทั้งแถบใช้ปุ่มสูงราว 34px อยู่แล้ว) */
+/* ปุ่มเปิด/ปิดเสียง ไอคอนล้วน ไม่มีคำกำกับ เพราะรูปลำโพงเป็นสัญลักษณ์สากลและแถบหัวบนจอ 400px แน่นอยู่แล้ว
+   ขนาด 36px เป็นขั้นต่ำที่นิ้วกดติดบนมือถือ */
 .btn-sound{
   display:inline-flex;align-items:center;justify-content:center;
   width:36px;height:36px;flex-shrink:0;
@@ -63,17 +55,12 @@
 }
 .btn-sound .sound-ico{font-size:1rem;pointer-events:none;}
 .btn-sound:hover{transform:translateY(-1px);border-color:var(--accent);}
-/* ตอนปิดเสียงต้องดู "ถูกปิดอยู่" ชัดในแวบเดียว ไม่ใช่แค่ไอคอนเปลี่ยนรูป
-   เพราะลำโพงมีขีดกับลำโพงมีคลื่นต่างกันแค่ไม่กี่พิกเซลบนมือถือ */
+/* ปิดเสียงต้องดูออกในแวบเดียว ไม่ใช่แค่ไอคอนเปลี่ยนรูป เพราะลำโพงมีขีดกับมีคลื่นต่างกันแค่ไม่กี่พิกเซลบนมือถือ */
 .btn-sound.muted{opacity:.5;border-color:var(--border);}
 .btn-sound.muted .sound-ico{filter:grayscale(1);}
 
-/* ปุ่มแบบประเมินความพึงพอใจ — ขวาสุดของแถบหัว (มุมบนขวาของจอ)
-
-   ใช้โทนชมพู/ม่วงที่ไม่ซ้ำกับปุ่มไหนในเกมเลย เพราะเป็นปุ่มที่ต้องสะดุดตา
-   พอให้สังเกตเห็นว่ามีอะไรรออยู่ แต่ไม่แย่งความสนใจจนรบกวนการเล่น
-   เต้นเบา ๆ ช่วงแรกที่โผล่ขึ้นมา — ปุ่มที่โผล่มาเงียบ ๆ กลางแถบที่มีปุ่มอยู่แล้ว
-   หกตัว จะไม่มีใครสังเกตเห็นเลย */
+/* ปุ่มแบบประเมินความพึงพอใจ ขวาสุดของแถบหัว ใช้โทนชมพู/ม่วงที่ไม่ซ้ำกับปุ่มไหนเลยให้สะดุดตาพอสังเกตเห็น
+   แต่ไม่แย่งความสนใจจนรบกวนการเล่น เต้นเบา ๆ ตอนโผล่ ไม่งั้นปุ่มที่โผล่เงียบ ๆ กลางแถบที่มีปุ่มอยู่แล้วหกตัวจะไม่มีใครเห็น */
 .btn-survey{
   display:inline-flex;align-items:center;gap:6px;
   background:linear-gradient(135deg,#ec4899,#a21caf);color:#fff;border:none;
@@ -88,10 +75,8 @@
   0%,100%{box-shadow:0 0 14px rgba(236,72,153,.45);}
   50%    {box-shadow:0 0 26px rgba(236,72,153,.85);}
 }
-/* ตัวที่ยืนข้างปุ่ม "เปิดแบบทดสอบหลังเรียน" บนหน้าจบเกม
-   ต้องสูงและโค้งเท่ากับ .btn-form-link เป๊ะ ๆ ไม่งั้นสองปุ่มที่อยู่ติดกัน
-   จะดูเหมือนวางผิดที่ — ตัวเลขชุดนี้ลอกมาจาก .btn-form-link ใน test-screens.css
-   (padding 14/32 · radius 12 · font 1.05rem) ลดฟอนต์ลงนิดเพราะข้อความยาวกว่า */
+/* ตัวที่ยืนข้างปุ่มเปิดแบบทดสอบหลังเรียนบนหน้าจบเกม ต้องสูงและโค้งเท่า .btn-form-link เป๊ะ
+   ไม่งั้นสองปุ่มที่ติดกันจะดูวางผิดที่ เลขชุดนี้ลอกมาจาก .btn-form-link ใน test-screens.css ลดฟอนต์ลงนิดเพราะข้อความยาวกว่า */
 .btn-survey.beside{
   justify-content:center;
   padding:14px 26px;border-radius:12px;font-size:.95rem;
@@ -100,9 +85,8 @@
 }
 .btn-survey.beside:hover{box-shadow:0 8px 26px rgba(236,72,153,.6);}
 
-/* แถบเลื่อนระดับเสียงเพลง — เพลงพื้นหลังคือเสียงที่คนอยากปรับมากที่สุด
-   ปุ่มเปิด/ปิดอย่างเดียวไม่พอ เพราะ "ดังไป" กับ "ไม่อยากฟัง" คนละเรื่องกัน
-   ใช้ accent-color ให้ตัวเลื่อนเป็นสีธีมโดยไม่ต้องเขียน ::-webkit-slider-thumb เอง */
+/* แถบเลื่อนระดับเสียงเพลง เพลงพื้นหลังคือเสียงที่คนอยากปรับสุด ปุ่มเปิด/ปิดอย่างเดียวไม่พอ
+   เพราะดังไปกับไม่อยากฟังคนละเรื่อง ใช้ accent-color ให้ตัวเลื่อนเป็นสีธีมโดยไม่ต้องเขียน slider-thumb เอง */
 .bgm-vol{
   width:74px;flex-shrink:0;cursor:pointer;
   accent-color:var(--accent);background:transparent;
@@ -214,18 +198,15 @@ body.sandbox-mode #level-goal{border-color:rgba(0,255,136,.4);color:var(--accent
 
 /* WORKSPACE — พื้นที่ต่อวงจร */
 #workspace-wrap{flex:1;display:flex;flex-direction:column;gap:8px;overflow:hidden;min-width:0;}
-/* แถบโจทย์ต้องเตี้ยที่สุดเท่าที่อ่านออก เพราะทุกพิกเซลที่มันกิน
-   คือพื้นที่แผงต่อวงจรที่หายไป ซึ่งทำให้อุปกรณ์เบียดกันจนขาลงรางเดียวกัน */
+/* แถบโจทย์เตี้ยที่สุดเท่าที่อ่านออก เพราะทุกพิกเซลที่มันกินคือพื้นที่แผงต่อวงจรที่หายไป อุปกรณ์จะได้ไม่เบียดกัน */
 #level-goal{
   background:rgba(17,34,64,.92);border:1px solid var(--border2);
   border-radius:var(--radius);padding:7px 14px;font-size:.82rem;color:var(--accent2);
   display:flex;align-items:center;gap:9px;flex-wrap:wrap;flex-shrink:0;
   line-height:1.35;
 }
-/* จัดพื้นที่ในแถบโจทย์ให้ชัดเจน: ไอคอนกับป้ายผลลัพธ์กว้างเท่าเนื้อหา
-   ส่วนคำอธิบายเป็นตัวยืดหยุ่นตัวเดียว และต้องมีความกว้างขั้นต่ำ
-   (ถ้าปล่อยให้ span ทุกตัวเป็น flex:1 คำอธิบายจะถูกบีบจนแตกเป็นคอลัมน์
-    คำละบรรทัด เพราะป้ายผลลัพธ์ไปกินพื้นที่ไปหมด) */
+/* จัดพื้นที่ในแถบโจทย์: ไอคอนกับป้ายผลลัพธ์กว้างเท่าเนื้อหา คำอธิบายเป็นตัวยืดหยุ่นตัวเดียวและมีความกว้างขั้นต่ำ
+   (ถ้า span ทุกตัวเป็น flex:1 คำอธิบายจะถูกบีบจนแตกเป็นคำละบรรทัด) */
 #level-goal span{color:var(--text-dim);font-size:.8rem;}
 #level-goal #goal-target-ic{flex:0 0 auto;line-height:0;}
 #level-goal #goal-desc{flex:1 1 240px;min-width:170px;}
@@ -240,13 +221,11 @@ body.sandbox-mode #level-goal{border-color:rgba(0,255,136,.4);color:var(--accent
   padding:2px 10px;border-radius:999px;
   max-width:100%;
 }
-/* min-height ต่ำ ๆ + flex-shrink เปิด = พื้นที่ทำงานยอมหดให้ก่อน
-   แถบเป้าหมายกับแถบปุ่มจึงไม่โดนดันตกจอเวลาหน้าต่างเตี้ย */
+/* min-height ต่ำ + flex-shrink เปิด = พื้นที่ทำงานยอมหดก่อน แถบเป้าหมายกับแถบปุ่มเลยไม่โดนดันตกจอเวลาหน้าต่างเตี้ย */
 #workspace{
   flex:1 1 auto;background:rgba(10,22,40,.82);border:2px dashed var(--border2);
   border-radius:var(--radius);position:relative;overflow:hidden;min-height:180px;
-  /* นิ้วลากบนพื้นว่าง = ลากกรอบคุมดำ ไม่ใช่เลื่อนจอ
-     ปลอดภัยเพราะ #screen-game.active เป็น overflow:hidden ไม่มีอะไรให้เลื่อนอยู่แล้ว */
+  /* นิ้วลากบนพื้นว่าง = ลากกรอบคุมดำ ไม่ใช่เลื่อนจอ ปลอดภัยเพราะ #screen-game.active เป็น overflow:hidden อยู่แล้ว */
   touch-action:none;
 }
 #workspace.drag-over{border-color:var(--accent);background:rgba(0,212,255,.04);}
@@ -262,31 +241,18 @@ body.sandbox-mode #level-goal{border-color:rgba(0,255,136,.4);color:var(--accent
   border-radius:4px;
 }
 
-/* ============================================================
-   ปุ่มย้อนกลับ / ทำซ้ำ — มุมซ้ายบนของพื้นที่ทำงาน (ดู js/history.js)
-
-   z-index 22 สูงกว่าแถบเตือนอันตราย (18) กรอบคุมดำ (19) และแถบปุ่มลอย (20-21)
-   เพื่อให้ไม่มีอะไรมาทับจนกดไม่ได้ ปุ่มกู้คืนต้องกดได้เสมอทุกสถานการณ์
-   ============================================================ */
+/* ปุ่มย้อนกลับ/ทำซ้ำ มุมซ้ายบนของพื้นที่ทำงาน (history.js)
+   z-index 22 สูงกว่าแถบเตือนอันตราย (18) กรอบคุมดำ (19) แถบปุ่มลอย (20-21) ปุ่มกู้คืนต้องกดได้เสมอ */
 #history-bar{
   position:absolute;z-index:22;top:8px;left:8px;
   display:flex;gap:6px;
 }
-/* *** ห้ามใช้ opacity บอกสถานะ disabled กับธีมมืดชุดนี้ ***
-
-   ของเดิมพลาดตรงนี้: พื้นปุ่มเป็น rgba(10,22,40,.95) ซึ่งเกือบเป็นสีเดียวกับ
-   พื้น #workspace ที่เป็น rgba(10,22,40,.82) ต่างกันแค่ความทึบ
-   พอใส่ opacity:.35 ตอน disabled ทั้งขอบ (#2d4a70) และตัวหนังสือ (#6e88a8)
-   ก็จางลงจนกลืนหายไปกับพื้นหลัง = ปุ่มหายไปเลยทั้งที่อยู่ตรงนั้น
-   และตอนเปิดเกมมาปุ่มทั้งสองยัง disabled อยู่ (ยังไม่มีอะไรให้ย้อน)
-   ผู้เล่นจึงไม่มีทางรู้ว่ามีปุ่มนี้อยู่
-
-   แก้โดยให้พื้นปุ่ม "สว่างกว่าพื้นแผงชัด ๆ" และไม่แตะ opacity เลย
-   สถานะ disabled บอกด้วยสีขอบกับสีตัวอักษรแทน */
+/* อย่าใช้ opacity บอกสถานะ disabled กับธีมมืดชุดนี้ เคยพลาด: พื้นปุ่มเกือบสีเดียวกับพื้น #workspace
+   พอใส่ opacity:.35 ตอน disabled ทั้งขอบและตัวอักษรจางจนกลืนหายไปกับพื้น ปุ่มหายไปเลย
+   และตอนเปิดเกมมาปุ่มยัง disabled (ยังไม่มีอะไรให้ย้อน) ผู้เล่นเลยไม่รู้ว่ามีปุ่มนี้
+   แก้โดยให้พื้นปุ่มสว่างกว่าพื้นแผงชัด ๆ ไม่แตะ opacity บอก disabled ด้วยสีขอบกับสีอักษรแทน */
 .hist-btn{
-  /* min-height 38px บนคอม / 48px บนมือถือ (ดู css/responsive.css)
-     touch-action:manipulation ตัดดีเลย์ 300ms ของการรอ double-tap zoom
-     ปุ่มจึงตอบสนองทันทีที่แตะ ไม่ใช่หน่วงแล้วผู้เล่นกดซ้ำ */
+  /* min-height 38px บนคอม / 48px บนมือถือ (responsive.css) touch-action:manipulation ตัดดีเลย์ 300ms ของ double-tap zoom ปุ่มเลยตอบทันที */
   min-height:38px;padding:0 13px;border-radius:10px;cursor:pointer;
   display:flex;align-items:center;gap:6px;
   font-size:.8rem;font-weight:800;line-height:1;
@@ -298,8 +264,7 @@ body.sandbox-mode #level-goal{border-color:rgba(0,255,136,.4);color:var(--accent
   transition:border-color .15s,color .15s,background .15s,transform .1s,box-shadow .15s;
 }
 .hist-ico{font-size:1.2rem;line-height:1;}
-/* ข้อความไทยกำกับไอคอน — ไอคอน ↶ ↷ เพียว ๆ ผู้เรียนบางคนอ่านไม่ออกว่าคืออะไร
-   nowrap กันคำแตกบรรทัดจนปุ่มสูงผิดรูปบนจอแคบ */
+/* ข้อความไทยกำกับไอคอน เพราะ ↶ ↷ เพียว ๆ ผู้เรียนบางคนอ่านไม่ออก nowrap กันคำแตกบรรทัดจนปุ่มสูงผิดรูปบนจอแคบ */
 .hist-label{white-space:nowrap;}
 .hist-btn:hover:not(:disabled){
   background:rgba(0,212,255,.22);
@@ -307,8 +272,7 @@ body.sandbox-mode #level-goal{border-color:rgba(0,255,136,.4);color:var(--accent
 }
 .hist-btn:active:not(:disabled){transform:scale(.93);background:rgba(0,212,255,.34);}
 
-/* ปิดปุ่ม = ยังเห็นชัดว่ามีปุ่มอยู่ แต่รู้ว่ากดไม่ได้
-   พื้นยังทึบเท่าเดิม เปลี่ยนแค่ขอบกับสีอักษรเป็นโทนเทา ไม่ลด opacity */
+/* ปิดปุ่ม = ยังเห็นว่ามีปุ่มแต่กดไม่ได้ พื้นยังทึบเท่าเดิม เปลี่ยนแค่ขอบกับสีอักษรเป็นเทา ไม่ลด opacity */
 .hist-btn:disabled{
   cursor:default;
   background:#101f38;
@@ -317,8 +281,7 @@ body.sandbox-mode #level-goal{border-color:rgba(0,255,136,.4);color:var(--accent
   box-shadow:0 2px 8px rgba(0,0,0,.45);
 }
 
-/* ลอยกลางขอบล่างของพื้นที่ทำงาน ไม่เกาะอุปกรณ์ตัวใดตัวหนึ่ง
-   เพราะกลุ่มที่เลือกกระจายอยู่หลายที่ ถ้าไปเกาะตัวเดียวจะดูเหมือนสั่งแค่ตัวนั้น */
+/* ลอยกลางขอบล่างของพื้นที่ทำงาน ไม่เกาะอุปกรณ์ตัวใดตัวหนึ่ง เพราะกลุ่มที่เลือกกระจายหลายที่ ถ้าเกาะตัวเดียวจะดูเหมือนสั่งแค่ตัวนั้น */
 #multi-toolbar{
   position:absolute;z-index:21;left:50%;bottom:10px;transform:translateX(-50%);
   display:flex;align-items:center;gap:8px;flex-wrap:wrap;justify-content:center;
@@ -355,22 +318,15 @@ body.sandbox-mode #level-goal{border-color:rgba(0,255,136,.4);color:var(--accent
   flex-direction:column;gap:8px;
 }
 
-/* SVG wire layer
-   z-index ต่ำกว่า .ws-item (3) โดยตั้งใจ — สายจึงอยู่ "ใต้" อุปกรณ์
-
-   เดิมอยู่ที่ 6 (บนอุปกรณ์) ทำให้เส้นสายทับจุดขั้วแล้วแย่งการคลิก/แตะ
-   จนต้องมีโหมดต่อสายคอยปิดการรับคลิกของสายไว้ พอย้ายลงมาชั้นล่าง
-   จุดขั้วรับสัมผัสได้เสมอ และสายก็ยังคลิกลบได้เสมอ ไม่ต้องมีโหมดอีก
-
-   สายลอดใต้กล่องอุปกรณ์แทบไม่เกิด เพราะระบบเดินสายหลบกล่องให้อยู่แล้ว
-   (ดู bezierPath ใน js/wires.js) */
+/* SVG wire layer z-index ต่ำกว่า .ws-item (3) ตั้งใจ สายเลยอยู่ใต้อุปกรณ์
+   เดิมอยู่ที่ 6 (บนอุปกรณ์) ทำให้เส้นสายทับจุดขั้วแล้วแย่งการคลิก จนต้องมีโหมดต่อสายคอยปิดการรับคลิก
+   ย้ายลงชั้นล่างแล้วจุดขั้วรับสัมผัสได้เสมอ สายก็ยังคลิกลบได้ ไม่ต้องมีโหมดอีก
+   สายลอดใต้กล่องแทบไม่เกิดเพราะระบบเดินสายหลบกล่องให้อยู่แล้ว (bezierPath ใน wires.js) */
 #wire-svg{
   position:absolute;top:0;left:0;width:100%;height:100%;
   pointer-events:none;z-index:2;overflow:visible;cursor:crosshair;
 }
-/* svg ต้อง pointer-events:none เสมอ ให้คลิกทะลุไปโดน port ที่อยู่ล่าง
-   เฉพาะ path สายไฟที่รับคลิกเอง (ลบสาย/probe) */
+/* svg ต้อง pointer-events:none เสมอ ให้คลิกทะลุไปโดน port ที่อยู่ล่าง เฉพาะ path สายไฟที่รับคลิกเอง (ลบสาย/probe) */
 
-/* ปิดการรับคลิกของสายเฉพาะตอนกำลังลากสายจริง
-   (ให้ลากทะลุไปโดน port ปลายทางได้) นอกนั้นสายรับคลิกลบได้ตลอด */
+/* ปิดการรับคลิกของสายเฉพาะตอนกำลังลากสายจริง (ให้ลากทะลุไปโดน port ปลายทาง) นอกนั้นสายรับคลิกลบได้ตลอด */
 #wire-svg.dragging .wire-path{pointer-events:none;}

@@ -1,14 +1,6 @@
-/* ============================================================
-   INVENTORY — คลังอุปกรณ์ด้านข้าง + การลากอุปกรณ์ลงพื้นที่ทำงาน
-   (รองรับทั้งเมาส์ผ่าน HTML5 drag & drop และนิ้วผ่าน touch)
-   ============================================================ */
-/* ============================================================
-   INVENTORY
-   ============================================================ */
-/* ============================================================
-   INVENTORY TOUCH DRAG FACTORY
-   สร้าง handler ใหม่ต่อ deviceId หนึ่งรอบเท่านั้น
-   ============================================================ */
+/* INVENTORY — คลังอุปกรณ์ด้านข้าง + ลากอุปกรณ์ลงพื้นที่ทำงาน (เมาส์ด้วย HTML5 drag & drop / นิ้วด้วย touch) */
+
+/* สร้าง touch handler ต่อ deviceId หนึ่งครั้ง */
 function makeInvTouchHandler(deviceId){
   return function(e){
     if(!invUnlimited() && (G.invCounts[deviceId]||0)<=0) return;
@@ -76,18 +68,12 @@ function renderInventory(){
     {label:ICON('bolt',15)+' พลังงาน/ควบคุม', ids:['battery_aa','battery_9v','transformer','switch','fuse']},
     {label:ICON('chip',15)+' อิเล็กทรอนิกส์', ids:['resistor','ldr','diode','led','capacitor','transistor']},
     {label:ICON('bulbIdea',15)+' เปลี่ยนพลังงาน',  ids:['bulb','motor','buzzer']},
-    /* ไม่มี 'breadboard' ในหมวดนี้แล้ว — พื้นที่ทำงานทั้งผืนคือเบรดบอร์ดอยู่แล้ว
-       จึงไม่มีเหตุผลให้หยิบเบรดบอร์ดมาวางบนเบรดบอร์ดอีกชิ้น */
-    /* ไม่มี 'wire' ในรายการ — สายไฟในเกมนี้ใช้วิธีลากจากขาหนึ่งไปอีกขาหนึ่ง
-       ไม่ได้หยิบมาวางเป็นชิ้น จึงไม่เคยมีด่านไหนแจกมันเลย */
-    /* ไม่มีหมวด 'เครื่องมือ' แล้ว — มัลติมิเตอร์ถูกถอดออกจากเกม
-       การวัดค่าใช้โหมดเครื่องวัด (ปุ่ม M) ซึ่งจิ้มอ่านได้ทุกจุดโดยไม่ต้องวางของ */
+    /* ไม่มี breadboard (พื้นที่ทำงานทั้งผืนคือเบรดบอร์ดอยู่แล้ว) / ไม่มี wire (ใช้ลากจากขาถึงขา ไม่หยิบมาวาง)
+       / ไม่มีหมวดเครื่องมือ (มัลติมิเตอร์ถอดออกแล้ว ใช้โหมดเครื่องวัดปุ่ม M แทน) */
   ];
   var unlimited = invUnlimited();
   cats.forEach(function(cat){
-    /* กรองจาก G.invCounts ไม่ใช่ lv.inventory
-       เพราะ G.invCounts คือคลังจริงที่ใช้อยู่ตอนนั้น ครอบคลุมทั้ง 3 โหมด
-       (ถ้าอ่าน lv.inventory โหมดอิสระจะเห็นแค่อุปกรณ์ของด่านที่ค้างอยู่) */
+    /* กรองจาก G.invCounts (คลังจริงที่ใช้อยู่ ครอบคลุมทั้ง 3 โหมด) ไม่ใช่ lv.inventory ซึ่งโหมดอิสระจะเห็นแค่ของด่านที่ค้าง */
     var avail=cat.ids.filter(function(id){return id in G.invCounts;});
     if(!avail.length) return;
     var lbl=document.createElement('div');
@@ -139,9 +125,7 @@ function updateInvCount(deviceId){
   if(item){item.classList.toggle('empty',empty);item.draggable=!empty;}
 }
 
-/* ============================================================
-   DRAG & DROP
-   ============================================================ */
+/* DRAG & DROP (เมาส์) */
 function onWsDragOver(e){e.preventDefault();e.dataTransfer.dropEffect='copy';document.getElementById('workspace').classList.add('drag-over');}
 function onWsDragLeave(){document.getElementById('workspace').classList.remove('drag-over');}
 function onWsDrop(e){
