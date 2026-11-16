@@ -1,9 +1,8 @@
 /* CIRCUIT CHECK — ตัดสินว่าวงจรของผู้เล่นถูก/ผิด
-   ไม่ตรวจเองแล้ว แต่ถาม analyze.js (อ่านวงจรเป็นโครงข่ายจริงตัวเดียวกับที่ solver.js ใช้)
-   ไฟล์นี้แค่แปลผลวิเคราะห์เป็นคำตอบที่ด่านต้องการ ชื่อฟังก์ชันคงเดิม levels.js เลยไม่ต้องแก้
+   ถาม analyze.js (อ่านวงจรเป็นโครงข่ายจริงตัวเดียวกับที่ solver.js ใช้) แล้วแปลผลเป็นคำตอบที่ด่านต้องการ
+   ส่วนการเทียบว่าได้ผลลัพธ์ตามโจทย์ไหม อยู่ที่ checkOutcome ใน outcome.js
      isClosedCircuit  วงจรปิดใช้ได้จริงไหม (บอกจุดที่ยังไม่ครบ)
-     tracePolarity    ขั้วชนกันโดยตรง
-   (ชุดตรวจ "เทียบกับเฉลย" เดิมลบออกแล้ว ย้ายไปดูผลจริงผ่าน checkOutcome ใน outcome.js) */
+     tracePolarity    ขั้วชนกันโดยตรง */
 
 /* วงจรปิดจริงไหม — ไล่บอกทีละสาเหตุ เรียงจากที่แก้ง่ายสุด */
 function isClosedCircuit(items, wires, requiredDeviceIds){
@@ -93,6 +92,3 @@ function tracePolarity(items, wires){
   }
   return { ok:true, msg:'' };
 }
-
-
-/* (ตัวช่วยนับสายแบบเดิม buildGraph/wireCountOf/wiresAtPort ลบแล้ว — ไม่อิงจำนวนสายอีก อ่านจากโครงข่ายใน analyze.js แทน) */

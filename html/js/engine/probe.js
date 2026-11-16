@@ -60,7 +60,7 @@ function powerStep(dt){
   PowerSim.sol = sol;
 
   /* วงจรเปิด (สับสวิตช์ OFF / ฟิวส์ขาด / ลบสาย) โหนดหลุด เมทริกซ์เอกฐาน solver คืน ok=false
-     ตัดไฟแล้วต้อง "ไม่มีกระแสที่ไหนเลย" จริงๆ ทั้งการเย็นลงและภาพ (ของเดิม return ทิ้งตรงนี้ เลยค้างค่าก่อนตัดไฟ) */
+     ตัดไฟแล้วต้อง "ไม่มีกระแสที่ไหนเลย" จริง ๆ ทั้งการเย็นลงและภาพ ต้องเคลียร์ให้หมด ไม่ค้างค่าก่อนตัดไฟ */
   if(!sol.ok){
     if(dt > 0 && typeof hazardCool === 'function') hazardCool(dt);
     clearSimVisuals();
@@ -117,7 +117,7 @@ function applySimVisuals(sol){
     var el = it.el;
     if(!el) return;
 
-    /* อุปกรณ์ที่พังแล้วต้องดับสนิท ไม่ค้างค่าสุดท้าย (ของเดิม return ทิ้ง หลอดไส้ขาดเลยยังเรืองแสง) */
+    /* อุปกรณ์ที่พังแล้วต้องดับสนิท ไม่ค้างค่าสุดท้าย ไม่งั้นหลอดไส้ขาดจะยังเรืองแสงอยู่ */
     if(el.classList.contains('burned') || el.classList.contains('failed')){
       if(it._lastGlow !== '0.000'){
         it._lastGlow = '0.000';

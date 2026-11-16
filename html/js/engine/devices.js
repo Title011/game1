@@ -17,9 +17,9 @@ var DEVICES = {
   motor:       { name:'มอเตอร์',       svgId:'dev-motor',       type:'output', ohm:120,  ports:['left','right'], polarized:true, pos:'left', neg:'right' },
   buzzer:      { name:'บัซเซอร์',      svgId:'dev-buzzer',      type:'output', ohm:90,  ports:['left','right'], polarized:true, pos:'left', neg:'right' },
   wire:        { name:'สายไฟ',         svgId:'dev-wire',        type:'wire', ohm:0,    ports:['left','right'] },
-  /* breadboard นิยามไว้กันของเก่าพัง แต่ไม่แจกให้หยิบแล้ว (พื้นที่ทำงานทั้งผืนคือเบรดบอร์ด — ดู breadboard.js) */
+  /* นิยาม breadboard ไว้ให้โค้ดอื่นอ้างถึงได้ แต่ไม่แจกในคลังให้หยิบ เพราะพื้นที่ทำงานทั้งผืนคือเบรดบอร์ด (ดู breadboard.js) */
   breadboard:  { name:'Breadboard',    svgId:'dev-breadboard',  type:'tool', ohm:0,    ports:['left','right','top','bottom'] }
-  /* ไม่มี multimeter แล้ว — วัดค่าด้วย "โหมดเครื่องวัด" (ปุ่ม M) จิ้มอ่านได้ทุกจุด ไม่กินขา/ไม่กินที่ */
+  /* วัดค่าด้วย "โหมดเครื่องวัด" (ปุ่ม M) จิ้มอ่านได้ทุกจุด ไม่กินขา/ไม่กินที่ เลยไม่มีอุปกรณ์ multimeter ในคลัง */
 };
 
 /* PORT ANCHORS — ขาอยู่ตรงไหนของตัวจริง

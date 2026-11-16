@@ -708,7 +708,7 @@ function showResult(ok,msg,earned,elapsed,replay,fault,outcome){
   var incidents = (fault && fault.incidents) ? fault.incidents : [];
   var warnings  = (fault && fault.warnings)  ? fault.warnings  : [];
   var list = buildOutcomeChecklist(outcome);
-  /* วางคำเตือนไว้บนสุด เมื่อก่อนอยู่ท้ายแล้วโดนดันตกจอจนผู้เล่นเลื่อนไม่ถึง */
+  /* วางคำเตือนไว้บนสุด ไม่งั้นจะโดนเนื้อหาด้านล่างดันตกจอจนผู้เล่นเลื่อนไม่ถึง */
   document.getElementById('result-hint').innerHTML =
     ok ? (incidentReportHTML(warnings) + list + buildAnalysisPanel() + buildCircuitReport() +
           (replay ? '<span style="color:var(--text-dim)">ด่านนี้เก็บคะแนนไปแล้ว — เล่นซ้ำเพื่อทบทวนได้ แต่ไม่ได้คะแนนเพิ่ม</span>' : ''))
@@ -736,7 +736,7 @@ function nextLevel(){
 function endGame(){
   clearInterval(G.timerInt);
   G.finished=true;
-  /* อย่าปลดล็อกโหมดพิเศษตรงนี้ ย้ายไปไว้หลังส่งแบบทดสอบหลังเรียนแล้ว (confirmPosttest)
+  /* อย่าปลดล็อกโหมดพิเศษตรงนี้ ให้ไปปลดหลังส่งแบบทดสอบหลังเรียน (confirmPosttest)
      ไม่งั้นผู้เรียนได้รางวัลก่อนทำแบบทดสอบ แล้วก็ไม่มีแรงจูงใจจะทำ */
   updateModeButtons();
   saveGame();   /* บันทึกว่าเล่นจบครบทุกด่านแล้ว */

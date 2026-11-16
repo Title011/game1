@@ -339,7 +339,7 @@ function confirmPosttest(){
 
   FormStatus.posttestDone = true;
 
-  /* รางวัลปลดล็อกตรงนี้ ไม่ใช่ตอนจบด่านสุดท้าย (ของเดิม endGame ปลดล็อกทันทีที่ผ่านด่าน 20 ผู้เรียนได้รางวัลก่อนแตะแบบทดสอบ แรงจูงใจเลยหาย) */
+  /* ปลดล็อกรางวัลตรงนี้ (หลังส่งแบบทดสอบหลังเรียน) ไม่ใช่ตอนจบด่านสุดท้าย ไม่งั้นผู้เรียนได้รางวัลก่อนแตะแบบทดสอบ แรงจูงใจเลยหาย */
   G.modesUnlocked = true;
   if(typeof updateModeButtons === 'function') updateModeButtons();
   updatePosttestGate();

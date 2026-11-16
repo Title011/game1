@@ -54,7 +54,7 @@ function restoreCircuit(snap){
   if(!snap) return;
   HIST.busy = true;
 
-  /* ล้างของเดิมให้เกลี้ยง แต่ไม่คืนของเข้าคลัง (จำนวนคลังมาจากภาพที่ถ่ายไว้)
+  /* ล้างของบนพื้นที่ให้เกลี้ยง แต่ไม่คืนของเข้าคลัง (จำนวนคลังมาจากภาพที่ถ่ายไว้)
      clearWorkspace(true) = ไม่ต้อง renderInventory ตอนนี้ เดี๋ยวทำทีเดียวท้ายสุด */
   var keepInv = Object.assign({}, G.invCounts);
   clearWorkspace(true);

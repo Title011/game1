@@ -61,7 +61,7 @@ function loadSave(){
     s.doneLevels  = (s.doneLevels && typeof s.doneLevels === 'object') ? s.doneLevels : {};
     s.unlockedMax = (typeof s.unlockedMax === 'number' && s.unlockedMax >= 0)
                     ? Math.min(s.unlockedMax, LEVELS.length-1) : 0;
-    /* เซฟเก่าไม่มีช่อง posttestDone → ถือว่ายังไม่ได้ส่งเสมอ (ไม่ยกเว้นย้อนหลัง ไม่งั้นเครื่องที่เคยลองเล่นจะข้ามแบบทดสอบได้ ขัดกับข้อกำหนดบังคับ) */
+    /* เซฟที่ไม่มีช่อง posttestDone ให้ถือว่ายังไม่ได้ส่ง จะได้ข้ามแบบทดสอบไม่ได้ (บังคับทำทุกเครื่อง) */
     if(typeof s.posttestDone !== 'boolean') s.posttestDone = false;
     s.posttestAt = (typeof s.posttestAt === 'number' && s.posttestAt > 0) ? s.posttestAt : 0;
     /* เคยเปิดลิงก์แต่ไม่มีเวลาที่กด = เซฟเก่าก่อนมีการจับเวลา ถือว่ายังไม่เปิด (ไม่งั้น postSecLeft คิดจากปี 1970 ได้ติดลบ ปุ่มปลดล็อกทันที) */

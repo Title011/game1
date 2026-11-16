@@ -646,8 +646,7 @@ function addWire(fromItemId,fromPort,fx,fy,toItemId,toPort,tx,ty,forcedFromPol,f
   /* ลงสีสายทั้งวงจรใหม่ (ไล่จากขั้วแบต) */
   recolorWires();
 
-  /* ต่อสายเพิ่มระหว่างที่ไฟกำลังเดินอยู่ — สายใหม่ต้องมีจุดไฟวิ่งด้วย
-     ของเดิมสร้างจุดครั้งเดียวตอนเริ่มจ่ายไฟ สายที่ต่อทีหลังจึงไม่มีจุดเลย */
+  /* ต่อสายเพิ่มระหว่างที่ไฟกำลังเดินอยู่ ต้องสร้างจุดไฟวิ่งใหม่ให้สายเส้นนี้ด้วย ไม่งั้นมันจะไม่มีจุดวิ่ง */
   if(typeof PowerSim !== 'undefined' && PowerSim.on && typeof buildFlowDots === 'function'){
     buildFlowDots();
   }
@@ -692,8 +691,7 @@ function removeWire(wireId){
   G.wires=G.wires.filter(function(w){return w.id!==wireId;});
   recolorWires();
 
-  /* ต่อสาย/ลบสายระหว่างจ่ายไฟอยู่ → สร้างจุดไฟวิ่งใหม่ให้ตรงกับสายชุดปัจจุบัน
-     (สายที่เพิ่งเพิ่มตอนไฟเดินอยู่ ของเดิมจะไม่มีจุดวิ่งเลย) */
+  /* ต่อ/ลบสายระหว่างจ่ายไฟอยู่ ต้องสร้างจุดไฟวิ่งใหม่ให้ตรงกับสายชุดปัจจุบัน */
   if(typeof PowerSim !== 'undefined' && PowerSim.on && typeof buildFlowDots === 'function'){
     buildFlowDots();
   }
