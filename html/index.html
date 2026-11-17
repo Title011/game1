@@ -2,8 +2,26 @@
 <html lang="th">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
 <title>วงจรไฟฟ้า — เกมการเรียนรู้</title>
+
+<!-- ล็อกซูมทั้งหน้า: viewport กันได้บน Chrome/Android แต่ Safari iOS จงใจไม่สน user-scalable=no
+     เลยต้องดักเอง — กันนิ้วถ่าง (gesture ของ Safari + สัมผัส 2 นิ้วของเบราว์เซอร์อื่น) กับ Ctrl+scroll บนคอม
+     แตะนิ้วเดียวลาก/กดยังทำงานปกติทุกอย่าง -->
+<script>
+(function(){
+  function block(e){ e.preventDefault(); }
+  ['gesturestart','gesturechange','gestureend'].forEach(function(ev){
+    document.addEventListener(ev, block, {passive:false});
+  });
+  document.addEventListener('touchmove', function(e){
+    if(e.touches.length > 1) e.preventDefault();   // 2 นิ้วขึ้นไป = เริ่มถ่างซูม
+  }, {passive:false});
+  window.addEventListener('wheel', function(e){
+    if(e.ctrlKey) e.preventDefault();              // Ctrl + ลูกกลิ้ง = ซูมบนคอม
+  }, {passive:false});
+})();
+</script>
 
 <!-- ===== STYLES (เรียงตามลำดับ ห้ามสลับ responsive.css ต้องอยู่ท้ายสุด) ===== -->
 <link rel="stylesheet" href="css/base.css">
